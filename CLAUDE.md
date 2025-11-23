@@ -43,13 +43,13 @@ If you need to install packages and bun is not available in your environment:
 
 - **Framework**: SvelteKit 2.x with Svelte 5.x (using runes syntax)
 - **Styling**: Tailwind CSS 4.x (via Vite plugin)
-- **UI Framework**: Skeleton 4.3.0 with Catppuccin theme
-- **Content**: MDsveX 0.12.3 for markdown blog posts
-- **Syntax Highlighting**: Shiki 3.14.0 with dual-theme support
-- **Icons**: Lucide Svelte 0.553.0
+- **UI Framework**: Skeleton 4.x
+- **Content**: MDsveX for markdown blog posts
+- **Syntax Highlighting**: Shiki with dual-themes
+- **Icons**: Lucide Svelte
 - **Deployment**: Cloudflare Pages with Workers adapter
 - **Package Manager**: Bun
-- **TypeScript**: 5.9.3 with strict mode
+- **TypeScript**: 5.9 with strict mode
 
 ## Project Structure
 
@@ -99,7 +99,7 @@ This project uses Skeleton's **Catppuccin** theme. The theme is set in `src/app.
 
 ### Color Class Patterns
 
-**ALWAYS use Skeleton's adaptive color classes, NEVER hardcoded colors:**
+ALWAYS use Skeleton's adaptive color classes.
 
 ```svelte
 <!-- ✅ Correct: Adaptive colors -->
@@ -126,10 +126,7 @@ Code blocks use **dual-theme syntax highlighting** via Shiki:
 
 ### Typography
 
-- Body font: System font stack
-- Code font: `Fira Mono`
 - Prose styling: `@tailwindcss/typography` plugin
-- Form styling: `@tailwindcss/forms` plugin
 
 ## Content Management (Blog Posts)
 
@@ -174,26 +171,13 @@ author: Martin Emde
 Located in `src/lib/utils/posts.ts`:
 
 ```typescript
-getAllPosts()          // Load all published posts, sorted newest first
-getRecentPosts(limit)  // Get N most recent posts
-getPostBySlug(slug)    // Load single post with content + metadata
-getRawPostBySlug(slug) // Get raw markdown (for RSS/text endpoints)
+getAllPosts(); // Load all published posts, sorted newest first
+getRecentPosts(limit); // Get N most recent posts
+getPostBySlug(slug); // Load single post with content + metadata
+getRawPostBySlug(slug); // Get raw markdown (for RSS/text endpoints)
 ```
 
 ## Routing and Pages
-
-### Route Structure
-
-| Route                | Purpose                          | Type       |
-| -------------------- | -------------------------------- | ---------- |
-| `/`                  | Homepage with 5 recent posts     | Page       |
-| `/about`             | About page                       | Page       |
-| `/blog`              | All blog posts listing           | Page       |
-| `/blog/[slug]`       | Individual blog post             | Page       |
-| `/blog/[slug].txt`   | Raw markdown as plain text       | Endpoint   |
-| `/rss.xml`           | RSS 2.0 feed (last 20 posts)     | Endpoint   |
-| `/llms.txt`          | LLM-friendly post index          | Endpoint   |
-| `/[...segments]`     | Catch-all for old date-based URLs | Redirect   |
 
 ### Prerendering Strategy
 
@@ -310,7 +294,7 @@ The site provides special endpoints for LLM consumption:
 
 - Last 20 posts included
 - Full HTML content in `<content:encoded>` using CDATA
-- Rendered via `marked` library
+- Rendered via `marked` library because `MDsveX` can add JavaScript to output
 - Proper XML escaping
 - Cache control: 1 hour (`max-age=3600`)
 
@@ -349,16 +333,13 @@ The site provides special endpoints for LLM consumption:
 
 ### Formatting (Prettier)
 
-- **Single quotes** in strings
-- **No trailing commas**
-- **Print width**: 100 characters
-- **Plugins**: Svelte parser, Tailwind class sorting (`prettier-plugin-tailwindcss`)
+- **Plugins**: Svelte parser, Tailwind class sorting
 - **Command**: `bun run format` (write) or `bun run lint` (check)
 
 ### Linting (ESLint)
 
-- ESLint 9+ with flat config (`eslint.config.js`)
-- TypeScript support via `typescript-eslint`
+- ESLint (`eslint.config.js`)
+- TypeScript `typescript-eslint`
 - Svelte-specific rules via `eslint-plugin-svelte`
 - Prettier integration (no conflicting rules)
 - `no-undef` disabled (TypeScript handles this)
@@ -377,24 +358,18 @@ The site provides special endpoints for LLM consumption:
 
 - ✅ Use Bun for all package management
 - ✅ Use Skeleton's adaptive color classes (`surface-*`, `anchor`)
+- ✅ Use theme-aware patterns
 - ✅ Use Svelte 5 runes syntax (`$props`, `$state`, `$derived`)
 - ✅ Prerender pages when possible (`export const prerender = true`)
-- ✅ Include all required frontmatter in blog posts
 - ✅ Use TypeScript in all new files
 - ✅ Format code with Prettier before committing
 - ✅ Keep components small and focused
-- ✅ Use theme-aware patterns (avoid hardcoded colors)
 
 ### Don'ts
 
 - ❌ Don't use npm or yarn (use Bun)
 - ❌ Don't commit `package-lock.json` or `yarn.lock`
-- ❌ Don't use hardcoded colors (use Skeleton classes)
-- ❌ Don't use old Svelte syntax (use runes)
-- ❌ Don't skip frontmatter fields in blog posts
-- ❌ Don't add emojis unless explicitly requested
 - ❌ Don't create unnecessary files (prefer editing existing ones)
-- ❌ Don't use manual dark mode classes (theme handles this)
 
 ## Common Tasks
 
@@ -402,10 +377,7 @@ The site provides special endpoints for LLM consumption:
 
 1. Create file: `src/content/blog/my-post.md`
 2. Add required frontmatter (title, date, slug, published)
-3. Write content in markdown
-4. Code blocks will be automatically highlighted
-5. Post will appear on `/blog` and homepage if published
-6. Build and deploy to see it live
+3. Write in Markdown
 
 ### Adding a New Component
 
@@ -419,10 +391,9 @@ The site provides special endpoints for LLM consumption:
 ### Modifying Styles
 
 1. Use Skeleton theme classes when possible
-2. For global styles, edit `src/app.css`
-3. Tailwind utilities are available everywhere
-4. Theme colors: `surface-*`, `primary-*`, `secondary-*`, `tertiary-*`
-5. Run `bun run format` to sort Tailwind classes
+2. Tailwind utilities are available everywhere
+3. Theme colors: `surface-*`, `primary-*`, `secondary-*`, `tertiary-*`
+4. Run `bun run format` to sort Tailwind classes
 
 ### Adding a Route
 
@@ -459,12 +430,11 @@ The site provides special endpoints for LLM consumption:
 
 ## References
 
-- [SvelteKit Docs](https://kit.svelte.dev/docs)
-- [Svelte 5 Docs](https://svelte-5-preview.vercel.app/docs)
-- [Skeleton UI Docs](https://www.skeleton.dev/)
+- [Svelte and SvelteKit Docs](https://svelte.dev/llms.txt)
+- [Skeleton UI Docs](https://www.skeleton.dev/llms-svelte.txt)
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [MDsveX Docs](https://mdsvex.pngwn.io/)
-- [Cloudflare Pages Docs](https://developers.cloudflare.com/pages/)
+- [Cloudflare Pages Docs](https://developers.cloudflare.com/workers/index.md)
 
 ## Project Metadata
 

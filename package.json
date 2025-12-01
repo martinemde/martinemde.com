@@ -7,7 +7,7 @@
     "@fontsource/fira-mono": "^5.2.7",
     "@neoconfetti/svelte": "^2.0.0",
     "@skeletonlabs/skeleton": "4.5.0",
-    "@skeletonlabs/skeleton-svelte": "^4.3.0",
+    "@skeletonlabs/skeleton-svelte": "^4.7.1",
     "@sveltejs/adapter-auto": "^7.0.0",
     "@sveltejs/adapter-cloudflare": "^7.2.4",
     "@sveltejs/kit": "^2.22.0",

@@ -1,5 +1,8 @@
 # sv
 
+[![Run in Smithery](https://smithery.ai/badge/skills/martinemde)](https://smithery.ai/skills?ns=martinemde&utm_source=github&utm_medium=badge)
+
+
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
 ## Creating a project

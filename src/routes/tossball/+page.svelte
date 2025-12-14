@@ -62,21 +62,14 @@ ${tossballMd}
   <header>
     <h1 class="preset-typo-headline">Pitchball &amp; Tossball Cards</h1>
     <h2 class="preset-typo-subtitle">Achieve The Outer Worlds 2 Perfection</h2>
-    <p>
-      A quick checklist I made for my wife. (She was going to make it but she's busy actually
-      playing the game.)
-    </p>
   </header>
 
-  <details class="space-y-2">
-    <p>
-      This page saves your checked cards in browser local storage. You will only be able to access
-      your data in this browser.
-    </p>
-    <p>If you'd like to download or save your progress, copy it as a markdown checkbox list.</p>
-  </details>
+  <p>
+    A checklist I made for my wife.<br />
+    <small>(She was going to make it herself but she's busy playing The Outer Worlds 2.)</small>
+  </p>
 
-  <div class="justify-center">
+  <div class="justify-center space-y-2">
     <button
       type="button"
       onclick={copyMarkdown}
@@ -90,6 +83,17 @@ ${tossballMd}
         <span>Copy Data</span>
       {/if}
     </button>
+    <details class="space-y-2">
+      <p>
+        This page saves your checked cards in browser local storage. You will only be able to access
+        your data in this browser.
+      </p>
+      <p>
+        Press the
+        <mark class="mark bg-secondary-500 text-black opacity-80">Copy Data</mark>
+        button above to copy your progress as a markdown list.
+      </p>
+    </details>
   </div>
 
   <section>
@@ -117,7 +121,7 @@ ${tossballMd}
           onclick={() => toggleCard(card)}
           class="btn flex items-center justify-start gap-3 {isChecked(card)
             ? 'preset-outlined-primary-500'
-            : 'preset-outlined-surface-300-700'}"
+            : 'preset-outlined-surface-200-800'}"
         >
           <input
             class="checkbox"

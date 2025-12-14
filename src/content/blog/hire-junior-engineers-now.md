@@ -95,8 +95,8 @@ These entry-level engineers are some of the people that AI Doomers and AGI-Optim
 ## The Full-Stack Team
 
 Engineering needs to spread out across the entire company. We need to redefine the full-stack team
-to span from accounting to engineering. Including a designer and a product manager on your team is no
-longer "full-stack" enough. You need a gradient of engineers embedded in every part of your company.
+to span from accounting to engineering. Including a designer and a product manager on our team is no
+longer "full-stack" enough. We need a gradient of engineers embedded in every part of our company.
 
 To get the most of their expertise, we can pair domain experts with entry-level engineers. You get domain expertise (accounting, legal, HR, operations) combined with the growing system thinker with the engineering vocabulary. The entry-level engineer provides a bridge from accounting speak into infrastructure speak. They help the Senior Engineers focus on capital-E engineering.
 
@@ -106,51 +106,26 @@ stuff. Engineers are domain experts in engineering. They need to create the syst
 safe self-service possible. They need to support the entry-level and junior experts, help them
 level up, and give them the tools to contribute effectively.
 
-This gradient of engineer skill, from vibe-newb to junior to senior, improves the efficiency of
+This gradient of engineer skill, from viber to junior to senior, improves the efficiency of
 each conversation while allowing work to continue at the right level of abstraction, where each
 person is most skilled.
 
 ## What This Means for Hiring
 
 Now the shift begins: Domain experts are the new junior engineering talent. Entry-level
-engineers fresh out of college have a natural progression to senior while filling a need in the
-company that keeps seniors effective and productive.
+engineers fresh out of college are the mid level talent. They have a natural progression
+to senior while filling a need in the company that keeps seniors effective and productive.
 
 It would be a huge mistake to stop hiring early career "junior" programmers. They're comparatively
 less junior than the domain experts that just picked up cursor. A 4-year CS degree puts them
 squarely in the middle of the pack, now that the spectrum has doubled.
 
-If you fail to have these juniors around, you'll end up spending senior engineering time to prevent
+If we fail to have these juniors at hand, we'll end up spending senior engineering time to prevent
 vibe coders from leaking company documents or creating headaches. Worse yet, since engineering
 management is afraid to waste their team's time, it's often the managers that deal with these new
 vibe coders. The cost of deploying a quick script that generates a power point presentation, when
 supported by department lead engineering managers and a platform ops team, is astronomical. This is
 not what coding agents were supposed to do.
-
-## In the weeds
-
-Here's what I'm thinking about for supporting this next wave of engineers:
-
-1. Template projects that encode best practices and security controls from the start, these are your blessed paths that every new Cursor project should start with.
-2. Push-button deployment paths that work safely for non-experts. Make it one click or it's too complicated.
-3. Agent rules and context that guide AI coding agents toward your company's blessed paths before anyone writes a line of code.
-4. Guardrails that catch sensitive data access and security issues automatically.
-5. Code review agents that help onboard people into safe practices and explain what they're catching and why.
-6. Tiered GitHub organization structures with appropriate access controls, not everyone needs the _same_ access to GitHub, but everyone needs a safe place to share code.
-7. Data movement controls that prevent accidental leaks to unapproved channels.
-
-If _anyone_ can push vibe-coded apps straight to production, the guardrails need to match this new reality.
-
-## tl;dr
-
-1. Create a reach-out team to find the vibe-newbs in your organization who are already using AI tools to code. They're already there, in operations, in customer support, in finance. Find them before they create shadow IT problems.
-2. Hire supportive junior engineers who are familiar with AI-assisted coding. Hire them explicitly with the mandate to teach. Value tutoring or mentoring experience.
-3. Pair these early-career engineers with domain experts who are vibe coding. Their primary job is to support the domain experts to contribute and bridge the gap with platform engineers.
-4. Senior engineering talent should guide and support these entry-level engineers. As you build the platform, grow your early career engineers to contribute to the platform.
-5. Invest heavily in your platform. _Are you ready for non-engineers to deploy new applications?_
-6. Investments in better bootstrapping, templates, context, and blessed paths support ALL engineers, not just the most junior. This is not a "nice to have", it's foundational infrastructure.
-7. Look at how Fastly, Cloudflare, and Heroku set up templates for new projects with push-button deploys. You need to create your company's preferred templates and push-button deploys that reinforce your company's best practices. AI agents will build to the structures you give them.
-8. The people writing code now might not even know what language they've written their application with (it's probably Python). Your infrastructure needs to encode best practices so deeply that it becomes automatic.
 
 Get this right, and we unlock an enormous amount of domain expertise that was previously bottlenecked behind engineering teams. Get it wrong, and we create security nightmares, devalue or discourage talent, or destroy efficiency by applying senior engineering time ineffectively.
 

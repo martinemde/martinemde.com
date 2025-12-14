@@ -25,7 +25,7 @@ export const load: PageLoad = async ({ params }) => {
   if (!post) {
     console.log('Post not found:', slug);
     // No matching post found, redirect to blog index
-    throw redirect(301, '/blog');
+    throw redirect(302, '/blog');
   }
 
   console.log('Post found, metadata date:', post.metadata.date);
@@ -34,7 +34,7 @@ export const load: PageLoad = async ({ params }) => {
   if (!validatePostDate(post.metadata, year, month, day)) {
     console.log('Date mismatch - expected:', `${year}-${month}-${day}`, 'got:', post.metadata.date);
     // Date mismatch, redirect to blog index
-    throw redirect(301, '/blog');
+    throw redirect(302, '/blog');
   }
 
   console.log('Redirecting to:', `/blog/${post.metadata.slug}`);

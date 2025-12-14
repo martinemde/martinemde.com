@@ -63,11 +63,11 @@ It used to be that this rite of passage, understanding the system, also meant th
 
 ## We've Been Here Before
 
-Engineers faced a similar crossroads years ago. Dan McKinley captured it perfectly in his ["Egoless Engineering"](https://egoless.engineeriang/) talk.
+Engineers faced a similar crossroads years ago. Dan McKinley captured it perfectly in his ["Egoless Engineering"](https://egoless.engineering/) talk.
 
 He describes a designer who was encouraged to contribute to an application. When the designer accidentally broke the build late at night, the team had a choice: lock it down so only "real engineers" could deploy, or make deploys safe for everyone.
 
-McKinley made chose the path of empowerment: "Randy is in the deploy group now. The how and when can be worked out off-list, but it is now _possible_ for him to deploy to prod."
+McKinley chose the path of empowerment: "Randy is in the deploy group now. The how and when can be worked out off-list, but it is now _possible_ for him to deploy to prod."
 
 That decision required a mindset shift. Engineers had to ensure deploys were safe for _anyone_ to run. They had to build systems that enabled contribution instead of building gates that prevented it.
 
@@ -102,7 +102,7 @@ To get the most of their expertise, we can pair domain experts with entry-level 
 
 Senior Engineers become platform builders. In the before times, senior engineers would work with
 product managers and designers to understand the domain. Now we need seniors to focus on the hard
-stuff. Engineers are domains expert in engineering. They are need to create the systems that make
+stuff. Engineers are domain experts in engineering. They need to create the systems that make
 safe self-service possible. They need to support the entry-level and junior experts, help them
 level up, and give them the tools to contribute effectively.
 

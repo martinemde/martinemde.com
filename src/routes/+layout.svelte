@@ -1,8 +1,30 @@
 <script lang="ts">
   import '../app.css';
+  import { page } from '$app/state';
 
   let { children } = $props();
+
+  // Derive the page title from the current page data
+  const pageTitle = $derived(
+    page.data.metadata?.title ? `${page.data.metadata.title} - Martin Emde` : 'Martin Emde'
+  );
+
+  // Derive the page description
+  const pageDescription = $derived(page.data.metadata?.description || undefined);
 </script>
+
+<svelte:head>
+  <title>{pageTitle}</title>
+  {#if pageDescription}
+    <meta name="description" content={pageDescription} />
+  {/if}
+  <meta property="og:title" content={pageTitle} />
+  <meta name="twitter:title" content={pageTitle} />
+  {#if pageDescription}
+    <meta property="og:description" content={pageDescription} />
+    <meta name="twitter:description" content={pageDescription} />
+  {/if}
+</svelte:head>
 
 <div class="min-h-screen bg-surface-50-950 text-surface-950-50">
   <!-- Header -->

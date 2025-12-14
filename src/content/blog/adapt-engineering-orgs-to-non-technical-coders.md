@@ -2,7 +2,7 @@
 title: 'Adapting Engineering Orgs for Non-Technical Coders'
 date: 2025-12-14
 author: Martin Emde
-description: 'These are the action items for engineering organizations that want to stay empower the new vibe coding juniors'
+description: 'These are the action items for engineering organizations that want to empower the new vibe coding juniors'
 published: true
 slug: adapt-engineering-orgs-to-non-technical-coders
 ---

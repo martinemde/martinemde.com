@@ -6,13 +6,6 @@
   let { data }: { data: PageData } = $props();
 </script>
 
-<svelte:head>
-  <title>{data.metadata.title ? `${data.metadata.title} - Martin Emde` : 'Martin Emde'}</title>
-  {#if data.metadata.description}
-    <meta name="description" content={data.metadata.description} />
-  {/if}
-</svelte:head>
-
 <article>
   <header class="mb-8 border-b border-surface-200-800 pb-8">
     {#if data.metadata.title}

@@ -1,8 +1,8 @@
 ---
-title: 'We Need Junior Engineers Now More Than Ever'
+title: 'Hire Junior Engineers Now'
 date: 2025-10-28
 author: Martin Emde
-description: 'AI coding tools are creating a new type of junior engineer: domain experts who can vibe code but need support to deploy safely'
+description: 'AI coding tools are creating a larger gap between the most junior and senior engineers: we need early career programmers to fill the gap'
 published: true
 slug: hire-junior-engineers-now
 ---

@@ -111,3 +111,18 @@ export function getRawPostBySlug(slug: string): string | null {
 
   return (rawPosts[mdKey] || rawPosts[svxKey]) as string | null;
 }
+
+/**
+ * Format a date string from post frontmatter consistently
+ * Avoids timezone issues by treating dates as local dates
+ */
+export function formatPostDate(dateString: string): string {
+  // Add time component to ensure date is parsed as local date
+  const date = new Date(dateString + 'T00:00:00');
+  
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+}

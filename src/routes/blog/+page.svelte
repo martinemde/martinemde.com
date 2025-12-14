@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import { formatPostDate } from '$lib/utils/posts';
 
   let { data }: { data: PageData } = $props();
 </script>
@@ -21,11 +22,7 @@
           </a>
         </h2>
         <div class="mb-4 text-sm text-surface-600-400">
-          {new Date(post.date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
+          {formatPostDate(post.date)}
         </div>
         {#if post.description}
           <p class="text-surface-700-300">{post.description}</p>

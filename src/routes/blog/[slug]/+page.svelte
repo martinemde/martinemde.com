@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import ShareButtons from '$lib/components/ShareButtons.svelte';
+  import { formatPostDate } from '$lib/utils/posts';
 
   let { data }: { data: PageData } = $props();
 </script>
@@ -20,11 +21,7 @@
     <div class="text-sm text-surface-600-400">
       <div class="flex items-center justify-between gap-4">
         {#if data.metadata.date}
-          {new Date(data.metadata.date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
+          {formatPostDate(data.metadata.date)}
         {/if}
         <ShareButtons
           slug={data.metadata.slug}

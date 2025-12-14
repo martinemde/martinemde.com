@@ -7,7 +7,7 @@
 
 <svelte:head>
   <title>Martin Emde</title>
-  <meta name="description" content="Software Engineer Consultant, RubyGems Maintainer" />
+  <meta name="description" content="Software Engineer, Enthusiast of Things" />
 </svelte:head>
 
 <div>
@@ -23,11 +23,11 @@
 
   <!-- Latest Posts Section -->
   <section>
-    <h2 class="mb-8 text-3xl font-bold">Latest Updates</h2>
-    <div class="space-y-12">
+    <h2 class="preset-typo-display-1 mb-8">Latest Blog Posts</h2>
+    <div class="space-y-8">
       {#each data.recentPosts as post (post.slug)}
-        <article class="border-b border-surface-200-800 pb-12">
-          <h3 class="mb-2 text-2xl font-semibold">
+        <article class="border-b border-surface-200-800 pb-8">
+          <h3 class="preset-typo-title mb-2">
             <a href="/blog/{post.slug}" class="anchor">
               {post.title}
             </a>

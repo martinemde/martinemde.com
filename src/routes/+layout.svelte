@@ -35,9 +35,10 @@
     <div class="container mx-auto max-w-4xl px-4">
       <div class="flex items-center justify-between py-6">
         <h1 class="text-xl font-semibold"><a href="/" class="anchor">Martin Emde</a></h1>
-        <nav class="space-x-6">
-          <a href="/blog" class="anchor">Blog</a>
-          <a href="/about" class="anchor">About</a>
+        <nav class="space-x-2">
+          <a href="/blog" class="preset-typo-menu anchor">Blog</a>
+          <a href="/projects" class="preset-typo-menu anchor">Projects</a>
+          <a href="/about" class="preset-typo-menu anchor">About</a>
         </nav>
       </div>
     </div>

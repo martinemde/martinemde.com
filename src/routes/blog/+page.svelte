@@ -11,12 +11,12 @@
 </svelte:head>
 
 <div>
-  <h1 class="mb-12 text-4xl font-bold">Blog</h1>
+  <h1 class="preset-typo-display-1 mb-12">Blog Posts</h1>
 
   <div class="space-y-12">
     {#each data.posts as post (post.slug)}
       <article class="border-b border-surface-200-800 pb-12">
-        <h2 class="mb-2 text-2xl font-semibold">
+        <h2 class="preset-typo-title mb-2">
           <a href="/blog/{post.slug}" class="anchor">
             {post.title}
           </a>

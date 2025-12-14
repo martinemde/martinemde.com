@@ -7,127 +7,151 @@ published: true
 slug: hire-junior-engineers-now
 ---
 
-I recently saw a profound thing happen in my company because of AI coding tools.
+Vibe coding is allowing a new category of junior programmers to emerge from unlikely places.
 
-A person with zero engineering experience, but with deep knowledge in their field, built a useful tool using Cursor. That's not the story though. We all know that's happening everywhere right now.
+When a vibe coder joins an engineering channel and asks a simple question: "How do I get a domain name so I can share this with my team?" it's all too easy to assume a level of engineering know-how that isn't yet developed.
 
-Then they asked a simple question: "How do I share this with my team so they can use it too?"
+When this happened at my work, I joined a Zoom meeting to try to help. What I saw both inspired me and shifted my view about the role of engineering in larger organizations.
 
-I hopped on a Zoom meeting to try to help, and what I saw both inspired and profoundly shifted my view about the role of engineering in larger organizations.
+Most people think that the massive shift that's coming will put junior engineers out of a job. I disagree.
 
-We're facing a massive shift in how engineering teams need to work, and most companies aren't ready for it.
+We're facing a massive shift in how engineering teams need to work, and if you think we'll just fire
+all the juniors and then sit around guiding swarms of coding agents, you're going to be surprised.
 
 ## The Gap Between Vibes and Infrastructure
 
-The traditional engineering answer to "how do I share this?" goes something like: "Work with platform ops to get a deployment set up. Make a PR to the terraform to allocate a new internal domain and configure an ECR repo for the docker image? The app generator should help you do this if it follows our standard framework guidelines."
+The traditional engineering answer to "how do I share this?" goes something like: "Work with platform ops to get a deployment set up. Make a PR to the terraform to allocate a new internal subdomain. If you're deploying a docker container, can you configure an ECR repo too? The app generator should help you do this if it follows our standard framework guidelines."
 
 To a Customer Service manager or Accountant who just vibed out a solution to their problem, this is complete gibberish.
 
-If they're persistent, they'll ask again. More likely, they'll feel discouraged or they'll figure it out themselves in ways that might make security teams very nervous.
+If they're persistent, they'll ask again. They'll probably feel discouraged. Maybe they'll figure it out themselves in ways that would make security teams blush.
 
 This creates problems no company wants:
 
-- Domain experts, people with deep experience outside of engineering, discouraged from contributing their expertise
-- [Shadow IT](https://en.wikipedia.org/wiki/Shadow_IT) containing customer data, financial information, or company IP running outside IT controls
-- Senior engineers spending days supporting each small contribution, defeating the entire productivity promise of AI
-- Security vulnerabilities from well-meaning people who don't know what they don't know
+- Domain experts, people with deep experience in your company, get discouraged from contributing to
+  AI driven solutions
+- [Shadow IT](https://en.wikipedia.org/wiki/Shadow_IT) starts cropping up everywhere, allowing customer data, financial information, or company IP to leak outside of IT controls
+- Senior engineers spending days supporting small contributions from inexperienced vibe coders, erasing the productivity promise of AI
+- Security vulnerabilities created by well-meaning people who don't know any better
 
-The technical solution that might be fine for an engineer could be dangerous for inexperienced coders and could compromise the entire company. The gap between working prototype and safe deployment is big.
+The technical solutions that might work for an engineer could be dangerous for inexperienced vibe-coders. The gap is huge between a working prototype in cursor and a safe deployment.
 
 ## Vibe Coding
 
-I'm all in on vibe coding. As an experienced engineer, I see huge productivity gains from using AI coding tools. But they're not without their problems.
+As an experienced engineer, I see huge productivity gains from using AI coding tools, but they're not without their problems.
 
-As engineers, we can see when our coding agents are going sideways. When Claude starts dropping a new ALLCAPS.md for everything we ask, and creating the 3rd copy of a script it already wrote, we know it's time to reset context, adjust rules, or clarify requirements. When Cursor or Codex does something stupid, we reset back to the last commit.
+Engineers can see when our coding agents are going sideways. When Claude starts dropping a new `ALLCAPS.md` for every prompt, when it create the 3rd copy of a script it already wrote, we know it's time to reign it in and adjust rules or clarify requirements. When Claude does something stupid, we reset back to the last commit.
 
-New vibe coders don't know any of this. They end up with a directory containing a mix of sensitive data, cross-required python files, 20 random scripts, and `SIMPLE_QUICK_STARTUP_README_FIXED.md`. They're using a single conversation in cursor across days, have never heard of git, and cannot know which files might contain PII or financial data, because the whole point of their script is to work with this data.
+New vibe coders don't know any of this. They don't use git. They don't reset context. They use one conversation in cursor for the entire program they're writing.
 
-Vibe Coding is its own skill set. It's an offshoot of engineering, and knowing what a good application looks like helps a lot, but after helping my son and my wife get started with Cursor, it's clear that you need an engineer around to steer you in the right direction when things go wrong and convey the mindset about clean context and clean code to support the AI agents.
+Junior vibe coders end up with a directory containing a mix of sensitive data, cross-linked python files, 20 random scripts for one off changes, and 50 variations of `SIMPLE_QUICK_STARTUP_README_FIXED.md`. Worse still, they do not know which files might contain PII or financial data. Working with sensitive data is their job. The concept of sanitized test data is foreign to them.
 
-We're facing a profound shift in who is capable of what, and we're going to need to decide where we want to go.
+Vibe Coding is its own skill set. It's an offshoot of engineering that benefits from the skills we've built as engineers. Knowing what a good application looks like help you build a good application.
+
+After helping my son and my wife get started with Cursor, I can see how sharing my [senior thinking](https://obie.medium.com/what-happens-when-the-coding-becomes-the-least-interesting-part-of-the-work-ab10c213c660) with them as they learn changes the sorts of outcomes they get.
+
+> If I’m working alone, it all stays internal. If I’m pairing with someone else that’s senior, then the thinking surfaces naturally in conversation but is taken for granted. If I’m pairing with someone less experienced, I might slow down enough to explain parts of my senior thinking, but definitely not all. It would bog us down too much.
+>
+> - Obie Fernandez
+
+Life-long engineers, ones that grew up with an engineer parent or were introduced to abstract
+systems early, have this deeply engrained in their approach to life. When things go wrong or get
+difficult for vibe coders, if they don't have any of this to fall back on, they end up with very
+different results than experienced engineers.
+
+It used to be that this rite of passage, understanding the system, also meant that once you got access to `rm -rf` you had enough background to know it was dangerous. Now we're facing a shift in who is capable of what, and we're going to need to decide where we want to go.
 
 ## We've Been Here Before
 
 Engineers faced a similar crossroads years ago. Dan McKinley captured it perfectly in his ["Egoless Engineering"](https://egoless.engineeriang/) talk.
 
-He describes a designer who was encouraged to contribute to an application and accidentally broke the build late at night. The team had a choice: lock it down so only "real engineers" could deploy, or make deploys safe for everyone.
+He describes a designer who was encouraged to contribute to an application. When the designer accidentally broke the build late at night, the team had a choice: lock it down so only "real engineers" could deploy, or make deploys safe for everyone.
 
-McKinley made a different choice: "Randy is in the deploy group now. The how and when can be worked out off-list, but it is now _possible_ for him to deploy to prod."
+McKinley made chose the path of empowerment: "Randy is in the deploy group now. The how and when can be worked out off-list, but it is now _possible_ for him to deploy to prod."
 
-That decision required a mindset shift. Engineers had to ensure deploys were safe for _anyone_ to run. They had to build systems that enabled contribution instead of gates that prevented it.
+That decision required a mindset shift. Engineers had to ensure deploys were safe for _anyone_ to run. They had to build systems that enabled contribution instead of building gates that prevented it.
 
-This is empowerment. This is what unlocked modern DevOps.
+This empowerment is what unlocked what we might call modern DevOps.
 
-We're at that moment again, but the new "deploy group" is much larger than it was before.
+Now we're doing it again, but the "deploy group" is much larger than it was before and contains
+a much more junior set of people.
 
-## The Skill Spectrum Just Doubled
+## The Skill Spectrum
 
-Traditionally, a "junior engineer" meant someone fresh from college or a bootcamp, someone who proved they could program before getting hired. They understand commits, dependencies, deployment, URLs. They speak the vocabulary.
+Traditionally, a "junior engineer" meant someone fresh from college or a programming bootcamp. They were people that proved they could program _before_ getting hired. They could make commits, install dependencies, and maybe run simple deployments. They knew the lingo. They could speak like an engineer.
 
-Now the skill spectrum is doubling, with a new "expert junior" tier: domain experts using AI to code. There may be as many people in this new group as our entire existing engineering organization.
+Now the code skill spectrum is doubling. A new "expert junior" tier has been added. They know a ton about the business domain, but they know next-to-nothing about engineering. There may be as many people in this new group as our entire existing engineering organization.
 
-In the past, some of our best bootcamp hires were teachers, healthcare workers, or business analysts who brought 10+ years of domain expertise to their junior engineering skill set. What they lacked in technical skill, they made up for in their ability to understand the problem space deeply.
+## The New Engineering
 
-## The New Engineering Org
+Some of the best junior hires were teachers, healthcare workers, or business analysts who brought 10+ years of domain expertise along with their junior engineering skill set. They had _senior thinking_ from a different domain, and these executive skills somewhat compensated for their lack of engineering knowledge.
 
-This shift changes everything about how we structure teams.
+Domain Expert Vibe Coders (the new "expert juniors") bring deep domain knowledge, and now that they come from within our businesses, they have direct useful experience. They can build prototypes with AI assistance that solve very specific problems that impact only their jobs. Stuff they would struggle to ask an engineer to help them with (if they were lucky enough to have an engineer contact in the company).
 
-Domain Expert Vibe Coders (the new "expert juniors") bring deep domain knowledge. They can build prototypes with AI assistance but need support getting from prototype to deployed application.
+We used to consider someone junior when they were a _Classically Trained Entry-Level Engineer_. They have 4 year CS degrees or equivalent experience. They understood coding enough to convince a series of instructors, employers and peers.
 
-Classically Trained Entry-Level Engineers (what we used to call "juniors") have 4 years of CS degrees or experience, understand coding, deployment, and infrastructure basics. They can pair with domain experts to make something useful and support vibe coding.
+These entry-level engineers are some of the people that AI Doomers and AGI-Optimists are trying to convince us that we won't need anymore. The doom and gloom story says that juniors are useless now because a senior has a fleet of juniors to do their work. People (rightly) worry how we will train the next generation of engineers if the engineering org is just senior talent now.
 
-Senior Engineers (platform builders) now need to create the systems that make safe self-service possible and support the entry-level and junior experts to level up and contribute effectively.
+## The Full-Stack Team
 
-Engineering is going to spread out into the entire organization, starting with domain experts solving their own problems. To get the most of their expertise, we need to pair them with a entry-level engineers who knows how to build software and wrangle the agents. You get domain expertise (accounting, legal, HR, operations) combined with the system thinking and engineering vocabulary that can bridge the gap from prototype to infrastructure and the traditional engineering team.
+Engineering needs to spread out across the entire company. We need to redefine the full-stack team
+to span from accounting to engineering. Including a designer and a product manager on your team is no
+longer "full-stack" enough. You need a gradient of engineers embedded in every part of your company.
 
-## Domain Experts Are The New Junior Engineers
+To get the most of their expertise, we can pair domain experts with entry-level engineers. You get domain expertise (accounting, legal, HR, operations) combined with the growing system thinker with the engineering vocabulary. The entry-level engineer provides a bridge from accounting speak into infrastructure speak. They help the Senior Engineers focus on capital-E engineering.
 
-Here's what this pairing actually looks like in practice: imagine a junior to mid-level engineer sitting with a domain expert who's building a tool. The engineer isn't taking over, they're teaching how to think about programming. They're helping refine prompts and explaining software structure. They're helping the domain export to understand the shape of an application.
+Senior Engineers become platform builders. In the before times, senior engineers would work with
+product managers and designers to understand the domain. Now we need seniors to focus on the hard
+stuff. Engineers are domains expert in engineering. They are need to create the systems that make
+safe self-service possible. They need to support the entry-level and junior experts, help them
+level up, and give them the tools to contribute effectively.
 
-These vibe-support engineers need to be teachers. They need to resist the urge to say "let me just fix this for you" and instead pair with domain experts to learn they domain while they share their understanding of code. The goal isn't only to build the feature, it's to help the domain expert become more capable with each iteration.
-
-Supporting engineers become the bridge between embedded domain experts and the platform engineering team. They speak both languages.
-
-Now the shift begins and the domain experts become our next wave of junior engineers, while the fresh college graduates pairing with are the next senior platform engineers.
+This gradient of engineer skill, from vibe-newb to junior to senior, improves the efficiency of
+each conversation while allowing work to continue at the right level of abstraction, where each
+person is most skilled.
 
 ## What This Means for Hiring
 
-We need to keep hiring classic early career "junior" programmers. They're not quite as junior anymore. A 4-year CS degree puts them squarely in the middle of the pack. You need them now more than ever to support the _new_ juniors.
+Now the shift begins: Domain experts are the new junior engineering talent. Entry-level
+engineers fresh out of college have a natural progression to senior while filling a need in the
+company that keeps seniors effective and productive.
 
-Pairing senior engineers with junior export vibe coders risks undermining the productivity benefit of AI coding tools. Senior engineers should be building platforms that enable safe self-service best practices at your company.
+It would be a huge mistake to stop hiring early career "junior" programmers. They're comparatively
+less junior than the domain experts that just picked up cursor. A 4-year CS degree puts them
+squarely in the middle of the pack, now that the spectrum has doubled.
 
-Embed early career engineers on domain teams where vibe coding is happening. They provide the vocabulary and systematic approach that turns prototypes into deployable applications. Even more importantly, they're helping domain experts grow into engineers.
+If you fail to have these juniors around, you'll end up spending senior engineering time to prevent
+vibe coders from leaking company documents or creating headaches. Worse yet, since engineering
+management is afraid to waste their team's time, it's often the managers that deal with these new
+vibe coders. The cost of deploying a quick script that generates a power point presentation, when
+supported by department lead engineering managers and a platform ops team, is astronomical. This is
+not what coding agents were supposed to do.
 
-## What We Need to Build
+## In the weeds
 
-1. Template projects that encode best practices and security controls from the start, these are your blessed paths that every new project should begin with
-2. Push-button deployment paths that work safely for non-experts, if it's not one click, it's too complicated
-3. Agent rules and context that guide AI assistants toward your company's blessed paths before anyone writes a line of code
-4. Guardrails that catch sensitive data access and security issues automatically, these are your safety nets
-5. Code review agents that help onboard people into safe practices by explaining what they're catching and why
-6. Tiered GitHub organization structure with appropriate access controls, not everyone needs the same access to everything, but everyone needs safe access to code sharing.
-7. Data movement controls that prevent accidental leaks to unapproved channels, especially critical as more non-engineers contribute
+Here's what I'm thinking about for supporting this next wave of engineers:
 
-We used to talk about letting anyone press the deploy button. Now we're talking about _anyone_ pushing vibed code to production systems. The guardrails need to match this reality.
+1. Template projects that encode best practices and security controls from the start, these are your blessed paths that every new Cursor project should start with.
+2. Push-button deployment paths that work safely for non-experts. Make it one click or it's too complicated.
+3. Agent rules and context that guide AI coding agents toward your company's blessed paths before anyone writes a line of code.
+4. Guardrails that catch sensitive data access and security issues automatically.
+5. Code review agents that help onboard people into safe practices and explain what they're catching and why.
+6. Tiered GitHub organization structures with appropriate access controls, not everyone needs the _same_ access to GitHub, but everyone needs a safe place to share code.
+7. Data movement controls that prevent accidental leaks to unapproved channels.
 
-## What Engineering Needs To Do Now
+If _anyone_ can push vibe-coded apps straight to production, the guardrails need to match this new reality.
 
-1. **Start with discovery.** Create a reach-out team to find the domain experts in your organization who are already using AI tools to code. They're already there, in operations, in customer support, in finance. Find them before they create shadow IT problems.
-2. **Hire supportive junior engineers.** Bring in recent college graduates who are familiar with AI-assisted coding and hire them explicitly with the mandate to teach. Value tutoring or mentoring experience.
-3. **Embed with experts.** Pair these early career engineers with domain experts who are vibe coding. Their primary job is to support the domain experts to contribute and bridge the gap with platform engineers.
-4. **Support everyone.** Senior engineering talent should learn from, guide, and support these mid-level teaching engineers. As you build the platform, grow your early career engineers to contribute to the platform to support their domain experts.
-5. **Invest heavily in your platform.** Keep platform capabilities and guidance top of mind for your senior engineers. _Are you ready for non-engineers to deploy new applications?_ Investments in better bootstrapping, templates, context, and blessed paths support ALL engineers, not just the most junior. This is not a "nice to have", it's foundational infrastructure.
-6. **Learn from the platform companies.** Look at how Fastly, Cloudflare, and Heroku set up templates for new projects with push-button deploys. You don't just need push-to-deploy, you need templates for your company's preferred application structures. AI agents will build to the structures you give them. Your internal systems, your data policies, your security requirements. You need to make _your company's_ deployment easy.
-7. **Accept the new reality.** You can't just trust engineers to make the best decisions anymore. They might not even know what language they're writing their application with (let's face it, it's probably Python). That's not a criticism, it's the reality of AI-assisted development. Your infrastructure needs to encode best practices so deeply that doing the right thing is automatic.
+## tl;dr
 
-## The Stakes
+1. Create a reach-out team to find the vibe-newbs in your organization who are already using AI tools to code. They're already there, in operations, in customer support, in finance. Find them before they create shadow IT problems.
+2. Hire supportive junior engineers who are familiar with AI-assisted coding. Hire them explicitly with the mandate to teach. Value tutoring or mentoring experience.
+3. Pair these early-career engineers with domain experts who are vibe coding. Their primary job is to support the domain experts to contribute and bridge the gap with platform engineers.
+4. Senior engineering talent should guide and support these entry-level engineers. As you build the platform, grow your early career engineers to contribute to the platform.
+5. Invest heavily in your platform. _Are you ready for non-engineers to deploy new applications?_
+6. Investments in better bootstrapping, templates, context, and blessed paths support ALL engineers, not just the most junior. This is not a "nice to have", it's foundational infrastructure.
+7. Look at how Fastly, Cloudflare, and Heroku set up templates for new projects with push-button deploys. You need to create your company's preferred templates and push-button deploys that reinforce your company's best practices. AI agents will build to the structures you give them.
+8. The people writing code now might not even know what language they've written their application with (it's probably Python). Your infrastructure needs to encode best practices so deeply that it becomes automatic.
 
-Get this right, and we unlock an enormous amount of domain expertise that was previously bottlenecked behind engineering teams. We empower the people who understand the problems best to contribute solutions directly.
+Get this right, and we unlock an enormous amount of domain expertise that was previously bottlenecked behind engineering teams. Get it wrong, and we create security nightmares, devalue or discourage talent, or destroy efficiency by applying senior engineering time ineffectively.
 
-Get it wrong, and we either discourage valuable contributions, create security nightmares, and spend senior engineering time ineffectively.
-
-The technical problems are solvable. The question is whether we're willing to make the organizational changes to solve them.
-
-We've done this before with DevOps. We can do it again with vibe coding domain experts. But it requires acknowledging that the spectrum of "engineer" is now much broader than it used to be and building our teams accordingly.
-
-The domain experts are already vibe coding. Are we ready to embrace them?
+The technical problems are solvable. We've done this before with the DevOps movement. We can do it again with vibe coding domain experts. It requires acknowledging that the spectrum of "engineer" is now much broader than it used to be and building our teams accordingly.

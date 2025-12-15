@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Copy, CopyCheck } from 'lucide-svelte';
+  import ToggleButton from './ToggleButton.svelte';
 
   interface Cards {
     pitchball: string[];
@@ -140,21 +141,9 @@ ${tossballMd}
       </div>
       <div class="space-y-2">
         {#each cardsByName as card (card)}
-          <button
-            onclick={() => toggleCard(card)}
-            class="btn flex items-center justify-start gap-3 {isChecked(card)
-              ? 'preset-outlined-primary-500'
-              : 'preset-outlined-surface-200-800'}"
-          >
-            <input
-              class="checkbox"
-              type="checkbox"
-              checked={isChecked(card)}
-              onchange={() => toggleCard(card)}
-              onclick={() => toggleCard(card)}
-            />
+          <ToggleButton checked={isChecked(card)} ontoggle={() => toggleCard(card)}>
             {card}
-          </button>
+          </ToggleButton>
         {/each}
       </div>
     </section>
@@ -172,21 +161,9 @@ ${tossballMd}
       </div>
       <div class="space-y-2">
         {#each cards.pitchball as card (card)}
-          <button
-            onclick={() => toggleCard(card)}
-            class="btn flex items-center justify-start gap-3 {isChecked(card)
-              ? 'preset-outlined-primary-500'
-              : 'preset-outlined-surface-200-800'}"
-          >
-            <input
-              class="checkbox"
-              type="checkbox"
-              checked={isChecked(card)}
-              onchange={() => toggleCard(card)}
-              onclick={() => toggleCard(card)}
-            />
+          <ToggleButton checked={isChecked(card)} ontoggle={() => toggleCard(card)}>
             {card}
-          </button>
+          </ToggleButton>
         {/each}
       </div>
     </section>
@@ -195,21 +172,9 @@ ${tossballMd}
       <h2 class="mb-4 text-2xl font-semibold text-surface-950-50">Tossball Cards</h2>
       <div class="space-y-2">
         {#each cards.tossball as card (card)}
-          <button
-            onclick={() => toggleCard(card)}
-            class="btn flex items-center justify-start gap-3 {isChecked(card)
-              ? 'preset-outlined-primary-500'
-              : 'preset-outlined-surface-200-800'}"
-          >
-            <input
-              class="checkbox"
-              type="checkbox"
-              checked={isChecked(card)}
-              onchange={() => toggleCard(card)}
-              onclick={() => toggleCard(card)}
-            />
+          <ToggleButton checked={isChecked(card)} ontoggle={() => toggleCard(card)}>
             {card}
-          </button>
+          </ToggleButton>
         {/each}
       </div>
     </section>

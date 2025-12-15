@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { Copy, CopyCheck } from 'lucide-svelte';
+  import CopyButton from '$lib/components/CopyButton.svelte';
   import ToggleButton from './ToggleButton.svelte';
+  import { generateCardsMarkdown } from './markdown';
+  import untypedCards from './cards.json';
 
   interface Cards {
     pitchball: string[];
     tossball: string[];
   }
-  import untypedCards from './cards.json';
+
   const cards: Cards = untypedCards;
 
   const isBrowser = typeof window !== 'undefined';
@@ -16,7 +18,6 @@
     isBrowser && window.localStorage ? JSON.parse(window.localStorage.getItem('cards') || '[]') : []
   );
 
-  let copied = $state(false);
   let sortMode = $state<'name' | 'type'>('name');
 
   // Derived state for sorted cards
@@ -39,51 +40,12 @@
 
   const isChecked = (card: string) => storedCards.includes(card);
 
-  async function copyMarkdown() {
-    let markdown: string;
-
-    if (sortMode === 'name') {
-      const allCardsMd = cardsByName
-        .map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
-        .join('\n');
-
-      markdown = `# The Outer Worlds 2 Cards
-
-## All Cards
-
-${allCardsMd}
-`;
-    } else {
-      const pitchballMd = cards.pitchball
-        .map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
-        .join('\n');
-
-      const tossballMd = cards.tossball
-        .map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
-        .join('\n');
-
-      markdown = `# The Outer Worlds 2 Cards
-
-## Pitchball Cards
-
-${pitchballMd}
-
-## Tossball Cards
-
-${tossballMd}
-`;
-    }
-
-    try {
-      await navigator.clipboard.writeText(markdown);
-      copied = true;
-      setTimeout(() => {
-        copied = false;
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to copy:', error);
-    }
-  }
+  const getMarkdown = () =>
+    generateCardsMarkdown({
+      cards,
+      checkedCards: storedCards,
+      sortMode
+    });
 </script>
 
 <article class="container mx-auto max-w-4xl space-y-8 px-4 pb-8">
@@ -92,26 +54,15 @@ ${tossballMd}
     <h2 class="preset-typo-subtitle">Achieve Perfection in <i>The Outer Worlds 2</i></h2>
   </header>
 
-  <p>
-    A checklist I made for my wife.<br />
-    <small>(She was going to make it herself but she's busy playing The Outer Worlds 2.)</small>
-  </p>
-
   <div class="justify-center space-y-4">
     <div class="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onclick={copyMarkdown}
-        class="btn inline-flex items-center gap-2 preset-filled-secondary-500"
-      >
-        {#if copied}
-          <CopyCheck size={20} />
-          <span>Copied!</span>
-        {:else}
-          <Copy size={20} />
-          <span>Copy</span>
-        {/if}
-      </button>
+      <CopyButton
+        getData={getMarkdown}
+        name="Copy Data"
+        class="preset-outlined-secondary-500"
+        ariaLabel="Copy a backup of your data"
+        title="Copy a backup of your data"
+      />
     </div>
 
     <details class="space-y-2">
@@ -130,7 +81,7 @@ ${tossballMd}
   {#if sortMode === 'name'}
     <section>
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-2xl font-semibold text-surface-950-50">All Cards</h2>
+        <h2 class="preset-typo-title">All Cards</h2>
         <button
           type="button"
           onclick={() => (sortMode = 'type')}
@@ -150,7 +101,7 @@ ${tossballMd}
   {:else}
     <section>
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-2xl font-semibold text-surface-950-50">Pitchball Cards</h2>
+        <h2 class="preset-typo-title">Pitchball Cards</h2>
         <button
           type="button"
           onclick={() => (sortMode = 'name')}
@@ -169,7 +120,7 @@ ${tossballMd}
     </section>
 
     <section>
-      <h2 class="mb-4 text-2xl font-semibold text-surface-950-50">Tossball Cards</h2>
+      <h2 class="preset-typo-title">Tossball Cards</h2>
       <div class="space-y-2">
         {#each cards.tossball as card (card)}
           <ToggleButton checked={isChecked(card)} ontoggle={() => toggleCard(card)}>

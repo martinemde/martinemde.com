@@ -16,14 +16,14 @@ export interface Project {
 export const projects: Project[] = [
   {
     name: 'gem.coop',
-    description:
-      'The Gem Cooperative, founding member and elected Project Leadership Committee member.',
+    description: 'The Gem Cooperative - Founding member, Project Leadership Committee.',
     url: 'https://gem.coop',
     type: 'website'
   },
   {
     name: 'Studio',
-    description: 'The smallest possible MCP, converts CLI commands to AI tools.',
+    description:
+      'The smallest possible MCP server. Converts CLI commands to AI tools with a simple template pattern.',
     url: 'https://github.com/studio-mcp/studio',
     type: 'github',
     githubPath: 'studio-mcp/studio'
@@ -38,7 +38,7 @@ export const projects: Project[] = [
   {
     name: 'dotfiles',
     description:
-      'My boss nerdsniped me into dotfiles and I changed my whole dev environment. Managed by chezmoi and claude.',
+      'My boss nerdsniped me into caring more about my dotfiles. I changed my whole dev environment. Now managed by chezmoi and claude.',
     url: 'https://github.com/martinemde/dotfiles',
     type: 'github',
     githubPath: 'martinemde/dotfiles'
@@ -46,14 +46,14 @@ export const projects: Project[] = [
   {
     name: 'Tossball',
     description:
-      'The Outer Worlds 2: Pitchball & Tossball Card Checklist. Just a silly little checklist made with Svelte.',
+      'The Outer Worlds 2: Pitchball & Tossball Card checklist. A little checklist made with Svelte.',
     url: '/tossball',
     type: 'website'
   },
   {
     name: 'RubyGems & Bundler',
     description:
-      'Former team lead and core maintainer of RubyGems, et al. Built bundler lockfile checksums, gem contents storage, organizations, new website design, and more.',
+      'Former team lead and core maintainer of RubyGems. Contributed to Bundler lockfile checksums, gem contents storage, organizations, new website design, as well as serving on the security team.',
     url: 'https://github.com/ruby/rubygems',
     type: 'github',
     githubPath: 'ruby/rubygems'

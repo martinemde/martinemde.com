@@ -41,7 +41,7 @@ problems, and this motivation is special and valuable. Let's empower them.
 
 The domain experts turning to vibe coding are showing that they're up for a challenge and they're willing to solve problems that no one has solved for them yet. This of the inside of your company as a microcosm of the outside world. The bigger your company is, the more you need to create on-ramps for people to grow into stronger contributors.
 
-If [senior engineers ship 2.5x more AI code than juniors][4] now and [AI Savy music producers outperform][5] their peers, then how might your most experienced marketers, corporate financiers, or business developer perform if they're supported with the tools and team mates they need?
+If [senior engineers ship 2.5x more AI code than juniors][4] and [AI Savy music producers outperform][5] their peers, then how might your most experienced marketers, corporate financiers, or business developer perform if they're supported with the tools and team mates they need?
 
 [1]: https://www.fastly.com/documentation/solutions/starters/compute-starter-kit-go-default/ 'Fastly 1-click deployment starter kit'
 [2]: https://github.com/cloudflare/workflows-starter 'Cloudflare work starter apps with 1 click deploys'

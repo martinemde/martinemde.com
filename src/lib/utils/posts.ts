@@ -22,11 +22,7 @@ export interface Post extends PostMetadata {
  * Error thrown when duplicate slugs are detected
  */
 export class DuplicateSlugError extends Error {
-  constructor(
-    slug: string,
-    path1: string,
-    path2: string
-  ) {
+  constructor(slug: string, path1: string, path2: string) {
     super(
       `Duplicate slug "${slug}" found in:\n  - ${path1}\n  - ${path2}\n\nEach blog post must have a unique slug.`
     );

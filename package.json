@@ -15,11 +15,16 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.17",
+    "@testing-library/svelte": "^5.2.9",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24",
+    "@vitest/ui": "^4.0.16",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.13.1",
     "globals": "^16.5.0",
+    "happy-dom": "^20.0.11",
+    "jsdom": "^27.3.0",
     "mdsvex": "^0.12.6",
     "prettier": "^3.7.4",
     "prettier-plugin-svelte": "^3.4.0",
@@ -30,7 +35,8 @@
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
-    "vite": "^7.2.7"
+    "vite": "^7.2.7",
+    "vitest": "^4.0.16"
   },
   "dependencies": {
     "lucide-svelte": "^0.555.0",
@@ -45,7 +51,10 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "format": "prettier --write .",
-    "lint": "prettier --check . && eslint ."
+    "lint": "prettier --check . && eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
   },
   "type": "module"
 }

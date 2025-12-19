@@ -1,12 +1,12 @@
 interface Cards {
-	pitchball: string[];
-	tossball: string[];
+  pitchball: string[];
+  tossball: string[];
 }
 
 interface GenerateMarkdownOptions {
-	cards: Cards;
-	checkedCards: string[];
-	sortMode: 'name' | 'type';
+  cards: Cards;
+  checkedCards: string[];
+  sortMode: 'name' | 'type';
 }
 
 /**
@@ -15,32 +15,32 @@ interface GenerateMarkdownOptions {
  * @returns Markdown string with card checklist
  */
 export function generateCardsMarkdown(options: GenerateMarkdownOptions): string {
-	const { cards, checkedCards, sortMode } = options;
+  const { cards, checkedCards, sortMode } = options;
 
-	const isChecked = (card: string) => checkedCards.includes(card);
+  const isChecked = (card: string) => checkedCards.includes(card);
 
-	if (sortMode === 'name') {
-		const cardsByName = [...cards.pitchball, ...cards.tossball].sort((a, b) =>
-			a.localeCompare(b)
-		);
-		const allCardsMd = cardsByName.map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`).join('\n');
+  if (sortMode === 'name') {
+    const cardsByName = [...cards.pitchball, ...cards.tossball].sort((a, b) => a.localeCompare(b));
+    const allCardsMd = cardsByName
+      .map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
+      .join('\n');
 
-		return `# The Outer Worlds 2 Cards
+    return `# The Outer Worlds 2 Cards
 
 ## All Cards
 
 ${allCardsMd}
 `;
-	} else {
-		const pitchballMd = cards.pitchball
-			.map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
-			.join('\n');
+  } else {
+    const pitchballMd = cards.pitchball
+      .map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
+      .join('\n');
 
-		const tossballMd = cards.tossball
-			.map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
-			.join('\n');
+    const tossballMd = cards.tossball
+      .map((card) => `- [${isChecked(card) ? 'X' : ' '}] ${card}`)
+      .join('\n');
 
-		return `# The Outer Worlds 2 Cards
+    return `# The Outer Worlds 2 Cards
 
 ## Pitchball Cards
 
@@ -50,5 +50,5 @@ ${pitchballMd}
 
 ${tossballMd}
 `;
-	}
+  }
 }

@@ -27,7 +27,7 @@ If the author submitted a big mess, ask for a big solution. If the slop is high,
 
 This isn't a blank check to be a jerk. Kindness and respect are still table stakes. If something doesn't meet your quality standards, nitpicking every problem line-by-line is counterproductive. Be direct about what you expect overall, ask questions about their goals, and learn how they arrived at the solution. Your input may help improve the quality and readability of the author's future code and maybe you'll even learn something yourself.
 
-When you're reviewing vibed code, don't be afraid push for changes that might necessitate rewrites. Careful code review is valuable resource. It’s OK to ask for a different approach. This isn't their blood, sweat, and tears, it's just their tokens.
+If an author drops a giant review on your lap without warning, vibe coded or not, don't be afraid push back. Careful code review is limited resource. It’s OK to expect the author to make code review easier. You're not imposing on the author. This isn't their blood, sweat, and tears, it's just their tokens.
 
 ---
 

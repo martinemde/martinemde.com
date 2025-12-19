@@ -44,15 +44,11 @@ async function feedItems(posts: Post[]): Promise<string> {
         htmlContent = htmlContent.replace(/\]\]>/g, ']]]]><![CDATA[>');
       }
 
-      // Normalize date to avoid timezone issues
-      let dateStr: string;
-      if (typeof post.date === 'string') {
-        dateStr = post.date.split('T')[0];
-      } else {
-        dateStr = post.date.toISOString().split('T')[0];
-      }
-      const [year, month, day] = dateStr.split('-').map(Number);
-      const pubDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      // Convert local date to UTC for RSS pubDate
+      const year = post.date.getFullYear();
+      const month = post.date.getMonth();
+      const day = post.date.getDate();
+      const pubDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
 
       return `
 		<item>

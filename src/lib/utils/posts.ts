@@ -7,7 +7,7 @@ import type { Component } from 'svelte';
 
 export interface PostMetadata {
   title: string;
-  date: string | Date; // YAML parsers may convert YYYY-MM-DD to Date objects
+  date: Date; // Normalized to Date object at load time
   author?: string;
   description?: string;
   published?: boolean;
@@ -45,15 +45,101 @@ interface SlugIndexEntry {
 }
 
 /**
+ * Extract basename from file path (without extension)
+ */
+function getBasename(path: string): string {
+  const filename = path.split('/').pop() || 'untitled';
+  return filename.replace(/\.(md|svx)$/, '');
+}
+
+/**
+ * Check if metadata has all required fields
+ */
+function hasRequiredFields(meta: Record<string, unknown>): boolean {
+  return Boolean(meta.title && meta.slug && meta.date);
+}
+
+/**
+ * Check if a value is a valid date (string or Date object)
+ */
+function isValidDate(value: unknown): value is string | Date {
+  return typeof value === 'string' || value instanceof Date;
+}
+
+/**
+ * Parse a date string or Date object to a Date, using local timezone at noon
+ * This avoids timezone issues by ensuring the date components match the input
+ */
+function parseToDate(value: string | Date): Date {
+  if (value instanceof Date) {
+    // If YAML already parsed it to a Date, extract components and recreate
+    // at noon local time to avoid timezone drift
+    const dateStr = value.toISOString().split('T')[0];
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day, 12, 0, 0);
+  }
+
+  // Parse YYYY-MM-DD string to Date at noon local time
+  const dateStr = value.split('T')[0];
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+}
+
+/**
+ * Get today's date as a Date object
+ */
+function getTodayDate(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+}
+
+/**
+ * Fill in missing frontmatter with sensible defaults
+ * Posts with any missing required fields become drafts
+ * Normalizes dates to Date objects at load time
+ */
+function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
+  const meta =
+    metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : {};
+
+  const basename = getBasename(path);
+  const isComplete = hasRequiredFields(meta);
+
+  return {
+    title: typeof meta.title === 'string' ? meta.title : `Draft: ${basename}`,
+    date: isValidDate(meta.date) ? parseToDate(meta.date) : getTodayDate(),
+    slug: typeof meta.slug === 'string' ? meta.slug : basename,
+    author: typeof meta.author === 'string' ? meta.author : 'Martin Emde',
+    description: typeof meta.description === 'string' ? meta.description : `Draft: ${basename}`,
+    published: isComplete ? meta.published !== false : false
+  };
+}
+
+/**
  * Build and validate the slug-to-path mapping
  * Throws DuplicateSlugError if duplicate slugs are found
+ * Auto-fills missing frontmatter with defaults (marking as drafts)
  */
 function buildSlugIndex(): Map<string, SlugIndexEntry> {
   const slugIndex = new Map<string, SlugIndexEntry>();
 
   for (const [path, module] of Object.entries(allPostFiles)) {
-    const typedModule = module as { default: Component; metadata: PostMetadata };
-    const { metadata, default: component } = typedModule;
+    const typedModule = module as { default: Component; metadata?: unknown };
+    const { metadata: rawMetadata, default: component } = typedModule;
+
+    const metadata = normalizeMetadata(rawMetadata, path);
+
+    // Warn about posts that had missing frontmatter
+    const meta =
+      rawMetadata && typeof rawMetadata === 'object'
+        ? (rawMetadata as Record<string, unknown>)
+        : {};
+    if (!hasRequiredFields(meta)) {
+      console.warn(
+        `Auto-filled missing frontmatter for ${path} (marked as draft). ` +
+          `Add title, date, and slug to publish.`
+      );
+    }
 
     // Check for duplicate slugs
     const existing = slugIndex.get(metadata.slug);
@@ -61,7 +147,7 @@ function buildSlugIndex(): Map<string, SlugIndexEntry> {
       throw new DuplicateSlugError(metadata.slug, existing.path, path);
     }
 
-    // Store the path, metadata, and component (already loaded eagerly)
+    // Store the path, metadata, and component
     slugIndex.set(metadata.slug, {
       path,
       metadata,
@@ -88,11 +174,7 @@ export async function getAllPosts(): Promise<Post[]> {
   // Filter published posts and sort by date (newest first)
   return allPosts
     .filter((post) => post.published !== false)
-    .sort((a, b) => {
-      const aTime = typeof a.date === 'string' ? new Date(a.date).getTime() : a.date.getTime();
-      const bTime = typeof b.date === 'string' ? new Date(b.date).getTime() : b.date.getTime();
-      return bTime - aTime;
-    });
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
 /**
@@ -131,15 +213,9 @@ export function validatePostDate(
   month: string,
   day: string
 ): boolean {
-  // Normalize to YYYY-MM-DD string, handling both string and Date inputs
-  let dateStr: string;
-  if (typeof metadata.date === 'string') {
-    dateStr = metadata.date.split('T')[0];
-  } else {
-    dateStr = metadata.date.toISOString().split('T')[0];
-  }
-
-  const [postYear, postMonth, postDay] = dateStr.split('-');
+  const postYear = metadata.date.getFullYear().toString();
+  const postMonth = (metadata.date.getMonth() + 1).toString().padStart(2, '0');
+  const postDay = metadata.date.getDate().toString().padStart(2, '0');
 
   return postYear === year && postMonth === month && postDay === day;
 }
@@ -179,28 +255,11 @@ export function getRawPostBySlug(slug: string): string | null {
 }
 
 /**
- * Format a date string from post frontmatter consistently
- * Avoids timezone issues by extracting date components directly
- * and creating a date in the local timezone
+ * Format a date from post frontmatter consistently
+ * The date is already normalized to local timezone at noon,
+ * so we can format it directly
  */
-export function formatPostDate(dateInput: string | Date): string {
-  // Normalize to YYYY-MM-DD string, handling both string and Date inputs
-  let dateStr: string;
-  if (typeof dateInput === 'string') {
-    // If it's a string, take just the date part (before any T or time component)
-    dateStr = dateInput.split('T')[0];
-  } else {
-    // If it's a Date object (YAML auto-parses dates), convert to ISO and take date part
-    dateStr = dateInput.toISOString().split('T')[0];
-  }
-
-  // Extract year, month, day components
-  const [year, month, day] = dateStr.split('-').map(Number);
-
-  // Create date using local timezone at noon to avoid any DST edge cases
-  // This ensures the date components stay exactly as specified in frontmatter
-  const date = new Date(year, month - 1, day, 12, 0, 0);
-
+export function formatPostDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

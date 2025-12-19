@@ -40,12 +40,7 @@ describe('Blog Post Utilities', () => {
       if (posts.length < 2) return; // Skip if not enough posts
 
       for (let i = 0; i < posts.length - 1; i++) {
-        const currentDate =
-          typeof posts[i].date === 'string' ? new Date(posts[i].date) : posts[i].date;
-        const nextDate =
-          typeof posts[i + 1].date === 'string' ? new Date(posts[i + 1].date) : posts[i + 1].date;
-
-        expect(currentDate.getTime()).toBeGreaterThanOrEqual(nextDate.getTime());
+        expect(posts[i].date.getTime()).toBeGreaterThanOrEqual(posts[i + 1].date.getTime());
       }
     });
   });
@@ -119,21 +114,10 @@ describe('Blog Post Utilities', () => {
   });
 
   describe('validatePostDate', () => {
-    it('should validate matching date components with string date', () => {
+    it('should validate matching date components', () => {
       const metadata = {
         title: 'Test',
-        date: '2025-10-05',
-        slug: 'test'
-      };
-
-      const result = validatePostDate(metadata, '2025', '10', '05');
-      expect(result).toBe(true);
-    });
-
-    it('should validate matching date components with Date object', () => {
-      const metadata = {
-        title: 'Test',
-        date: new Date('2025-10-05'),
+        date: new Date(2025, 9, 5, 12, 0, 0), // October 5, 2025
         slug: 'test'
       };
 
@@ -144,7 +128,7 @@ describe('Blog Post Utilities', () => {
     it('should reject non-matching year', () => {
       const metadata = {
         title: 'Test',
-        date: '2025-10-05',
+        date: new Date(2025, 9, 5, 12, 0, 0),
         slug: 'test'
       };
 
@@ -155,7 +139,7 @@ describe('Blog Post Utilities', () => {
     it('should reject non-matching month', () => {
       const metadata = {
         title: 'Test',
-        date: '2025-10-05',
+        date: new Date(2025, 9, 5, 12, 0, 0),
         slug: 'test'
       };
 
@@ -166,48 +150,27 @@ describe('Blog Post Utilities', () => {
     it('should reject non-matching day', () => {
       const metadata = {
         title: 'Test',
-        date: '2025-10-05',
+        date: new Date(2025, 9, 5, 12, 0, 0),
         slug: 'test'
       };
 
       const result = validatePostDate(metadata, '2025', '10', '04');
       expect(result).toBe(false);
     });
-
-    it('should handle dates with time components', () => {
-      const metadata = {
-        title: 'Test',
-        date: '2025-10-05T12:00:00Z',
-        slug: 'test'
-      };
-
-      const result = validatePostDate(metadata, '2025', '10', '05');
-      expect(result).toBe(true);
-    });
   });
 
   describe('formatPostDate', () => {
-    it('should format string date', () => {
-      const formatted = formatPostDate('2025-10-05');
-      expect(formatted).toMatch(/October 5, 2025/);
-    });
-
     it('should format Date object', () => {
-      const date = new Date('2025-10-05');
+      const date = new Date(2025, 9, 5, 12, 0, 0); // October 5, 2025
       const formatted = formatPostDate(date);
       expect(formatted).toMatch(/October 5, 2025/);
     });
 
-    it('should handle date strings with time components', () => {
-      const formatted = formatPostDate('2025-10-05T12:00:00Z');
-      expect(formatted).toMatch(/October 5, 2025/);
-    });
-
     it('should format dates consistently', () => {
-      const stringDate = formatPostDate('2025-10-05');
-      const objDate = formatPostDate(new Date('2025-10-05'));
+      const date1 = new Date(2025, 9, 5, 12, 0, 0);
+      const date2 = new Date(2025, 9, 5, 12, 0, 0);
 
-      expect(stringDate).toBe(objDate);
+      expect(formatPostDate(date1)).toBe(formatPostDate(date2));
     });
   });
 

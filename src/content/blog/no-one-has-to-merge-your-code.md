@@ -17,7 +17,7 @@ How can we address the increasing demand for review without destroying code revi
 
 ## Review Etiquette Must Change
 
-The length of a PR is no longer a good predictor of effort. If you're staring down an angry bowl of vibe soup, **you'll do them a service by explaining the words they need to say to their agent to produce the quality you're expecting.**
+The length of a PR is no longer a good predictor of effort. If you're staring down an angry bowl of vibe soup, **you'll do the author a service by explaining the words they need to say to their agent to produce the quality you're expecting.**
 
 Normally reviewers might shy away from asking for a big architectural change in code reviews. Don't. Big architecture changes are not as difficult as they once were and vibe code can be re-vibed easily with better requirements. **Reviewers should reject sloppy code as long as they make their expectations clear.**
 

@@ -3,6 +3,8 @@
  * Uses Vite's import.meta.glob for build-time processing
  */
 
+import type { Component } from 'svelte';
+
 export interface PostMetadata {
   title: string;
   date: string | Date; // YAML parsers may convert YYYY-MM-DD to Date objects
@@ -17,25 +19,75 @@ export interface Post extends PostMetadata {
 }
 
 /**
+ * Error thrown when duplicate slugs are detected
+ */
+export class DuplicateSlugError extends Error {
+  constructor(
+    slug: string,
+    path1: string,
+    path2: string
+  ) {
+    super(
+      `Duplicate slug "${slug}" found in:\n  - ${path1}\n  - ${path2}\n\nEach blog post must have a unique slug.`
+    );
+    this.name = 'DuplicateSlugError';
+  }
+}
+
+/**
+ * Eagerly load all post metadata and build slug-to-path index
+ * This runs once at module initialization time
+ */
+const allPostFiles = import.meta.glob('../../content/blog/*.{md,svx}', {
+  eager: true
+});
+
+interface SlugIndexEntry {
+  path: string;
+  metadata: PostMetadata;
+  component: Component;
+}
+
+/**
+ * Build and validate the slug-to-path mapping
+ * Throws DuplicateSlugError if duplicate slugs are found
+ */
+function buildSlugIndex(): Map<string, SlugIndexEntry> {
+  const slugIndex = new Map<string, SlugIndexEntry>();
+
+  for (const [path, module] of Object.entries(allPostFiles)) {
+    const typedModule = module as { default: Component; metadata: PostMetadata };
+    const { metadata, default: component } = typedModule;
+
+    // Check for duplicate slugs
+    const existing = slugIndex.get(metadata.slug);
+    if (existing) {
+      throw new DuplicateSlugError(metadata.slug, existing.path, path);
+    }
+
+    // Store the path, metadata, and component (already loaded eagerly)
+    slugIndex.set(metadata.slug, {
+      path,
+      metadata,
+      component
+    });
+  }
+
+  return slugIndex;
+}
+
+// Build the index once at module initialization
+const slugIndex = buildSlugIndex();
+
+/**
  * Load all published blog posts, sorted by date (newest first)
  */
 export async function getAllPosts(): Promise<Post[]> {
-  const allPostFiles = import.meta.glob('../../content/blog/*.{md,svx}');
-  const iterablePostFiles = Object.entries(allPostFiles);
-
-  const allPosts = await Promise.all(
-    iterablePostFiles.map(async ([path, resolver]) => {
-      const resolved = (await resolver()) as {
-        metadata: PostMetadata;
-      };
-      const { metadata } = resolved;
-
-      return {
-        ...metadata,
-        path
-      };
-    })
-  );
+  // Convert the slug index to an array of posts
+  const allPosts = Array.from(slugIndex.values()).map((entry) => ({
+    ...entry.metadata,
+    path: entry.path
+  }));
 
   // Filter published posts and sort by date (newest first)
   return allPosts
@@ -57,28 +109,21 @@ export async function getRecentPosts(limit: number): Promise<Post[]> {
 
 /**
  * Load a single post by slug
- * Tries both .md and .svx extensions
+ * Uses the slug index to find the correct file regardless of filename
  */
-export async function getPostBySlug(slug: string) {
-  try {
-    // Try .md extension first
-    const post = await import(`../../content/blog/${slug}.md`);
-    return {
-      content: post.default,
-      metadata: post.metadata as PostMetadata
-    };
-  } catch {
-    try {
-      // Try .svx extension
-      const post = await import(`../../content/blog/${slug}.svx`);
-      return {
-        content: post.default,
-        metadata: post.metadata as PostMetadata
-      };
-    } catch {
-      return null;
-    }
+export async function getPostBySlug(
+  slug: string
+): Promise<{ content: Component; metadata: PostMetadata } | null> {
+  const entry = slugIndex.get(slug);
+
+  if (!entry) {
+    return null;
   }
+
+  return {
+    content: entry.component,
+    metadata: entry.metadata
+  };
 }
 
 /**
@@ -113,12 +158,28 @@ const rawPosts = import.meta.glob('../../content/blog/*.{md,svx}', {
   eager: true
 });
 
-export function getRawPostBySlug(slug: string): string | null {
-  // Keys are relative to this file: ../../content/blog/slug.{md,svx}
-  const mdKey = `../../content/blog/${slug}.md`;
-  const svxKey = `../../content/blog/${slug}.svx`;
+/**
+ * Build a mapping from slug to raw content
+ */
+function buildRawContentIndex(): Map<string, string> {
+  const rawIndex = new Map<string, string>();
 
-  return (rawPosts[mdKey] || rawPosts[svxKey]) as string | null;
+  // Map each slug to its raw content using the path from the slug index
+  for (const [slug, entry] of slugIndex.entries()) {
+    const rawContent = rawPosts[entry.path] as string | undefined;
+    if (rawContent) {
+      rawIndex.set(slug, rawContent);
+    }
+  }
+
+  return rawIndex;
+}
+
+// Build the raw content index once at module initialization
+const rawContentIndex = buildRawContentIndex();
+
+export function getRawPostBySlug(slug: string): string | null {
+  return rawContentIndex.get(slug) ?? null;
 }
 
 /**

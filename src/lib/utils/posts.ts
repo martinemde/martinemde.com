@@ -5,7 +5,7 @@
 
 export interface PostMetadata {
   title: string;
-  date: string;
+  date: string | Date; // YAML parsers may convert YYYY-MM-DD to Date objects
   author?: string;
   description?: string;
   published?: boolean;
@@ -40,7 +40,11 @@ export async function getAllPosts(): Promise<Post[]> {
   // Filter published posts and sort by date (newest first)
   return allPosts
     .filter((post) => post.published !== false)
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => {
+      const aTime = typeof a.date === 'string' ? new Date(a.date).getTime() : a.date.getTime();
+      const bTime = typeof b.date === 'string' ? new Date(b.date).getTime() : b.date.getTime();
+      return bTime - aTime;
+    });
 }
 
 /**
@@ -86,9 +90,14 @@ export function validatePostDate(
   month: string,
   day: string
 ): boolean {
-  // Parse the date string directly to avoid timezone issues
-  // Dates in frontmatter are in YYYY-MM-DD format
-  const dateStr = metadata.date.toString().split('T')[0]; // Get just the date part
+  // Normalize to YYYY-MM-DD string, handling both string and Date inputs
+  let dateStr: string;
+  if (typeof metadata.date === 'string') {
+    dateStr = metadata.date.split('T')[0];
+  } else {
+    dateStr = metadata.date.toISOString().split('T')[0];
+  }
+
   const [postYear, postMonth, postDay] = dateStr.split('-');
 
   return postYear === year && postMonth === month && postDay === day;
@@ -114,12 +123,27 @@ export function getRawPostBySlug(slug: string): string | null {
 
 /**
  * Format a date string from post frontmatter consistently
- * Avoids timezone issues by treating dates as local dates
+ * Avoids timezone issues by extracting date components directly
+ * and creating a date in the local timezone
  */
-export function formatPostDate(dateString: string): string {
-  // Add time component to ensure date is parsed as local date
-  const date = new Date(dateString + 'T00:00:00');
-  
+export function formatPostDate(dateInput: string | Date): string {
+  // Normalize to YYYY-MM-DD string, handling both string and Date inputs
+  let dateStr: string;
+  if (typeof dateInput === 'string') {
+    // If it's a string, take just the date part (before any T or time component)
+    dateStr = dateInput.split('T')[0];
+  } else {
+    // If it's a Date object (YAML auto-parses dates), convert to ISO and take date part
+    dateStr = dateInput.toISOString().split('T')[0];
+  }
+
+  // Extract year, month, day components
+  const [year, month, day] = dateStr.split('-').map(Number);
+
+  // Create date using local timezone at noon to avoid any DST edge cases
+  // This ensures the date components stay exactly as specified in frontmatter
+  const date = new Date(year, month - 1, day, 12, 0, 0);
+
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

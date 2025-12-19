@@ -17,6 +17,7 @@ const config = {
     vitePreprocess(),
     mdsvex({
       extensions: ['.md', '.svx'],
+      smartypants: true,
       highlight: {
         highlighter: async (code, lang = 'text') => {
           const html = highlighter.codeToHtml(code, {

@@ -1,10 +1,11 @@
 import { getRecentPosts, getRawPostBySlug, type Post } from '$lib/utils/posts';
-import { marked } from 'marked';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkHtml from 'remark-html';
 
 const siteUrl = 'https://martinemde.com';
 const siteTitle = 'Martin Emde';
 const siteDescription = 'Blog posts by Martin Emde';
-const siteEmail = 'me@martinemde.com';
 
 export async function GET() {
   const posts = await getRecentPosts(20);
@@ -39,7 +40,11 @@ async function feedItems(posts: Post[]): Promise<string> {
       if (rawContent) {
         // Remove frontmatter from the raw content
         const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---\n/, '');
-        htmlContent = await marked(contentWithoutFrontmatter);
+        const result = await unified()
+          .use(remarkParse)
+          .use(remarkHtml)
+          .process(contentWithoutFrontmatter);
+        htmlContent = String(result);
         // Escape ]]> within CDATA by replacing it with ]]]]><![CDATA[>
         htmlContent = htmlContent.replace(/\]\]>/g, ']]]]><![CDATA[>');
       }

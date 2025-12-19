@@ -9,7 +9,7 @@
 <article>
   <header class="mb-8 border-b border-surface-200-800 pb-8">
     {#if data.metadata.title}
-      <h1 class="mb-4 text-4xl font-bold">{data.metadata.title}</h1>
+      <h1 class="preset-typo-title mb-4">{data.metadata.title}</h1>
     {/if}
     <div class="text-sm text-surface-600-400">
       <div class="flex items-center justify-between gap-4">

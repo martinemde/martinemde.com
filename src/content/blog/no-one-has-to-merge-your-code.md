@@ -29,4 +29,4 @@ This isn't a blank check to be a jerk, but if something doesn't meet your qualit
 
 When you're reviewing vibed code, don't be afraid to push for big changes. Don't burn your self out on their behalf. This isn't their blood, sweat, and tears, it's just their tokens.
 
-_My first draft of this blog post was about 4x longer and half as good. Thank you to my reviewers, my teammate Denis and my “infinitely patient with me wife” Kewe. You both helped me eritr a better blog post and get it merged._
+_My first draft of this blog post was about 4x longer and half as good. Thanks to my teammate Denis and my “infinitely patient with me wife” Kewe for their reviews. You both helped me merge a better blog post._

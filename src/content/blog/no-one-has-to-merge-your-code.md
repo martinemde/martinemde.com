@@ -1,13 +1,13 @@
 ---
-title: 'It's Just Their Tokens: Code Review Etiquette in the Vibe Era'
+title: "It's Just Their Tokens: Code Review Etiquette in the Vibe Era"
 date: 2025-12-18
 author: Martin Emde
-description: 'Code review has long been a bottle neck and agents are making it worse. How can we address the increasing demand for review without destroying code review or creating new bottlenecks?'
+description: "Code review has long been a bottle neck and agents are making it worse. How can we address the increasing demand for review without destroying code review or creating new bottlenecks?"
 published: true
 slug: its-just-their-tokens
 ---
 
-A common conplaint about the usage of AI coding agents is the burden it places on code reviewers. Engineers often resist switching their mental context to review code. Finding out that you're now expected to review someone else's low-effort slop can almost feel like an insult.
+A common complaint about the usage of AI coding agents is the burden it places on code reviewers. Engineers often resist switching their mental context to review code. Finding out that you're now expected to review someone else's low-effort slop can almost feel like an insult.
 
 Code review has long been a bottle neck and agents are making it worse. More code, produced faster and with less oversight increases the burden on reviewers. And yet, code reviews are an essential part of sharing knowledge in software engineering. They follow an etiquette that is meant to respect the effort of the author and encourage sharing of knowledge.
 

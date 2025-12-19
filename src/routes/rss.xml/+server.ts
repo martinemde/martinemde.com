@@ -44,13 +44,23 @@ async function feedItems(posts: Post[]): Promise<string> {
         htmlContent = htmlContent.replace(/\]\]>/g, ']]]]><![CDATA[>');
       }
 
+      // Normalize date to avoid timezone issues
+      let dateStr: string;
+      if (typeof post.date === 'string') {
+        dateStr = post.date.split('T')[0];
+      } else {
+        dateStr = post.date.toISOString().split('T')[0];
+      }
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const pubDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
       return `
 		<item>
 			<title>${escapeXml(post.title)}</title>
 			<description>${escapeXml(post.description || '')}</description>
 			<link>${siteUrl}/blog/${post.slug}</link>
 			<guid isPermaLink="true">${siteUrl}/blog/${post.slug}</guid>
-			<pubDate>${new Date(post.date).toUTCString()}</pubDate>
+			<pubDate>${pubDate.toUTCString()}</pubDate>
 			<content:encoded><![CDATA[${htmlContent}]]></content:encoded>
 		</item>`;
     })

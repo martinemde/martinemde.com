@@ -2,7 +2,7 @@
 title: "It's Just Their Tokens: Code Review Etiquette in the Vibe Era"
 date: 2025-12-18
 author: Martin Emde
-description: "Code review has long been a bottle neck and agents are making it worse. How can we address the increasing demand for review without destroying code review or creating new bottlenecks?"
+description: 'Code review has long been a bottle neck and agents are making it worse. How can we address the increasing demand for review without destroying code review or creating new bottlenecks?'
 published: true
 slug: its-just-their-tokens
 ---

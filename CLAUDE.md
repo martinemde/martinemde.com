@@ -38,6 +38,9 @@ If you need to install packages and bun is not available in your environment:
 - `bun run check:watch` - Type check in watch mode
 - `bun run lint` - Lint and format check
 - `bun run format` - Format code with Prettier
+- `bun run test` - Run tests with Vitest
+- `bun run test:watch` - Run tests in watch mode
+- `bun run test:ui` - Run tests with Vitest UI
 
 ## Technology Stack
 
@@ -47,6 +50,7 @@ If you need to install packages and bun is not available in your environment:
 - **Content**: MDsveX for markdown blog posts
 - **Syntax Highlighting**: Shiki with dual-themes
 - **Icons**: Lucide Svelte
+- **Testing**: Vitest with @testing-library/svelte and jsdom
 - **Deployment**: Cloudflare Pages with Workers adapter
 - **Package Manager**: Bun
 - **TypeScript**: 5.9 with strict mode

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Progress } from '@skeletonlabs/skeleton-svelte';
+  import { authStore } from '$lib/auth/state.svelte';
+  import { initiateOAuthLogin } from '$lib/auth/openrouter';
 
   interface TestResult {
     timeToFirstToken: number | null;
@@ -15,12 +17,18 @@
     isRunning: boolean;
   }
 
+  // Auth state
+  const { state: authState } = authStore;
+
   // State
   let apiToken = $state('');
   let hasStoredToken = $state(false);
   let promptsExpanded = $state(false);
   let customModelInput = $state('');
   let useFIM = $state(false);
+
+  // Effective API key - prioritize OAuth key over manual token
+  let effectiveApiKey = $derived(authState.apiKey || apiToken || '');
 
   // Default prompts from test_chat.ts
   let systemPrompt =
@@ -188,8 +196,8 @@ const processedData = transformData(rawData, {
 
   // Test a single model
   async function testModel(model: ModelTest) {
-    if (!apiToken) {
-      alert('Please enter your OpenRouter API token');
+    if (!effectiveApiKey) {
+      alert('Please enter your OpenRouter API token or log in with OAuth');
       return;
     }
 
@@ -204,6 +212,7 @@ const processedData = transformData(rawData, {
       ? 'https://openrouter.ai/api/v1/completions'
       : 'https://openrouter.ai/api/v1/chat/completions';
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let requestBody: any;
 
     if (useFIM) {
@@ -258,7 +267,7 @@ ${contextBeforeCursor}<cursorPosition>`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${apiToken}`,
+          Authorization: `Bearer ${effectiveApiKey}`,
           'HTTP-Referer': 'https://martinemde.com',
           'X-Title': 'OpenRouter Model Tester',
           'Content-Type': 'application/json'
@@ -349,8 +358,8 @@ ${contextBeforeCursor}<cursorPosition>`;
 
   // Run all tests sequentially
   async function runAllTests() {
-    if (!apiToken) {
-      alert('Please enter your OpenRouter API token');
+    if (!effectiveApiKey) {
+      alert('Please enter your OpenRouter API token or log in with OAuth');
       return;
     }
 
@@ -386,34 +395,58 @@ ${contextBeforeCursor}<cursorPosition>`;
         rel="noopener noreferrer">GitHub</a
       >.
     </p>
-    <div class="space-y-2">
-      <span class="text-surface-950-50">OpenRouter API Token</span>
-      {#if hasStoredToken}
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-surface-600-400">Token saved in local storage</span>
-          <button onclick={clearToken} class="variant-ghost-error btn btn-sm"> Clear Token </button>
+
+    {#if authState.isAuthenticated}
+      <div class="rounded-lg bg-success-500/10 p-4 text-success-500">
+        <div class="flex items-center justify-between">
+          <div class="space-y-1">
+            <p class="font-semibold">Authenticated via OAuth</p>
+            {#if authState.user}
+              <p class="text-sm text-surface-600-400">
+                Logged in as {authState.user.name || authState.user.email}
+              </p>
+            {/if}
+          </div>
         </div>
-      {:else}
-        <div class="flex gap-2">
-          <input
-            type="password"
-            bind:value={apiToken}
-            placeholder="sk-or-v1-..."
-            class="variant-filled input flex-1"
-          />
-          <button onclick={saveToken} class="variant-filled-primary btn">
-            Save in Local Storage
-          </button>
-        </div>
-      {/if}
-    </div>
+      </div>
+    {:else}
+      <div class="space-y-2">
+        <span class="text-surface-950-50">OpenRouter API Token</span>
+        {#if hasStoredToken}
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-surface-600-400">Token saved in local storage</span>
+            <button onclick={clearToken} class="variant-ghost-error btn btn-sm">
+              Clear Token
+            </button>
+          </div>
+        {:else}
+          <div class="space-y-3">
+            <div class="flex gap-2">
+              <input
+                type="password"
+                bind:value={apiToken}
+                placeholder="sk-or-v1-..."
+                class="variant-filled input flex-1"
+              />
+              <button onclick={saveToken} class="variant-filled-primary btn">
+                Save in Local Storage
+              </button>
+            </div>
+            <p class="text-sm text-surface-600-400">
+              Or <button onclick={initiateOAuthLogin} class="anchor">login with OpenRouter</button> to
+              use OAuth
+            </p>
+          </div>
+        {/if}
+      </div>
+    {/if}
   </section>
 
   <!-- Run Tests Section -->
   <section class="flex justify-center">
     <button
       onclick={runAllTests}
-      disabled={isRunningTests || !apiToken || models.length === 0}
+      disabled={isRunningTests || !effectiveApiKey || models.length === 0}
       class="preset-filled-primary btn btn-lg"
     >
       {isRunningTests ? 'Running Tests...' : 'Run All Tests'}

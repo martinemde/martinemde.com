@@ -38,7 +38,7 @@ const allPostFiles = import.meta.glob('../../content/blog/*.{md,svx}', {
   eager: true
 });
 
-interface SlugIndexEntry {
+interface PostIndexEntry {
   path: string;
   metadata: PostMetadata;
   component: Component;
@@ -102,6 +102,14 @@ function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
   const meta =
     metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : {};
 
+  // Warn about posts that had missing frontmatter
+  if (!hasRequiredFields(meta)) {
+    console.warn(
+      `Auto-filled missing frontmatter for ${path} (marked as draft). ` +
+        `Add title, date, and slug to publish.`
+    );
+  }
+
   const basename = getBasename(path);
   const isComplete = hasRequiredFields(meta);
 
@@ -120,60 +128,51 @@ function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
  * Throws DuplicateSlugError if duplicate slugs are found
  * Auto-fills missing frontmatter with defaults (marking as drafts)
  */
-function buildSlugIndex(): Map<string, SlugIndexEntry> {
-  const slugIndex = new Map<string, SlugIndexEntry>();
+function buildPostIndex(): Map<string, PostIndexEntry> {
+  const postIndex = new Map<string, PostIndexEntry>();
 
   for (const [path, module] of Object.entries(allPostFiles)) {
     const typedModule = module as { default: Component; metadata?: unknown };
     const { metadata: rawMetadata, default: component } = typedModule;
 
     const metadata = normalizeMetadata(rawMetadata, path);
-
-    // Warn about posts that had missing frontmatter
-    const meta =
-      rawMetadata && typeof rawMetadata === 'object'
-        ? (rawMetadata as Record<string, unknown>)
-        : {};
-    if (!hasRequiredFields(meta)) {
-      console.warn(
-        `Auto-filled missing frontmatter for ${path} (marked as draft). ` +
-          `Add title, date, and slug to publish.`
-      );
-    }
+    const slug = metadata.slug;
 
     // Check for duplicate slugs
-    const existing = slugIndex.get(metadata.slug);
+    const existing = postIndex.get(slug);
     if (existing) {
-      throw new DuplicateSlugError(metadata.slug, existing.path, path);
+      throw new DuplicateSlugError(slug, existing.path, path);
     }
 
     // Store the path, metadata, and component
-    slugIndex.set(metadata.slug, {
+    postIndex.set(slug, {
       path,
       metadata,
       component
     });
   }
 
-  return slugIndex;
+  return postIndex;
 }
 
 // Build the index once at module initialization
-const slugIndex = buildSlugIndex();
+const postIndex = buildPostIndex();
 
 /**
  * Load all published blog posts, sorted by date (newest first)
  */
 export async function getAllPosts(): Promise<Post[]> {
   // Convert the slug index to an array of posts
-  const allPosts = Array.from(slugIndex.values()).map((entry) => ({
-    ...entry.metadata,
-    path: entry.path
-  }));
+  const allPosts = Array.from(postIndex.values()).map(
+    (entry): Post => ({
+      ...entry.metadata,
+      path: entry.path
+    })
+  );
 
   // Filter published posts and sort by date (newest first)
   return allPosts
-    .filter((post) => post.published !== false)
+    .filter((post) => post.published === true)
     .sort((a, b) => b.date.getTime() - a.date.getTime());
 }
 
@@ -192,7 +191,7 @@ export async function getRecentPosts(limit: number): Promise<Post[]> {
 export async function getPostBySlug(
   slug: string
 ): Promise<{ content: Component; metadata: PostMetadata } | null> {
-  const entry = slugIndex.get(slug);
+  const entry = postIndex.get(slug);
 
   if (!entry) {
     return null;
@@ -237,7 +236,7 @@ function buildRawContentIndex(): Map<string, string> {
   const rawIndex = new Map<string, string>();
 
   // Map each slug to its raw content using the path from the slug index
-  for (const [slug, entry] of slugIndex.entries()) {
+  for (const [slug, entry] of postIndex.entries()) {
     const rawContent = rawPosts[entry.path] as string | undefined;
     if (rawContent) {
       rawIndex.set(slug, rawContent);

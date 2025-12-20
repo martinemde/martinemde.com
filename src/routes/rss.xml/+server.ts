@@ -30,32 +30,15 @@ export async function GET() {
 }
 
 async function feedItems(posts: Post[]): Promise<string> {
-  const items = await Promise.all(
-    posts.map(async (post) => {
-      // Get the raw markdown content
-      const rawContent = getRawPostBySlug(post.slug);
+  const items = await Promise.all(posts.map(createFeedItem));
+  return items.join('');
+}
 
-      // Convert markdown to HTML
-      let htmlContent = '';
-      if (rawContent) {
-        // Remove frontmatter from the raw content
-        const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---\n/, '');
-        const result = await unified()
-          .use(remarkParse)
-          .use(remarkHtml)
-          .process(contentWithoutFrontmatter);
-        htmlContent = String(result);
-        // Escape ]]> within CDATA by replacing it with ]]]]><![CDATA[>
-        htmlContent = htmlContent.replace(/\]\]>/g, ']]]]><![CDATA[>');
-      }
+async function createFeedItem(post: Post): Promise<string> {
+  const htmlContent = await convertMarkdownToHtml(post.slug);
+  const pubDate = convertToUtcDate(post.date);
 
-      // Convert local date to UTC for RSS pubDate
-      const year = post.date.getFullYear();
-      const month = post.date.getMonth();
-      const day = post.date.getDate();
-      const pubDate = new Date(Date.UTC(year, month, day, 12, 0, 0));
-
-      return `
+  return `
 		<item>
 			<title>${escapeXml(post.title)}</title>
 			<description>${escapeXml(post.description || '')}</description>
@@ -64,10 +47,31 @@ async function feedItems(posts: Post[]): Promise<string> {
 			<pubDate>${pubDate.toUTCString()}</pubDate>
 			<content:encoded><![CDATA[${htmlContent}]]></content:encoded>
 		</item>`;
-    })
-  );
+}
 
-  return items.join('');
+async function convertMarkdownToHtml(slug: string): Promise<string> {
+  const rawContent = getRawPostBySlug(slug);
+  if (!rawContent) return '';
+
+  const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---\n/, '');
+
+  const result = await unified()
+    .use(remarkParse)
+    .use(remarkHtml)
+    .process(contentWithoutFrontmatter);
+
+  const html = String(result);
+
+  // Escape ]]> within CDATA by replacing it with ]]]]><![CDATA[>
+  return html.replace(/\]\]>/g, ']]]]><![CDATA[>');
+}
+
+function convertToUtcDate(localDate: Date): Date {
+  const year = localDate.getFullYear();
+  const month = localDate.getMonth();
+  const day = localDate.getDate();
+
+  return new Date(Date.UTC(year, month, day, 12, 0, 0));
 }
 
 function escapeXml(unsafe: string): string {

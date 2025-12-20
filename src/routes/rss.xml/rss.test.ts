@@ -46,7 +46,9 @@ describe('RSS Feed', () => {
       expect(xml).toContain('<title>Martin Emde</title>');
       expect(xml).toContain('<description>Blog posts by Martin Emde</description>');
       expect(xml).toContain('<link>https://martinemde.com</link>');
-      expect(xml).toContain('<atom:link href="https://martinemde.com/rss.xml" rel="self" type="application/rss+xml"');
+      expect(xml).toContain(
+        '<atom:link href="https://martinemde.com/rss.xml" rel="self" type="application/rss+xml"'
+      );
     });
 
     it('should include post items', async () => {
@@ -107,7 +109,9 @@ describe('RSS Feed', () => {
         expect(date.toString()).not.toBe('Invalid Date');
 
         // Should be in RFC 822 format (e.g., "Mon, 25 Dec 2025 12:00:00 GMT")
-        expect(dateString).toMatch(/^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/);
+        expect(dateString).toMatch(
+          /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/
+        );
       }
     });
 
@@ -155,7 +159,9 @@ describe('RSS Feed', () => {
       const xml = await response.text();
 
       // Extract CDATA content
-      const cdataMatch = xml.match(/<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/);
+      const cdataMatch = xml.match(
+        /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/
+      );
       expect(cdataMatch).toBeTruthy();
 
       if (cdataMatch) {
@@ -198,7 +204,9 @@ describe('RSS Feed', () => {
       const xml = await response.text();
 
       // Extract CDATA content
-      const cdataMatch = xml.match(/<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/);
+      const cdataMatch = xml.match(
+        /<content:encoded><!\[CDATA\[([\s\S]*?)\]\]><\/content:encoded>/
+      );
 
       if (cdataMatch) {
         const htmlContent = cdataMatch[1];

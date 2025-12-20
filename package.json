@@ -17,7 +17,7 @@
     "@tailwindcss/vite": "^4.1.17",
     "@testing-library/svelte": "^5.2.9",
     "@testing-library/user-event": "^14.6.1",
-    "@types/node": "^24",
+    "@types/node": "^25",
     "@vitest/ui": "^4.0.16",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",

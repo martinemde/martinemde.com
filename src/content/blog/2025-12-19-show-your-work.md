@@ -19,18 +19,17 @@ However, the lesson stuck with me. Even though the code was fine, I had made it 
 
 The burden is on the author to submit code that can be reviewed easily. This is an often unspoken part of the senior engineer skill set, [transferred by working together][senior] rather than explicitly taught. Before you learn this skill, you'll sometimes notice than your larger commits and clever refactors take a long time to get reviewed. You may even think this is the fault of your team or your process. Maybe it is, or maybe the whole team assumes that code review always takes forever so they should do it in big batches.
 
-The requirement to make your code reviewable does not change when agents write your code. With [code reviewers overwhelmed][review], your responsibility for making your code reviewable is more important than ever. And what makes code reviewable? Put simply, **show your work!**
+The requirement to make your code reviewable does not change when agents write your code. Your responsibility for making your code reviewable is more important than ever. And what makes code reviewable? Put simply, **show your work!**
 
 Before agents, your work was a stream of reasonably concise commits, comments, tests, and code, submitted as incremental updates. Now, while all of the old stuff still matters, your work includes the specs, prompts, decisions, and references that you used to supply context to your agent. Combined these artifacts [prove][prove] that your change does what you claim it does.
 
 When a reviewer tries to understand the code, they need to assess whether you effectively achieved your goal. The larger your change the harder it is to understand all the various goals you had while making it. As the author, it's also much harder to prove, since there's so much more code to justify.
 
-If you're looking for somewhere to start, I encourage you to try this: pair on a plan before you write a line of code. If you can't, at least share your PLAN.md early and seek feedback. **I would jump at the chance to critique 2 pages of `PLAN.md` rather than 20 pages of code.** I've seen this work and along with other good practices, you'll have a easier time generating code that can be reviewed effectively.
+Share your `PLAN.md` early and seek feedback. **I'd much rather critique 2 pages of `PLAN.md` rather than 20 pages of code.** You'll have a easier time generating code that can be reviewed effectively when someone has already seen what you're trying to achieve.
 
-Reviewing the plan, and including it with your code for review, also give the reviewer a chance to see your words and approach, and to offer real feedback about the work you’re actually doing. If you can pair with your teammate to develop the plan, you'll know that they're ready to review it later. Resist the urge to add more than one plan to a unit of reviewable code. If you want to keep building after completing a plan, wait! [Go review someone else's code][review]
-first, then develop your next plan and run it by your team for review.
+Reviewing the plan, and including it with your code for review, also give the reviewer a chance to see your words and approach, and to offer real feedback about the work you’re actually doing. Resist the urge to add more than one plan to a unit of reviewable code. If you want to keep building after completing a plan, wait! [Go review someone else's code][review] first, then develop your next plan.
 
-Review doesn't have to be a slow bottleneck if we ensure that our code is easy to review. Prove that you did what you set out to do, break code into smaller chunks, build them in layers of abstraction and refinement, and keep changes focused.
+Prove that you did what you set out to do, show it clearly in your code, tests, and commits. Separate refactors from features and cleanup. If something you find out you need to do after can be done before, reorder the commits. Break code into smaller chunks to make them easier to review, build them in layers of abstraction and keep changes focused.
 
 [senior]: https://obie.medium.com/what-happens-when-the-coding-becomes-the-least-interesting-part-of-the-work-ab10c213c660 'Teams rarely standardize or document senior thinking'
 [review]: /blog/its-just-their-tokens 'Reviewing AI agent produced code should change how we code review'

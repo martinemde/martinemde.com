@@ -39,7 +39,7 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "lucide-svelte": "^0.555.0",
+    "lucide-svelte": "^0.562.0",
     "remark": "^15.0.1",
     "remark-html": "^16.0.1",
     "unified": "^11.0.5"

@@ -15,7 +15,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.1.17",
-    "@testing-library/svelte": "^5.2.9",
+    "@testing-library/svelte": "^5.2.10",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25",
     "@vitest/ui": "^4.0.16",

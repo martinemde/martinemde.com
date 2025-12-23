@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import { formatPostDate } from '$lib/utils/posts';
+  import { resolve } from '$app/paths';
 
   let { data }: { data: PageData } = $props();
 </script>
@@ -17,7 +18,7 @@
     {#each data.posts as post (post.slug)}
       <article class="border-b border-surface-200-800 pb-12">
         <h2 class="preset-typo-title mb-2">
-          <a href="/blog/{post.slug}" class="anchor">
+          <a href={resolve(`/blog/${post.slug}`)} class="anchor">
             {post.title}
           </a>
         </h2>

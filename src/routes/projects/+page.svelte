@@ -50,6 +50,8 @@
         <p class="mb-4 text-surface-700-300">
           {project.description}
         </p>
+        <!-- We've already resolved these links, so this is a false positive -->
+        <!-- eslint-disable svelte/no-navigation-without-resolve -->
         <a
           href={project.url}
           rel={project.url.startsWith('/') ? undefined : 'external'}
@@ -58,6 +60,7 @@
           <svelte:component this={getIcon(project.type)} size={18} />
           <span class="font-medium">{formatLinkText(project)}</span>
         </a>
+        <!-- eslint-enable svelte/no-navigation-without-resolve -->
       </article>
     {/each}
   </div>

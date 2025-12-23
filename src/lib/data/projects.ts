@@ -3,13 +3,14 @@
  */
 
 export type ProjectType = 'github' | 'website' | 'other';
+import { resolve } from '$app/paths';
 
 export interface Project {
   name: string;
   description: string;
   url: string;
   type: ProjectType;
-  /** For GitHub projects, the org/repo path (e.g., "martinemde/tinybucket") */
+  /** For GitHub projects, the org/repo path (e.g., "martinemde/project") */
   githubPath?: string;
 }
 
@@ -47,7 +48,7 @@ export const projects: Project[] = [
     name: 'Tossball',
     description:
       'The Outer Worlds 2: Pitchball & Tossball Card checklist. A little checklist made with Svelte.',
-    url: '/tossball',
+    url: resolve('/tossball'),
     type: 'website'
   },
   {

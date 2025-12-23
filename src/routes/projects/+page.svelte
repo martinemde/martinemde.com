@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Github, Globe, ExternalLink } from 'lucide-svelte';
   import { projects, type Project } from '$lib/data/projects';
+  import { resolve } from '$app/paths';
 
   function getIcon(type: Project['type']) {
     switch (type) {
@@ -50,14 +51,26 @@
         <p class="mb-4 text-surface-700-300">
           {project.description}
         </p>
-        <a
-          href={project.url}
-          rel={project.url.startsWith('/') ? undefined : 'external'}
-          class="inline-flex items-center gap-2 text-primary-500 transition-colors hover:text-primary-600"
-        >
-          <svelte:component this={getIcon(project.type)} size={18} />
-          <span class="font-medium">{formatLinkText(project)}</span>
-        </a>
+        {#if project.url.startsWith('/')}
+          <a
+            href={resolve(project.url)}
+            class="inline-flex items-center gap-2 text-primary-500 transition-colors hover:text-primary-600"
+          >
+            <svelte:component this={getIcon(project.type)} size={18} />
+            <span class="font-medium">{formatLinkText(project)}</span>
+          </a>
+        {:else}
+          <!-- eslint-disable svelte/no-navigation-without-resolve -->
+          <a
+            href={project.url}
+            rel="external"
+            class="inline-flex items-center gap-2 text-primary-500 transition-colors hover:text-primary-600"
+          >
+            <svelte:component this={getIcon(project.type)} size={18} />
+            <span class="font-medium">{formatLinkText(project)}</span>
+          </a>
+          <!-- eslint-enable svelte/no-navigation-without-resolve -->
+        {/if}
       </article>
     {/each}
   </div>

@@ -21,6 +21,7 @@
 
 {#if html}
   <div class="code-block [&>pre]:overflow-x-auto [&>pre]:rounded-lg [&>pre]:p-4">
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
     {@html html}
   </div>
 {:else}

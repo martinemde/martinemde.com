@@ -67,19 +67,31 @@ function isValidDate(value: unknown): value is string | Date {
 }
 
 /**
- * Parse a date string or Date object to a Date, using local timezone at noon
- * This avoids timezone issues by ensuring the date components match the input
+ * Parse a date string or Date object to a Date
+ * - If ISO8601 datetime is provided (e.g., 2025-10-25T14:30:00), parse the full datetime
+ * - If only a date is provided (e.g., 2025-10-25), default to noon local time
+ * - This avoids timezone issues by ensuring the date components match the input
  */
 function parseToDate(value: string | Date): Date {
   if (value instanceof Date) {
-    // If YAML already parsed it to a Date, extract components and recreate
-    // at noon local time to avoid timezone drift
-    const dateStr = value.toISOString().split('T')[0];
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day, 12, 0, 0);
+    // If YAML already parsed it to a Date, return as-is
+    return value;
   }
 
-  // Parse YYYY-MM-DD string to Date at noon local time
+  // Check if the string contains time information (has 'T' followed by time components)
+  const hasTime = value.includes('T') && value.split('T')[1]?.length > 0;
+
+  if (hasTime) {
+    // Parse full ISO8601 datetime string
+    const date = new Date(value);
+    // Verify it's a valid date
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+    // If parsing failed, fall through to date-only parsing
+  }
+
+  // Parse YYYY-MM-DD string to Date at noon local time (default behavior)
   const dateStr = value.split('T')[0];
   const [year, month, day] = dateStr.split('-').map(Number);
   return new Date(year, month - 1, day, 12, 0, 0);

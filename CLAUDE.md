@@ -156,7 +156,7 @@ author: Martin Emde
 **Field Descriptions:**
 
 - `title` (required): Post title displayed in listings and on the post page
-- `date` (required): Publication date in YYYY-MM-DD format
+- `date` (required): Publication date in YYYY-MM-DD format or ISO8601 datetime (e.g., `2025-10-25T14:30:00`). If only a date is provided, defaults to 12:00 noon local time.
 - `slug` (required): URL-friendly identifier used in `/blog/[slug]`
 - `published` (optional, default: true): Set to false to hide drafts
 - `description` (optional): Preview text shown on listing pages and in RSS

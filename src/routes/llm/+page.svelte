@@ -10,8 +10,7 @@
     DollarSign,
     ExternalLink,
     Sparkles,
-    TestTube,
-    Gamepad2
+    TestTube
   } from 'lucide-svelte';
 
   const { state, isLoggedIn } = authStore;
@@ -26,22 +25,16 @@
 
   const toys = [
     {
-      name: 'Model Tester',
+      name: 'Tab Model Tester',
       href: '/models',
-      description: 'Test and compare response times across different OpenRouter models',
+      description: 'Test and compare response times across different OpenRouter models for Fill In Middle (FIM) completion, code suggestion, or tab completion',
       icon: TestTube
     },
     {
       name: 'AI Toy',
       href: '/toy',
-      description: 'Interactive AI playground with different modes and conversation',
+      description: 'An LLM that can only use preset phrases, and yet is capable of responding appropriately and contextually',
       icon: Sparkles
-    },
-    {
-      name: 'Tossball',
-      href: '/tossball',
-      description: 'Card game simulator powered by AI',
-      icon: Gamepad2
     }
   ];
 </script>
@@ -196,7 +189,7 @@
             >
               2
             </span>
-            <span> Create a free account or log in (if you already have one) </span>
+            <span> Create a free account or log in if you already have one </span>
           </li>
           <li class="flex gap-3">
             <span
@@ -214,7 +207,7 @@
             >
               4
             </span>
-            <span> Start playing with the AI toys! </span>
+            <span> Use the LLM based pages in my site. </span>
           </li>
         </ol>
       </div>

@@ -37,9 +37,8 @@
   <a
     href={resolve('/llm')}
     class="inline-flex items-center gap-2 rounded-lg border border-tertiary-300-700 px-3 py-1.5 text-sm transition-colors hover:bg-tertiary-100-900"
-    aria-label="Connect an LLM"
   >
     <Sparkles class="size-4" />
-    <span>Connect an LLM</span>
+    <span class="sr-only sm:not-sr-only sm:inline">Connect an LLM</span>
   </a>
 {/if}

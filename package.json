@@ -35,7 +35,7 @@
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.1",
-    "vite": "^7.2.7",
+    "vite": "^7.3.0",
     "vitest": "^4.0.16"
   },
   "dependencies": {
@@ -52,7 +52,7 @@
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "format": "prettier --write .",
+    "format": "prettier --log-level silent --list-different --write .",
     "lint": "prettier --check . && eslint .",
     "test": "vitest run",
     "test:watch": "vitest",

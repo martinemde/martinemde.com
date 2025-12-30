@@ -3,6 +3,7 @@
   import '../app.css';
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
+  import AuthButton from '$lib/components/AuthButton.svelte';
 
   let { children } = $props();
 
@@ -35,11 +36,16 @@
   <header class="border-b border-surface-200-800">
     <div class="container mx-auto max-w-4xl px-4">
       <div class="flex items-center justify-between py-6">
-        <h1 class="text-xl font-semibold"><a href={resolve('/')} class="anchor">Martin Emde</a></h1>
-        <nav class="space-x-2">
-          <a href={resolve('/blog')} class="preset-typo-menu anchor">Blog</a>
-          <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
-          <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
+        <h1 class="preset-typo-title">
+          <a href={resolve('/')} class="anchor text-primary-500">Martin Emde</a>
+        </h1>
+        <nav class="flex items-center gap-4">
+          <div class="space-x-2">
+            <a href={resolve('/blog')} class="preset-typo-menu anchor">Blog</a>
+            <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
+            <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
+          </div>
+          <AuthButton />
         </nav>
       </div>
     </div>

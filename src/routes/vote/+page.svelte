@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { generateVoteGrid, fractionCalculation, type ThresholdConfig } from './vote';
+
   // State for committee configuration
   let committeeSize = $state(9);
   let quorum = $state(6);
@@ -6,47 +8,57 @@
   // Ensure quorum doesn't exceed committee size
   let effectiveQuorum = $derived(Math.min(quorum, committeeSize));
 
-  // Color palette with full class names for vote counts
   const colorClasses = [
-    { bg: 'bg-primary-100-800', text: 'text-primary-950-50' },
-    { bg: 'bg-tertiary-100-800', text: 'text-tertiary-950-50' },
-    { bg: 'bg-success-100-800', text: 'text-success-950-50' },
-    { bg: 'bg-warning-100-800', text: 'text-warning-950-50' },
-    { bg: 'bg-secondary-100-800', text: 'text-secondary-950-50' },
-    { bg: 'bg-error-100-800', text: 'text-error-950-50' }
+    'bg-primary-100-800 text-primary-950-50',
+    'bg-tertiary-100-800 text-tertiary-950-50',
+    'bg-success-100-800 text-success-950-50',
+    'bg-warning-100-800 text-warning-950-50',
+    'bg-secondary-100-800 text-secondary-950-50',
+    'bg-error-100-800 text-error-950-50'
   ];
 
   // Get color classes for a given vote count
-  function getCellColor(votes: number): { bg: string; text: string } {
+  function getCellColor(votes: number): string {
     const index = (votes - 1) % colorClasses.length;
     return colorClasses[index];
   }
 
-  // Derived grid data
-  let gridData = $derived.by(() => {
-    const rows: Array<{
-      attendance: number;
-      majority: number;
-      threeFifths: number;
-      twoThirds: number;
-      threeFourths: number;
-      unanimous: number;
-    }> = [];
-
-    // Generate rows from full committee down to quorum
-    for (let attendance = committeeSize; attendance >= effectiveQuorum; attendance--) {
-      rows.push({
-        attendance,
-        majority: Math.floor(attendance / 2) + 1,
-        threeFifths: Math.ceil((attendance * 3) / 5),
-        twoThirds: Math.ceil((attendance * 2) / 3),
-        threeFourths: Math.ceil((attendance * 3) / 4),
-        unanimous: attendance
-      });
+  // Threshold configurations - define what thresholds to display
+  const thresholds: ThresholdConfig[] = [
+    {
+      key: 'unanimous',
+      label: 'Unanimous',
+      description: '(100%)',
+      calculate: fractionCalculation(1, 1)
+    },
+    {
+      key: 'threeFourths',
+      label: '3/4ths',
+      description: '(75%)',
+      calculate: fractionCalculation(3, 4)
+    },
+    {
+      key: 'twoThirds',
+      label: '2/3rds',
+      description: '(≥66.67%)',
+      calculate: fractionCalculation(2, 3)
+    },
+    {
+      key: 'threeFifths',
+      label: '3/5ths',
+      description: '(60%)',
+      calculate: fractionCalculation(3, 5)
+    },
+    {
+      key: 'majority',
+      label: 'Majority',
+      description: '(>50%)',
+      calculate: fractionCalculation(1, 2)
     }
+  ];
 
-    return rows;
-  });
+  // Derived grid data
+  let gridData = $derived(generateVoteGrid(committeeSize, quorum, thresholds));
 </script>
 
 <svelte:head>
@@ -104,37 +116,17 @@
             <th class="px-4 py-3 text-left text-sm font-semibold text-surface-900-100">
               Members Present
             </th>
-            <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
-              Majority<br />
-              <span class="text-xs font-normal text-surface-600-400">(&gt;50%)</span>
-            </th>
-            <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
-              3/5ths<br />
-              <span class="text-xs font-normal text-surface-600-400">(60%)</span>
-            </th>
-            <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
-              2/3rds<br />
-              <span class="text-xs font-normal text-surface-600-400">(≥66.67%)</span>
-            </th>
-            <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
-              3/4ths<br />
-              <span class="text-xs font-normal text-surface-600-400">(75%)</span>
-            </th>
-            <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
-              Unanimous<br />
-              <span class="text-xs font-normal text-surface-600-400">(100%)</span>
-            </th>
+            {#each thresholds as threshold (threshold.key)}
+              <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
+                {threshold.label}<br />
+                <span class="text-xs font-normal text-surface-600-400">{threshold.description}</span
+                >
+              </th>
+            {/each}
           </tr>
         </thead>
         <tbody>
           {#each gridData as row (row.attendance)}
-            {@const colors = {
-              majority: getCellColor(row.majority),
-              threeFifths: getCellColor(row.threeFifths),
-              twoThirds: getCellColor(row.twoThirds),
-              threeFourths: getCellColor(row.threeFourths),
-              unanimous: getCellColor(row.unanimous)
-            }}
             <tr class="border-b border-surface-200-800">
               <td class="px-4 py-3 font-medium text-surface-950-50">
                 {row.attendance}
@@ -144,51 +136,15 @@
                   <span class="text-xs text-surface-600-400">(quorum)</span>
                 {/if}
               </td>
-              <td
-                class="px-4 py-3 text-center tabular-nums {colors.majority.bg} {colors.majority
-                  .text}"
-              >
-                {row.majority}
-              </td>
-              <td
-                class="px-4 py-3 text-center tabular-nums {colors.threeFifths.bg} {colors
-                  .threeFifths.text}"
-              >
-                {row.threeFifths}
-              </td>
-              <td
-                class="px-4 py-3 text-center tabular-nums {colors.twoThirds.bg} {colors.twoThirds
-                  .text}"
-              >
-                {row.twoThirds}
-              </td>
-              <td
-                class="px-4 py-3 text-center tabular-nums {colors.threeFourths.bg} {colors
-                  .threeFourths.text}"
-              >
-                {row.threeFourths}
-              </td>
-              <td
-                class="px-4 py-3 text-center tabular-nums {colors.unanimous.bg} {colors.unanimous
-                  .text}"
-              >
-                {row.unanimous}
-              </td>
+              {#each thresholds as threshold (threshold.key)}
+                <td class="px-4 py-3 text-center tabular-nums {getCellColor(row[threshold.key])}">
+                  {row[threshold.key]}
+                </td>
+              {/each}
             </tr>
           {/each}
         </tbody>
       </table>
     </div>
-  </div>
-
-  <div class="card preset-filled-surface-100-900 p-4">
-    <h3 class="mb-2 text-sm font-semibold text-surface-900-100">Understanding the Thresholds</h3>
-    <ul class="space-y-1 text-sm text-surface-700-300">
-      <li><strong>Majority:</strong> More than 50% of those present must vote in favor</li>
-      <li><strong>3/5ths:</strong> At least 60% of those present must vote in favor</li>
-      <li><strong>2/3rds:</strong> At least 66.67% of those present must vote in favor</li>
-      <li><strong>3/4ths:</strong> At least 75% of those present must vote in favor</li>
-      <li><strong>Unanimous:</strong> All members present must vote in favor (100%)</li>
-    </ul>
   </div>
 </div>

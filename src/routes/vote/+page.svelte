@@ -6,6 +6,22 @@
   // Ensure quorum doesn't exceed committee size
   let effectiveQuorum = $derived(Math.min(quorum, committeeSize));
 
+  // Color palette with full class names for vote counts
+  const colorClasses = [
+    { bg: 'bg-primary-100-800', text: 'text-primary-950-50' },
+    { bg: 'bg-tertiary-100-800', text: 'text-tertiary-950-50' },
+    { bg: 'bg-success-100-800', text: 'text-success-950-50' },
+    { bg: 'bg-warning-100-800', text: 'text-warning-950-50' },
+    { bg: 'bg-secondary-100-800', text: 'text-secondary-950-50' },
+    { bg: 'bg-error-100-800', text: 'text-error-950-50' }
+  ];
+
+  // Get color classes for a given vote count
+  function getCellColor(votes: number): { bg: string; text: string } {
+    const index = (votes - 1) % colorClasses.length;
+    return colorClasses[index];
+  }
+
   // Derived grid data
   let gridData = $derived.by(() => {
     const rows: Array<{
@@ -112,7 +128,14 @@
         </thead>
         <tbody>
           {#each gridData as row (row.attendance)}
-            <tr class="border-b border-surface-200-800 hover:bg-surface-100-900/50">
+            {@const colors = {
+              majority: getCellColor(row.majority),
+              threeFifths: getCellColor(row.threeFifths),
+              twoThirds: getCellColor(row.twoThirds),
+              threeFourths: getCellColor(row.threeFourths),
+              unanimous: getCellColor(row.unanimous)
+            }}
+            <tr class="border-b border-surface-200-800">
               <td class="px-4 py-3 font-medium text-surface-950-50">
                 {row.attendance}
                 {#if row.attendance === committeeSize}
@@ -121,19 +144,34 @@
                   <span class="text-xs text-surface-600-400">(quorum)</span>
                 {/if}
               </td>
-              <td class="px-4 py-3 text-center text-surface-950-50 tabular-nums">
+              <td
+                class="px-4 py-3 text-center tabular-nums {colors.majority.bg} {colors.majority
+                  .text}"
+              >
                 {row.majority}
               </td>
-              <td class="px-4 py-3 text-center text-surface-950-50 tabular-nums">
+              <td
+                class="px-4 py-3 text-center tabular-nums {colors.threeFifths.bg} {colors
+                  .threeFifths.text}"
+              >
                 {row.threeFifths}
               </td>
-              <td class="px-4 py-3 text-center text-surface-950-50 tabular-nums">
+              <td
+                class="px-4 py-3 text-center tabular-nums {colors.twoThirds.bg} {colors.twoThirds
+                  .text}"
+              >
                 {row.twoThirds}
               </td>
-              <td class="px-4 py-3 text-center text-surface-950-50 tabular-nums">
+              <td
+                class="px-4 py-3 text-center tabular-nums {colors.threeFourths.bg} {colors
+                  .threeFourths.text}"
+              >
                 {row.threeFourths}
               </td>
-              <td class="px-4 py-3 text-center text-surface-950-50 tabular-nums">
+              <td
+                class="px-4 py-3 text-center tabular-nums {colors.unanimous.bg} {colors.unanimous
+                  .text}"
+              >
                 {row.unanimous}
               </td>
             </tr>

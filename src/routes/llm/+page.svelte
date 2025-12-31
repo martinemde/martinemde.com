@@ -3,15 +3,7 @@
   import { resolve } from '$app/paths';
   import { authStore } from '$lib/auth/state.svelte';
   import { initiateOAuthLogin } from '$lib/auth/openrouter';
-  import {
-    Lock,
-    Shield,
-    Clock,
-    DollarSign,
-    ExternalLink,
-    Sparkles,
-    TestTube
-  } from 'lucide-svelte';
+  import { Lock, Shield, Clock, DollarSign, ExternalLink, Sparkles, TestTube } from 'lucide-svelte';
 
   const { state, isLoggedIn } = authStore;
 
@@ -27,13 +19,15 @@
     {
       name: 'Tab Model Tester',
       href: '/models',
-      description: 'Test and compare response times across different OpenRouter models for Fill In Middle (FIM) completion, code suggestion, or tab completion',
+      description:
+        'Test and compare response times across different OpenRouter models for Fill In Middle (FIM) completion, code suggestion, or tab completion',
       icon: TestTube
     },
     {
       name: 'AI Toy',
       href: '/toy',
-      description: 'An LLM that can only use preset phrases, and yet is capable of responding appropriately and contextually',
+      description:
+        'An LLM that can only use preset phrases, and yet is capable of responding appropriately and contextually',
       icon: Sparkles
     }
   ];

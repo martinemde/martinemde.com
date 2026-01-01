@@ -14,8 +14,9 @@ node_modules
 Thumbs.db
 
 # Env
-.env
-.env.*
+.env.local
+.env.*.local
+!.env
 !.env.example
 !.env.test
 

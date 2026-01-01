@@ -51,7 +51,7 @@ This implementation allows you to:
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the root of your project (use `.env.example` as a template):
+**For local development**, create a `.env.local` file in the root of your project (use `.env.example` as a template):
 
 ```bash
 # GitHub OAuth Application Credentials
@@ -67,15 +67,16 @@ GITHUB_REPO=your_repository_name
 SESSION_SECRET=your_random_32_char_or_longer_secret_key_here
 
 # Application URL
-PUBLIC_APP_URL=http://localhost:5173  # Change to production URL for deployment
+PUBLIC_APP_URL=http://localhost:5173
 ```
 
 **Important:**
-- Never commit the `.env` file to version control
+- `.env` (committed) contains placeholder values for build-time type generation
+- `.env.local` (gitignored) should contain your real secrets for local development
+- For production, set real values in Cloudflare Pages dashboard
+- Environment variables are loaded at **runtime** but must be declared at **build time**
 - Use different OAuth apps for development and production
-- Generate a strong random secret for `SESSION_SECRET`
-- Environment variables are loaded at **runtime** (not build time), so they don't need to be set when building locally
-- For production deployment, set these in your Cloudflare Pages dashboard
+- Generate a strong random secret for `SESSION_SECRET` using `openssl rand -base64 32`
 
 ### 3. Verify Dependencies
 

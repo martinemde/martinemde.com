@@ -1,5 +1,5 @@
 ---
-title: 'How to: Rails `params.expect`'
+title: 'How to: Rails params.expect'
 date: 2024-10-22
 author: Martin Emde
 description: 'A guide to the new params.expect feature in Rails 8'
@@ -35,7 +35,7 @@ But protecting us from correctly submitted forms and extra attributes is not eno
 
 The solution in Rails 8 is the new `params.expect`.
 
-## How do I use `params.expect`?
+## How do I use params.expect?
 
 If you don't want to dig into Rails parameter filtering right now, you can simply do the following in Rails 8:
 
@@ -161,7 +161,7 @@ raise ActionController::ParameterMissing.new(:user, {}) if user_params.empty?
 
 `params.expect` replaces all of this mess with clear, declarative syntax that also provides better error messages and handles edge cases properly.
 
-## `params.expect` to the rescue
+## params.expect to the rescue
 
 The new `expect` method validates both the presence and structure of the parameters:
 
@@ -177,10 +177,3 @@ user_params = params.expect(user: [:name, :favorite_pie])
 ```
 
 By resolving this ambiguity in params parsing and improving the syntax and security of features used by every Rails engineer, we are able to reduce false alarms, better protect application data, and maybe reduce the number of engineers getting paged in the middle of the night.
-
-## Let's keep making this better
-
-Right now I'm committed to improving the Ruby, RubyGems, and Ruby on Rails ecosystems for everyone. The RubyGems.org team, and I "upstream" improvements to the gems we use as a matter of principle. We want Ruby to be the best choice for building applications. We also work closely with other ecosystems like Python and Rust, to ensure best practices across languages.
-
-Are you and your company comfortable with your reliance on open source? To avoid worst case scenarios, your company needs at least one engineer on your team dedicating their time to open source maintenance.
-If you use Ruby, then you rely on the work of the RubyGems team. I'd love to work with you to help your team succeed in the Ruby ecosystem.

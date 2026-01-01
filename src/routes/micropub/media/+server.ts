@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { PUBLIC_APP_URL } from '$env/dynamic/public';
 import { uploadImage } from '$lib/server/github';
 import type { RequestHandler } from './$types';
 

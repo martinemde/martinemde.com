@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { PUBLIC_APP_URL } from '$env/dynamic/public';
 import {
   parseMicropubRequest,
   generateMarkdownFile,

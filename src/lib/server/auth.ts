@@ -3,7 +3,7 @@ import {
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   SESSION_SECRET
-} from '$env/static/private';
+} from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export interface SessionData {

@@ -74,6 +74,8 @@ PUBLIC_APP_URL=http://localhost:5173  # Change to production URL for deployment
 - Never commit the `.env` file to version control
 - Use different OAuth apps for development and production
 - Generate a strong random secret for `SESSION_SECRET`
+- Environment variables are loaded at **runtime** (not build time), so they don't need to be set when building locally
+- For production deployment, set these in your Cloudflare Pages dashboard
 
 ### 3. Verify Dependencies
 

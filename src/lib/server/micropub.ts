@@ -1,4 +1,4 @@
-import { GITHUB_OWNER } from '$env/static/private';
+import { GITHUB_OWNER } from '$env/dynamic/private';
 
 export interface MicropubProperties {
   name?: string | string[];

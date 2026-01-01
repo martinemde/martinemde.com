@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import { GITHUB_OWNER, GITHUB_REPO } from '$env/dynamic/private';
+import { GITHUB_OWNER, GITHUB_REPO } from '$env/static/private';
 
 export interface GitHubUser {
   id: number;

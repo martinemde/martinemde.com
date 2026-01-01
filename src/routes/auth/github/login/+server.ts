@@ -9,8 +9,8 @@ export const GET: RequestHandler = async (event) => {
   // Store state in session for verification
   await setSession(event, { oauthState: state });
 
-  // Build redirect URI
-  const redirectUri = `${event.url.origin}/auth/callback`;
+  // Build redirect URI for GitHub OAuth
+  const redirectUri = `${event.url.origin}/auth/github/callback`;
 
   // Get GitHub OAuth URL
   const authUrl = getAuthorizationUrl(state, redirectUri);

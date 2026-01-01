@@ -151,8 +151,8 @@
   <div class="mb-8 flex items-center justify-between">
     <h1 class="preset-typo-display-1">Blog Editor</h1>
     <div class="flex items-center gap-4">
-      <a href="/auth/login" class="anchor text-sm">Login</a>
-      <a href="/auth/logout" class="anchor text-sm">Logout</a>
+      <a href="/auth/github/login" class="anchor text-sm">Login</a>
+      <a href="/auth/github/logout" class="anchor text-sm">Logout</a>
     </div>
   </div>
 

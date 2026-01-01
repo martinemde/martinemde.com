@@ -35,8 +35,8 @@ export async function initiateOAuthLogin(): Promise<void> {
   // Store verifier for later use in callback
   storeVerifier(verifier);
 
-  // Build callback URL (current origin + /auth/callback)
-  const callbackUrl = `${window.location.origin}/auth/callback`;
+  // Build callback URL for OpenRouter OAuth
+  const callbackUrl = `${window.location.origin}/auth/openrouter/callback`;
 
   // Build OpenRouter auth URL with PKCE parameters
   const authUrl = new URL(OPENROUTER_AUTH_URL);

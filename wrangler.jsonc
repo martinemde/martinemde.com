@@ -2,6 +2,14 @@
   "name": "martinemde-com",
   "account_id": "9c275e0c035e53370143e8cf240dfb3f",
   "main": "./.cloudflare/worker.js",
+  "vars": {
+    "GITHUB_CLIENT_ID": "placeholder",
+    "GITHUB_CLIENT_SECRET": "placeholder",
+    "GITHUB_OWNER": "martinemde",
+    "GITHUB_REPO": "martinemde.com",
+    "SESSION_SECRET": "placeholder",
+    "PUBLIC_APP_URL": "https://martinemde.com"
+  },
   "assets": {
     "directory": "./.cloudflare/public",
     "binding": "ASSETS"

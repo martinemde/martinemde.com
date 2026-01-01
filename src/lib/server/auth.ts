@@ -17,10 +17,15 @@ export interface SessionData {
   oauthState?: string;
 }
 
-const SESSION_OPTIONS = {
-  password: SESSION_SECRET,
-  ttl: 60 * 60 * 24 * 7 // 7 days
-};
+/**
+ * Get session options lazily to avoid accessing env vars during prerendering
+ */
+function getSessionOptions() {
+  return {
+    password: SESSION_SECRET!,
+    ttl: 60 * 60 * 24 * 7 // 7 days
+  };
+}
 
 const COOKIE_NAME = 'micropub_session';
 
@@ -35,7 +40,7 @@ export async function getSession(event: RequestEvent): Promise<SessionData> {
   }
 
   try {
-    const session = await unsealData<SessionData>(sessionCookie, SESSION_OPTIONS);
+    const session = await unsealData<SessionData>(sessionCookie, getSessionOptions());
     return session;
   } catch (error) {
     console.error('Failed to unseal session:', error);
@@ -47,14 +52,14 @@ export async function getSession(event: RequestEvent): Promise<SessionData> {
  * Set session data in response cookies
  */
 export async function setSession(event: RequestEvent, data: SessionData): Promise<void> {
-  const sealed = await sealData(data, SESSION_OPTIONS);
+  const sealed = await sealData(data, getSessionOptions());
 
   event.cookies.set(COOKIE_NAME, sealed, {
     path: '/',
     httpOnly: true,
     secure: event.url.protocol === 'https:',
     sameSite: 'lax',
-    maxAge: SESSION_OPTIONS.ttl
+    maxAge: getSessionOptions().ttl
   });
 }
 

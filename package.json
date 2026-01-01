@@ -39,6 +39,8 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
+    "iron-session": "^8.0.4",
     "lucide-svelte": "^0.562.0",
     "remark": "^15.0.1",
     "remark-html": "^16.0.1",

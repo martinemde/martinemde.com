@@ -1,0 +1,48 @@
+import { error, redirect } from '@sveltejs/kit';
+import { exchangeCodeForToken, getSession, setSession } from '$lib/server/auth';
+import { getGitHubUser, verifyRepoOwnership } from '$lib/server/github';
+import type { RequestHandler } from './$types';
+
+export const GET: RequestHandler = async (event) => {
+  const code = event.url.searchParams.get('code');
+  const state = event.url.searchParams.get('state');
+
+  if (!code || !state) {
+    error(400, 'Missing code or state parameter');
+  }
+
+  // Verify CSRF state
+  const session = await getSession(event);
+  if (!session.oauthState || session.oauthState !== state) {
+    error(400, 'Invalid state parameter');
+  }
+
+  try {
+    // Exchange code for access token
+    const token = await exchangeCodeForToken(code);
+
+    // Get user information
+    const user = await getGitHubUser(token);
+
+    // Verify user owns the repository
+    const hasAccess = await verifyRepoOwnership(token, user.login);
+    if (!hasAccess) {
+      error(
+        403,
+        'You do not have access to this repository. Please ensure you own the configured repository.'
+      );
+    }
+
+    // Store user and token in session
+    await setSession(event, {
+      user,
+      githubToken: token
+    });
+
+    // Redirect to editor
+    redirect(302, '/editor');
+  } catch (err) {
+    console.error('OAuth callback error:', err);
+    error(500, 'Authentication failed');
+  }
+};

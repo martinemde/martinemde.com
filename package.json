@@ -59,7 +59,9 @@
     "lint": "prettier --check . && eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "blog:new": "bun scripts/blog-new.ts",
+    "blog:publish": "bun scripts/blog-publish.ts"
   },
   "type": "module"
 }

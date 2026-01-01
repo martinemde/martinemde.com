@@ -17,16 +17,18 @@ I [found this "one-liner"](https://github.com/ghostty-org/ghostty/pull/8477#issu
 
 And here's the breakdown of the escape sequence (from the [Windows Terminal docs of all places](https://learn.microsoft.com/en-us/windows/terminal/tutorials/progress-bar-sequences)):
 
-> `ESC ] 9 ; 4 ; <state> ; <progress> BEL`
->
-> `ESC` is the escape character, ASCII 27.
-> `BEL` is the bell character, ASCII 7.
-> `<state>` is one of `0`, `1`, `2`, `3`, or `4`.
-> `0` is the default state, and indicates that the progress bar should be hidden. Use this state when the command is complete, to clear out any progress state.
-> `1`: set progress value to `<progress>`, in the "default" state.
-> `2`: set progress value to `<progress>`, in the "Error" state
-> `3`: set the taskbar to the "Indeterminate" state. This is useful for commands that don't have a progress value, but are still running. This state ignores the `<progress>` value.
-> `4`: set progress value to `<progress>`, in the "Warning" state
+```sh
+ESC ] 9 ; 4 ; <state> ; <progress> BEL
+```
+
+> `ESC` is the escape character, ASCII 27.  
+> `BEL` is the bell character, ASCII 7.  
+> `<state>` is one of `0`, `1`, `2`, `3`, or `4`.  
+> `0` is the default state, and indicates that the progress bar should be hidden. Use this state when the command is complete, to clear out any progress state.  
+> `1`: set progress value to `<progress>`, in the "default" state.  
+> `2`: set progress value to `<progress>`, in the "Error" state  
+> `3`: set the taskbar to the "Indeterminate" state. This is useful for commands that don't have a progress value, but are still running. This state ignores the `<progress>` value.  
+> `4`: set progress value to `<progress>`, in the "Warning" state  
 > `<progress>` is a number between 0 and 100, inclusive.
 
 How great would it be to add that to other tools that compile or churn for a while? It's no replacement for other feedback since not all terminals implement this, but it seems like a good way to give extra information without an excess of printed characters that get picked up by logs.

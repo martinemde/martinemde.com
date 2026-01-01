@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { PageServerData } from './$types';
   import { Upload } from 'lucide-svelte';
-
-  let { data }: { data: PageServerData } = $props();
+  import { unified } from 'unified';
+  import remarkParse from 'remark-parse';
+  import remarkHtml from 'remark-html';
 
   // Form state
   let title = $state('');
@@ -125,20 +125,9 @@
     previewLoading = true;
 
     try {
-      const response = await fetch('/api/preview', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ markdown: content })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        previewHtml = data.html;
-      } else {
-        previewHtml = '<p class="text-error-500">Failed to render preview</p>';
-      }
+      // Render markdown directly in the browser
+      const result = await unified().use(remarkParse).use(remarkHtml).process(content);
+      previewHtml = String(result);
     } catch (err) {
       previewHtml = '<p class="text-error-500">Error rendering preview</p>';
     } finally {
@@ -162,9 +151,7 @@
   <div class="mb-8 flex items-center justify-between">
     <h1 class="preset-typo-display-1">Blog Editor</h1>
     <div class="flex items-center gap-4">
-      <span class="text-sm text-surface-600-400">
-        Logged in as {data.user.login}
-      </span>
+      <a href="/auth/login" class="anchor text-sm">Login</a>
       <a href="/auth/logout" class="anchor text-sm">Logout</a>
     </div>
   </div>

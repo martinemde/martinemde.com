@@ -97,7 +97,7 @@ bun run dev
 
 Navigate to:
 - `http://localhost:5173/auth/login` - Start OAuth flow
-- `http://localhost:5173/editor` - Blog editor (requires authentication)
+- `http://localhost:5173/editor` - Blog editor (publicly accessible, authentication required to publish)
 
 ### 5. Production Deployment
 
@@ -120,16 +120,16 @@ Navigate to:
 
 ### Using the Web Editor
 
-1. **Login**: Navigate to `/auth/login` or `/editor` (redirects to login)
-2. **Authorize**: Allow the GitHub OAuth app to access your repository
+1. **Navigate to `/editor`**: The editor is publicly accessible for drafting
+2. **Login** (required to publish): Click "Login" in the header and authorize the GitHub OAuth app
 3. **Create a post**:
    - Enter title (slug auto-generates, or customize)
    - Add description (optional)
    - Add categories (comma-separated, optional)
    - Write content in markdown
-   - Switch to Preview tab to see rendered output
-   - Upload images using the "Upload Image" button
-4. **Publish**: Click "Create Post"
+   - Switch to Preview tab to see rendered output (rendered client-side in your browser)
+   - Upload images using the "Upload Image" button (requires authentication)
+4. **Publish**: Click "Create Post" (requires authentication)
 5. **View post**: Click the link in the success message
 
 ### Using Micropub Clients
@@ -170,22 +170,31 @@ Images uploaded through the editor or media endpoint are stored in:
 
 ## Security Considerations
 
-1. **OAuth Scope**: Requests `repo` scope for full repository access
+1. **Public vs Protected Endpoints**:
+   - **Public**: `/editor` page (anyone can draft posts)
+   - **Protected**: `/micropub` and `/micropub/media` (require authentication)
+   - Authentication checked server-side when attempting to publish or upload
+
+2. **OAuth Scope**: Requests `repo` scope for full repository access
    - Required to create/update files
    - Only grants access to users who own the repository
 
-2. **Repository Ownership Verification**:
+3. **Repository Ownership Verification**:
    - Checks that authenticated user owns the configured repository
    - Prevents unauthorized users from publishing
 
-3. **Session Security**:
+4. **Session Security**:
    - Encrypted cookies using iron-session
    - HttpOnly, Secure (HTTPS), SameSite=Lax
    - 7-day expiration
 
-4. **CSRF Protection**:
+5. **CSRF Protection**:
    - State parameter in OAuth flow
    - Validated on callback
+
+6. **Client-Side Rendering**:
+   - Markdown preview rendered in browser (no server interaction)
+   - No sensitive data exposed in preview rendering
 
 ## Troubleshooting
 

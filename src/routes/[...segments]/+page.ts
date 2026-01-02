@@ -34,7 +34,7 @@ export const load: PageLoad = async ({ params }) => {
   if (!validatePostDate(post.metadata, year, month, day)) {
     console.log('Date mismatch - expected:', `${year}-${month}-${day}`, 'got:', post.metadata.date);
     // Date mismatch
-    throw error(404, 'Post not found at this URL');
+    throw error(404, 'Post not found');
   }
 
   console.log('Redirecting to:', `/blog/${post.metadata.slug}`);

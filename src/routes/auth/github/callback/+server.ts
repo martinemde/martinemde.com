@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import { exchangeCodeForToken, getSession, setSession } from '$lib/server/auth';
-import { getGitHubUser, verifyRepoOwnership } from '$lib/server/github';
+import { getGitHubUser, verifyRepoOwnership } from '$lib/server/github-auth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {

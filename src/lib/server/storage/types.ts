@@ -1,0 +1,34 @@
+/**
+ * Storage backend interface for micropub content storage
+ *
+ * Implementations can use different backends (GitHub, filesystem, in-memory, etc.)
+ * to store blog posts and images.
+ */
+export interface StorageBackend {
+	/**
+	 * Create or update a file at the given path
+	 *
+	 * @param path - Relative path to the file (e.g., "src/content/blog/2025-01-01-post.md")
+	 * @param content - File content to write
+	 * @param message - Commit message or change description
+	 */
+	createOrUpdateFile(path: string, content: string, message: string): Promise<void>;
+
+	/**
+	 * Check if a file exists at the given path
+	 *
+	 * @param path - Relative path to the file
+	 * @returns true if file exists, false otherwise
+	 */
+	fileExists(path: string): Promise<boolean>;
+
+	/**
+	 * Upload an image file
+	 *
+	 * @param filename - Name for the image file
+	 * @param buffer - Image file data
+	 * @param mimeType - MIME type of the image (e.g., "image/jpeg")
+	 * @returns URL where the image can be accessed
+	 */
+	uploadImage(filename: string, buffer: Buffer, mimeType: string): Promise<string>;
+}

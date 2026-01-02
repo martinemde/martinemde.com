@@ -6,7 +6,7 @@ import {
   generateFilePath,
   generateCommitMessage
 } from '$lib/server/micropub';
-import { createOrUpdateFile, fileExists } from '$lib/server/github';
+import { createStorageBackend } from '$lib/server/storage/factory';
 import type { RequestHandler } from './$types';
 
 /**
@@ -41,9 +41,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     error(401, 'Unauthorized');
   }
 
-  const token = locals.githubToken;
-
   try {
+    // Create storage backend
+    const backend = createStorageBackend(locals.githubToken);
+
     // Parse request body
     const contentType = request.headers.get('content-type') || '';
     let micropubRequest;
@@ -68,16 +69,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const content = generateMarkdownFile(post);
 
     // Check if file already exists
-    const exists = await fileExists(filePath, token);
+    const exists = await backend.fileExists(filePath);
 
-    // Create or update file in GitHub
+    // Create or update file via storage backend
     const commitMessage = generateCommitMessage(post, exists);
-    await createOrUpdateFile({
-      path: filePath,
-      content,
-      message: commitMessage,
-      token
-    });
+    await backend.createOrUpdateFile(filePath, content, commitMessage);
 
     // Return 201 Created with Location header
     const postUrl = `${PUBLIC_APP_URL}/blog/${post.slug}`;

@@ -1,6 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { PUBLIC_APP_URL } from '$env/static/public';
-import { uploadImage } from '$lib/server/github';
+import { createStorageBackend } from '$lib/server/storage/factory';
 import type { RequestHandler } from './$types';
 
 /**
@@ -13,9 +12,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     error(401, 'Unauthorized');
   }
 
-  const token = locals.githubToken;
-
   try {
+    // Create storage backend
+    const backend = createStorageBackend(locals.githubToken);
+
     // Parse multipart/form-data
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -33,20 +33,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to GitHub
-    const imageUrl = await uploadImage({
-      filename: file.name,
-      content: buffer,
-      message: `Add image: ${file.name}`,
-      token
-    });
+    // Upload via storage backend
+    const imageUrl = await backend.uploadImage(file.name, buffer, file.type);
 
     // Return 201 Created with Location header
-    const fullUrl = `${PUBLIC_APP_URL}${imageUrl}`;
     return new Response(null, {
       status: 201,
       headers: {
-        Location: fullUrl,
+        Location: imageUrl,
         'Content-Type': 'text/plain'
       }
     });

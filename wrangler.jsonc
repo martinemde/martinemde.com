@@ -1,4 +1,5 @@
 {
+  "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "martinemde-com",
   "account_id": "9c275e0c035e53370143e8cf240dfb3f",
   "main": "./.cloudflare/worker.js",
@@ -17,5 +18,6 @@
   "build": {
     "command": "bun run build"
   },
-  "compatibility_date": "2025-11-05"
+  "compatibility_date": "2025-11-05",
+  "compatibility_flags": ["nodejs_compat"]
 }

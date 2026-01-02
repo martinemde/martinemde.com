@@ -108,7 +108,7 @@ export function parseMicropubRequest(request: MicropubRequest): BlogPost {
     content,
     slug,
     date,
-    published: true, // Micropub posts are published by default
+    published: false, // Micropub posts are drafts by default
     description: description || undefined,
     author: GITHUB_OWNER,
     categories

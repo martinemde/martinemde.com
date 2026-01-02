@@ -11,6 +11,24 @@ export interface SessionData {
   };
   githubToken?: string;
   oauthState?: string;
+  indieAuthRequest?: {
+    me: string;
+    clientId: string;
+    redirectUri: string;
+    state: string;
+    codeChallenge?: string;
+    codeChallengeMethod?: string;
+  };
+}
+
+export interface AuthCode {
+  githubToken: string;
+  me: string;
+  clientId: string;
+  redirectUri: string;
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
+  issuedAt: number;
 }
 
 /**
@@ -117,4 +135,66 @@ export function getAuthorizationUrl(state: string, redirectUri: string): string 
   });
 
   return `https://github.com/login/oauth/authorize?${params}`;
+}
+
+/**
+ * Create an IndieAuth authorization code (sealed)
+ */
+export async function createAuthCode(data: Omit<AuthCode, 'issuedAt'>): Promise<string> {
+  const authCode: AuthCode = {
+    ...data,
+    issuedAt: Date.now()
+  };
+
+  return await sealData(authCode, {
+    password: SESSION_SECRET!,
+    ttl: 600 // 10 minutes
+  });
+}
+
+/**
+ * Verify and decode an IndieAuth authorization code
+ */
+export async function verifyAuthCode(code: string): Promise<AuthCode | null> {
+  try {
+    const data = await unsealData<AuthCode>(code, {
+      password: SESSION_SECRET!,
+      ttl: 600
+    });
+
+    // Check if code is expired (10 minutes)
+    if (Date.now() - data.issuedAt > 600000) {
+      return null;
+    }
+
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Verify PKCE code challenge
+ */
+export async function verifyCodeChallenge(
+  verifier: string,
+  challenge: string,
+  method: string = 'S256'
+): Promise<boolean> {
+  if (method === 'plain') {
+    return verifier === challenge;
+  }
+
+  if (method === 'S256') {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(verifier);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(hash)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    return base64 === challenge;
+  }
+
+  return false;
 }

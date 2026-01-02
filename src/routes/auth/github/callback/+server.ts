@@ -1,5 +1,10 @@
 import { error, redirect } from '@sveltejs/kit';
-import { exchangeCodeForToken, getSession, setSession } from '$lib/server/auth';
+import {
+  exchangeCodeForToken,
+  getSession,
+  setSession,
+  createAuthCode
+} from '$lib/server/auth';
 import { getGitHubUser, verifyRepoOwnership } from '$lib/server/github-auth';
 import type { RequestHandler } from './$types';
 
@@ -33,7 +38,35 @@ export const GET: RequestHandler = async (event) => {
       );
     }
 
-    // Store user and token in session
+    // Check if this is part of an IndieAuth flow
+    if (session.indieAuthRequest) {
+      const indieAuthReq = session.indieAuthRequest;
+
+      // Generate authorization code for IndieAuth client
+      const authCode = await createAuthCode({
+        githubToken: token,
+        me: indieAuthReq.me,
+        clientId: indieAuthReq.clientId,
+        redirectUri: indieAuthReq.redirectUri,
+        codeChallenge: indieAuthReq.codeChallenge,
+        codeChallengeMethod: indieAuthReq.codeChallengeMethod
+      });
+
+      // Clear IndieAuth request from session
+      await setSession(event, {
+        user,
+        githubToken: token
+      });
+
+      // Redirect back to client with authorization code
+      const redirectUrl = new URL(indieAuthReq.redirectUri);
+      redirectUrl.searchParams.set('code', authCode);
+      redirectUrl.searchParams.set('state', indieAuthReq.state);
+
+      redirect(302, redirectUrl.toString());
+    }
+
+    // Normal (non-IndieAuth) flow: store user and token in session
     await setSession(event, {
       user,
       githubToken: token

@@ -1,20 +1,46 @@
 import { error } from '@sveltejs/kit';
 import { createStorageBackend } from '$lib/server/storage/factory';
+import { getAccessToken } from '$lib/server/token-store';
 import type { RequestHandler } from './$types';
+
+/**
+ * Extract GitHub token from request
+ * Supports both session-based auth (locals.githubToken) and Bearer token auth
+ */
+function getGithubToken(request: Request, locals: App.Locals): string | null {
+  // Check session-based auth first (for editor)
+  if (locals.githubToken) {
+    return locals.githubToken;
+  }
+
+  // Check for Bearer token (for IndieAuth clients)
+  const authHeader = request.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const tokenId = authHeader.substring(7);
+    const token = getAccessToken(tokenId);
+
+    if (token) {
+      return token.githubToken;
+    }
+  }
+
+  return null;
+}
 
 /**
  * POST /micropub/media
  * Upload an image file to the blog
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
-  // Require authentication
-  if (!locals.githubToken) {
+  // Require authentication (session or Bearer token)
+  const githubToken = getGithubToken(request, locals);
+  if (!githubToken) {
     error(401, 'Unauthorized');
   }
 
   try {
     // Create storage backend
-    const backend = createStorageBackend(locals.githubToken);
+    const backend = createStorageBackend(githubToken);
 
     // Parse multipart/form-data
     const formData = await request.formData();

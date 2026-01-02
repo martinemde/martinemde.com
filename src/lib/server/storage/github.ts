@@ -1,5 +1,5 @@
 import { Octokit } from '@octokit/rest';
-import type { StorageBackend } from './types';
+import type { StorageBackend, BlogPostFileInfo } from './types';
 
 /**
  * GitHub-based storage backend for production
@@ -44,13 +44,9 @@ export class GitHubStorageBackend implements StorageBackend {
         if ('sha' in data) {
           sha = data.sha;
         }
-      } catch (error: unknown) {
+      } catch (error: any) {
         // 404 means file doesn't exist, which is fine for creation
-        if (error && typeof error === 'object' && 'status' in error) {
-          if ((error as { status: number }).status !== 404) {
-            throw error;
-          }
-        } else {
+        if (error.status !== 404) {
           throw error;
         }
       }
@@ -64,18 +60,10 @@ export class GitHubStorageBackend implements StorageBackend {
         content: Buffer.from(content, 'utf-8').toString('base64'),
         sha // Include SHA if updating, omit if creating
       });
-    } catch (error: unknown) {
+    } catch (error: any) {
       // Enhance error message with context
-      const status =
-        error && typeof error === 'object' && 'status' in error
-          ? (error as { status: number }).status
-          : undefined;
-      const message =
-        error && typeof error === 'object' && 'message' in error
-          ? (error as { message: string }).message
-          : 'Unknown error';
-      const action = status === 404 ? 'create' : 'update';
-      throw new Error(`Failed to ${action} file in GitHub: ${message}`, {
+      const action = error.status === 404 ? 'create' : 'update';
+      throw new Error(`Failed to ${action} file in GitHub: ${error.message || 'Unknown error'}`, {
         cause: error
       });
     }
@@ -89,24 +77,18 @@ export class GitHubStorageBackend implements StorageBackend {
         path
       });
       return true;
-    } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'status' in error) {
-        if ((error as { status: number }).status === 404) {
-          return false;
-        }
+    } catch (error: any) {
+      if (error.status === 404) {
+        return false;
       }
       // For other errors, rethrow
-      const message =
-        error && typeof error === 'object' && 'message' in error
-          ? (error as { message: string }).message
-          : 'Unknown error';
-      throw new Error(`Failed to check if file exists in GitHub: ${message}`, {
+      throw new Error(`Failed to check if file exists in GitHub: ${error.message}`, {
         cause: error
       });
     }
   }
 
-  async uploadImage(filename: string, buffer: Buffer, _mimeType: string): Promise<string> {
+  async uploadImage(filename: string, buffer: Buffer, mimeType: string): Promise<string> {
     const path = `static/images/blog/${filename}`;
 
     try {
@@ -123,13 +105,9 @@ export class GitHubStorageBackend implements StorageBackend {
         if ('sha' in data) {
           sha = data.sha;
         }
-      } catch (error: unknown) {
+      } catch (error: any) {
         // 404 is expected for new files
-        if (error && typeof error === 'object' && 'status' in error) {
-          if ((error as { status: number }).status !== 404) {
-            throw error;
-          }
-        } else {
+        if (error.status !== 404) {
           throw error;
         }
       }
@@ -149,12 +127,76 @@ export class GitHubStorageBackend implements StorageBackend {
       const publicUrl = `${baseUrl}/images/blog/${filename}`;
 
       return publicUrl;
-    } catch (error: unknown) {
-      const message =
-        error && typeof error === 'object' && 'message' in error
-          ? (error as { message: string }).message
-          : 'Unknown error';
-      throw new Error(`Failed to upload image to GitHub: ${message}`, {
+    } catch (error: any) {
+      throw new Error(`Failed to upload image to GitHub: ${error.message}`, {
+        cause: error
+      });
+    }
+  }
+
+  async readFile(path: string): Promise<string> {
+    try {
+      const { data } = await this.octokit.repos.getContent({
+        owner: this.owner,
+        repo: this.repo,
+        path
+      });
+
+      // GitHub API returns content as base64
+      if ('content' in data && data.content) {
+        return Buffer.from(data.content, 'base64').toString('utf-8');
+      }
+
+      throw new Error('File content not available');
+    } catch (error: any) {
+      throw new Error(`Failed to read file from GitHub: ${error.message}`, {
+        cause: error
+      });
+    }
+  }
+
+  async listBlogPosts(): Promise<BlogPostFileInfo[]> {
+    try {
+      const { data } = await this.octokit.repos.getContent({
+        owner: this.owner,
+        repo: this.repo,
+        path: 'src/content/blog'
+      });
+
+      // Ensure we got a directory listing
+      if (!Array.isArray(data)) {
+        throw new Error('Expected directory listing');
+      }
+
+      const posts: BlogPostFileInfo[] = [];
+
+      for (const file of data) {
+        if (file.type !== 'file' || !file.name.endsWith('.md')) continue;
+
+        // Parse filename format: YYYY-MM-DD-slug.md
+        const match = file.name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+        if (!match) continue;
+
+        const [, dateStr, slug] = match;
+
+        posts.push({
+          filename: file.name,
+          path: file.path,
+          slug,
+          date: dateStr
+        });
+      }
+
+      // Sort by date, newest first
+      posts.sort((a, b) => b.date.localeCompare(a.date));
+
+      return posts;
+    } catch (error: any) {
+      // If directory doesn't exist, return empty array
+      if (error.status === 404) {
+        return [];
+      }
+      throw new Error(`Failed to list blog posts from GitHub: ${error.message}`, {
         cause: error
       });
     }

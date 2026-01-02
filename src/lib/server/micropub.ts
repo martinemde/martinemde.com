@@ -7,6 +7,7 @@ export interface MicropubProperties {
   published?: string | string[];
   slug?: string | string[];
   description?: string | string[];
+  'post-status'?: string | string[];
 }
 
 export interface MicropubRequest {
@@ -20,6 +21,7 @@ export interface MicropubRequest {
   published?: string;
   slug?: string;
   description?: string;
+  'post-status'?: string;
 }
 
 export interface BlogPost {
@@ -102,13 +104,14 @@ export function parseMicropubRequest(request: MicropubRequest): BlogPost {
   const date = rawPublished || new Date().toISOString();
   const description = normalizeProperty(props.description || request.description);
   const categories = normalizeCategories(props.category || request.category);
+  const postStatus = normalizeProperty(props['post-status'] || request['post-status']);
 
   return {
     title,
     content,
     slug,
     date,
-    published: false, // Micropub posts are drafts by default
+    published: postStatus === 'published', // Use post-status to determine published state
     description: description || undefined,
     author: GITHUB_OWNER,
     categories

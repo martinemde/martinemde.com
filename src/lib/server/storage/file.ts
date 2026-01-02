@@ -1,7 +1,7 @@
-import { writeFile, access, mkdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { writeFile, access, mkdir, readFile, readdir } from 'node:fs/promises';
+import { dirname, join, basename } from 'node:path';
 import { cwd } from 'node:process';
-import type { StorageBackend } from './types';
+import type { StorageBackend, BlogPostFileInfo } from './types';
 
 /**
  * File-based storage backend for local development
@@ -81,5 +81,60 @@ export class FileStorageBackend implements StorageBackend {
     console.log(`[FileBackend] Uploaded image ${filename} (${mimeType}) → ${publicUrl}`);
 
     return publicUrl;
+  }
+
+  async readFile(path: string): Promise<string> {
+    const absolutePath = this.resolvePath(path);
+
+    try {
+      const content = await readFile(absolutePath, 'utf-8');
+      return content;
+    } catch (error: any) {
+      throw new Error(`Failed to read file: ${error.message}`, {
+        cause: error
+      });
+    }
+  }
+
+  async listBlogPosts(): Promise<BlogPostFileInfo[]> {
+    const blogDir = this.resolvePath('src/content/blog');
+
+    try {
+      // Read directory contents
+      const files = await readdir(blogDir);
+
+      // Filter for markdown files and extract metadata
+      const posts: BlogPostFileInfo[] = [];
+
+      for (const filename of files) {
+        if (!filename.endsWith('.md')) continue;
+
+        // Parse filename format: YYYY-MM-DD-slug.md
+        const match = filename.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+        if (!match) continue;
+
+        const [, dateStr, slug] = match;
+
+        posts.push({
+          filename,
+          path: `src/content/blog/${filename}`,
+          slug,
+          date: dateStr
+        });
+      }
+
+      // Sort by date, newest first
+      posts.sort((a, b) => b.date.localeCompare(a.date));
+
+      return posts;
+    } catch (error: any) {
+      // If directory doesn't exist, return empty array
+      if (error.code === 'ENOENT') {
+        return [];
+      }
+      throw new Error(`Failed to list blog posts: ${error.message}`, {
+        cause: error
+      });
+    }
   }
 }

@@ -2,11 +2,24 @@
   import remarkHtml from 'remark-html';
   import remarkParse from 'remark-parse';
   import type { PageData } from './$types';
-  import { Upload } from 'lucide-svelte';
+  import { Upload, Save } from 'lucide-svelte';
   import { resolve } from '$app/paths';
   import { unified } from 'unified';
+  import { browser } from '$app/environment';
 
   let { data }: { data: PageData } = $props();
+
+  const STORAGE_KEY = 'blog-editor-draft';
+
+  interface EditorDraft {
+    title: string;
+    content: string;
+    slug: string;
+    description: string;
+    categories: string;
+    autoSlug: boolean;
+    savedAt: string;
+  }
 
   // Form state
   let title = $state('');
@@ -22,10 +35,36 @@
   let success = $state('');
   let uploadingImage = $state(false);
 
+  // Auto-save state
+  let saveStatus: 'idle' | 'saving' | 'saved' = $state('idle');
+  let lastSaved = $state<Date | null>(null);
+
   // Preview state
   let activeTab: 'edit' | 'preview' = $state('edit');
   let previewHtml = $state('');
   let previewLoading = $state(false);
+
+  // Load draft from localStorage on mount
+  $effect(() => {
+    if (!browser) return;
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const draft: EditorDraft = JSON.parse(saved);
+        title = draft.title;
+        content = draft.content;
+        slug = draft.slug;
+        description = draft.description;
+        categories = draft.categories;
+        autoSlug = draft.autoSlug;
+        lastSaved = new Date(draft.savedAt);
+        saveStatus = 'saved';
+      }
+    } catch (err) {
+      console.error('Failed to load draft:', err);
+    }
+  });
 
   // Auto-generate slug from title
   $effect(() => {
@@ -35,6 +74,90 @@
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
     }
+  });
+
+  // Debounced auto-save to localStorage
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function saveDraft() {
+    if (!browser) return;
+
+    saveStatus = 'saving';
+
+    try {
+      const draft: EditorDraft = {
+        title,
+        content,
+        slug,
+        description,
+        categories,
+        autoSlug,
+        savedAt: new Date().toISOString()
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+      lastSaved = new Date();
+      saveStatus = 'saved';
+    } catch (err) {
+      console.error('Failed to save draft:', err);
+      saveStatus = 'idle';
+    }
+  }
+
+  function clearDraft() {
+    if (!browser) return;
+
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      lastSaved = null;
+      saveStatus = 'idle';
+    } catch (err) {
+      console.error('Failed to clear draft:', err);
+    }
+  }
+
+  function formatRelativeTime(date: Date): string {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 10) return 'just now';
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes === 1) return '1 minute ago';
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours === 1) return '1 hour ago';
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+
+    return date.toLocaleDateString();
+  }
+
+  // Auto-save when form fields change (debounced 1 second)
+  $effect(() => {
+    // Watch all form fields
+    const _ = [title, content, slug, description, categories, autoSlug];
+
+    // Only auto-save if there's actual content
+    if (!title && !content && !description && !categories) return;
+
+    // Clear existing timeout
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+
+    // Set new timeout
+    saveTimeout = setTimeout(() => {
+      saveDraft();
+    }, 1000);
+
+    // Cleanup on effect re-run or unmount
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+    };
   });
 
   async function handleSubmit(e: Event) {
@@ -65,6 +188,8 @@
       if (response.ok) {
         const location = response.headers.get('Location');
         success = `Post created successfully! View at: ${location}`;
+        // Clear draft from localStorage
+        clearDraft();
         // Reset form
         title = '';
         content = '';
@@ -153,7 +278,20 @@
 
 <div class="mx-auto max-w-4xl">
   <div class="mb-8 flex items-center justify-between">
-    <h1 class="preset-typo-display-1">Blog Editor</h1>
+    <div class="flex items-center gap-3">
+      <h1 class="preset-typo-display-1">Blog Editor</h1>
+      {#if saveStatus === 'saving'}
+        <span class="flex items-center gap-1.5 text-sm text-surface-600-400">
+          <Save class="h-3.5 w-3.5 animate-pulse" />
+          Saving...
+        </span>
+      {:else if saveStatus === 'saved' && lastSaved}
+        <span class="flex items-center gap-1.5 text-sm text-surface-600-400">
+          <Save class="h-3.5 w-3.5" />
+          Saved {formatRelativeTime(lastSaved)}
+        </span>
+      {/if}
+    </div>
     <div class="flex items-center gap-4">
       {#if data.isAuthenticated && data.user}
         <div class="flex items-center gap-3">

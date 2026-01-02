@@ -33,81 +33,92 @@ This implementation allows you to:
 
 4. **Server Utilities** (`src/lib/server/`)
    - `auth.ts`: Session management and OAuth flow
-   - `github.ts`: GitHub API interactions via Octokit
    - `micropub.ts`: Micropub request transformation
 
-## Setup Instructions
+5. **Storage Backends** (`src/lib/server/storage/`)
+   - Abstraction layer for content storage
+   - GitHub backend (production)
+   - File backend (local development)
+   - Test backend (unit tests)
 
-**Important:**
+## Storage Backends
 
-- `.env` (committed) contains placeholder values for build-time type generation
-- `.env.local` (gitignored) should contain your real secrets for local development
-- For production, set real values in Cloudflare Pages dashboard
-- Environment variables are loaded at **runtime** but must be declared at **build time**
-- Use different OAuth apps for development and production
-- Generate a strong random secret for `SESSION_SECRET` using `openssl rand -base64 32`
+The Micropub implementation uses a pluggable storage backend system that separates the content storage logic from the API logic. This allows for different storage mechanisms depending on the environment.
 
-### 3. Verify Dependencies
+### Available Backends
 
-The following dependencies are required and should already be installed:
+#### 1. GitHub Backend (Production)
+- **When**: Production environment or when `MICROPUB_BACKEND=github`
+- **Requires**: GitHub OAuth token, `GITHUB_OWNER` and `GITHUB_REPO` env vars
+- **Storage**: Commits directly to GitHub repository via API
+- **Posts**: `src/content/blog/YYYY-MM-DD-slug.md`
+- **Images**: `static/images/blog/filename.ext`
+
+#### 2. File Backend (Local Development)
+- **When**: Development mode or when `MICROPUB_BACKEND=file`
+- **Requires**: No authentication needed
+- **Storage**: Writes directly to local filesystem
+- **Posts**: `src/content/blog/YYYY-MM-DD-slug.md`
+- **Images**: `static/images/blog/filename.ext`
+- **Use case**: Local development without GitHub API calls
+
+#### 3. Test Backend (Testing)
+- **When**: `MICROPUB_BACKEND=test` or injected in tests
+- **Requires**: Nothing
+- **Storage**: In-memory only (data lost when process ends)
+- **Use case**: Unit tests without filesystem or network I/O
+
+### Backend Selection
+
+The backend is automatically selected based on environment:
+
+1. **Environment variable override**: Set `MICROPUB_BACKEND` to `github`, `file`, or `test`
+2. **Auto-detection** (if no env var set):
+   - **Dev mode** (`bun run dev`): File backend
+   - **Production**: GitHub backend
+
+Examples:
 
 ```bash
-bun add @octokit/rest iron-session
-```
+# Use file backend explicitly
+MICROPUB_BACKEND=file bun run dev
 
-Existing dependencies used:
+# Use GitHub backend in development (requires authentication)
+MICROPUB_BACKEND=github bun run dev
 
-- `unified`, `remark-parse`, `remark-html` (for markdown rendering)
-- `lucide-svelte` (for icons)
-
-### 4. Development
-
-Start the development server:
-
-```bash
+# Default: auto-detects (file in dev, GitHub in production)
 bun run dev
 ```
 
-Navigate to:
+### Testing with Different Backends
 
-- `http://localhost:5173/auth/login` - Start OAuth flow
-- `http://localhost:5173/editor` - Blog editor (publicly accessible, authentication required to publish)
+```typescript
+// Unit test example
+import { TestStorageBackend } from '$lib/server/storage/test';
 
-### 5. Production Deployment
+const backend = new TestStorageBackend();
+await backend.createOrUpdateFile('test.md', 'content', 'message');
 
-#### Cloudflare Pages
+// Assert stored content
+expect(backend.getFile('test.md')).toBe('content');
+```
 
-1. Set environment variables in Cloudflare Pages dashboard:
-   - Go to your Pages project → Settings → Environment variables
-   - Add all variables from `.env` (use production values)
+### Environment Configuration
 
-2. Update OAuth callback URL:
-   - Update your GitHub OAuth app's callback URL to `https://yourdomain.com/auth/callback`
-   - Update `PUBLIC_APP_URL` to `https://yourdomain.com`
+Add to your `.env` file:
 
-3. Deploy:
+```bash
+# Optional: Override backend selection
+# Options: github, file, test
+# Default: auto-detects (file in dev, github in production)
+MICROPUB_BACKEND=file
 
-   ```bash
-   bun run build
-   ```
+# GitHub backend configuration (required for production)
+GITHUB_OWNER=your_github_username
+GITHUB_REPO=your_repository_name  # Optional, defaults to OWNER.github.io
+```
 
-## Usage
-
-### Using the Web Editor
-
-1. **Navigate to `/editor`**: The editor is publicly accessible for drafting
-2. **Login** (required to publish): Click "Login" in the header and authorize the GitHub OAuth app
-3. **Create a post**:
-   - Enter title (slug auto-generates, or customize)
-   - Add description (optional)
-   - Add categories (comma-separated, optional)
-   - Write content in markdown
-   - Switch to Preview tab to see rendered output (rendered client-side in your browser)
-   - Upload images using the "Upload Image" button (requires authentication)
-4. **Publish**: Click "Create Post" (requires authentication)
-5. **View post**: Click the link in the success message
-
-### Using Micropub Clients
+## Using Micropub Clients
 
 Any Micropub-compatible client can publish to your blog:
 
@@ -168,22 +179,12 @@ Images uploaded through the editor or media endpoint are stored in:
    - State parameter in OAuth flow
    - Validated on callback
 
-6. **Client-Side Rendering**:
-   - Markdown preview rendered in browser (no server interaction)
-   - No sensitive data exposed in preview rendering
-
-### Images not uploading
-
-- Check repository permissions
-- Verify `static/images/blog/` directory exists (will be created automatically)
-- Check file size limits
-
 ## Future Enhancements
 
 Possible improvements:
 
 - **IndieAuth**: Add IndieAuth support for broader compatibility
-- **Draft support**: Save drafts without publishing
+- **Publishing support**: Allow publishing drafts
 - **Post editing**: Load and edit existing posts
 - **Post deletion**: Delete posts through the editor
 - **Rich media**: Support for videos, embeds

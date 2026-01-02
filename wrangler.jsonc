@@ -7,7 +7,7 @@
     "directory": "./.cloudflare/public",
     "binding": "ASSETS"
   },
-  "keep_vars": true
+  "keep_vars": true,
   "build": {
     "command": "bun run build"
   },

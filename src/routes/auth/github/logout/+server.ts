@@ -7,5 +7,5 @@ export const GET: RequestHandler = async (event) => {
   clearSession(event);
 
   // Redirect to home
-  redirect(302, '/');
+  redirect(302, '/editor');
 };

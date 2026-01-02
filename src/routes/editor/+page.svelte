@@ -1,8 +1,12 @@
 <script lang="ts">
-  import { Upload } from 'lucide-svelte';
-  import { unified } from 'unified';
-  import remarkParse from 'remark-parse';
   import remarkHtml from 'remark-html';
+  import remarkParse from 'remark-parse';
+  import type { PageData } from './$types';
+  import { Upload } from 'lucide-svelte';
+  import { resolve } from '$app/paths';
+  import { unified } from 'unified';
+
+  let { data }: { data: PageData } = $props();
 
   // Form state
   let title = $state('');
@@ -151,19 +155,44 @@
   <div class="mb-8 flex items-center justify-between">
     <h1 class="preset-typo-display-1">Blog Editor</h1>
     <div class="flex items-center gap-4">
-      <a href="/auth/github/login" class="anchor text-sm">Login</a>
-      <a href="/auth/github/logout" class="anchor text-sm">Logout</a>
+      {#if data.isAuthenticated && data.user}
+        <div class="flex items-center gap-3">
+          <img
+            src={data.user.avatar_url}
+            alt={data.user.name || data.user.login}
+            class="size-8 rounded-full"
+          />
+          <span class="text-sm text-surface-700-300">
+            {data.user.name || data.user.login}
+          </span>
+        </div>
+        <a
+          data-sveltekit-reload
+          href={resolve('/auth/github/logout')}
+          class="rounded-lg border border-surface-200-800 px-4 py-2 text-sm hover:bg-surface-100-900"
+        >
+          Logout
+        </a>
+      {:else}
+        <a
+          data-sveltekit-reload
+          href={resolve('/auth/github/login')}
+          class="rounded-lg border border-primary-300-700 bg-primary-500 px-4 py-2 text-sm text-white hover:bg-primary-600"
+        >
+          Login with GitHub
+        </a>
+      {/if}
     </div>
   </div>
 
   {#if error}
-    <div class="mb-4 rounded-lg bg-error-50-950 p-4 text-error-900-50">
+    <div class="text-error-900-50 mb-4 rounded-lg bg-error-50-950 p-4">
       {error}
     </div>
   {/if}
 
   {#if success}
-    <div class="mb-4 rounded-lg bg-success-50-950 p-4 text-success-900-50">
+    <div class="text-success-900-50 mb-4 rounded-lg bg-success-50-950 p-4">
       {success}
     </div>
   {/if}
@@ -178,7 +207,7 @@
         id="title"
         bind:value={title}
         required
-        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
       />
     </div>
 
@@ -193,7 +222,7 @@
           bind:value={slug}
           required
           disabled={autoSlug}
-          class="flex-1 rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+          class="flex-1 rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50"
         />
         <label class="flex items-center gap-2 text-sm text-surface-700-300">
           <input type="checkbox" bind:checked={autoSlug} class="rounded" />
@@ -211,7 +240,7 @@
         id="description"
         bind:value={description}
         placeholder="Short preview description"
-        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
       />
     </div>
 
@@ -224,7 +253,7 @@
         id="categories"
         bind:value={categories}
         placeholder="Comma-separated (e.g., ruby, rails, web)"
-        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
       />
     </div>
 
@@ -233,7 +262,9 @@
         <label for="content" class="text-sm font-medium text-surface-700-300">
           Content (Markdown) <span class="text-error-500">*</span>
         </label>
-        <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200-800 bg-surface-50-950 px-3 py-1 text-sm text-surface-700-300 hover:bg-surface-100-900">
+        <label
+          class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200-800 bg-surface-50-950 px-3 py-1 text-sm text-surface-700-300 hover:bg-surface-100-900"
+        >
           <Upload class="h-4 w-4" />
           {uploadingImage ? 'Uploading...' : 'Upload Image'}
           <input
@@ -275,15 +306,16 @@
           bind:value={content}
           required
           rows="20"
-          class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 font-mono text-sm text-surface-950-50 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 font-mono text-sm text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
         ></textarea>
       {/if}
 
       <!-- Preview mode -->
       {#if activeTab === 'preview'}
         <div
-          class="prose prose-sm dark:prose-invert min-h-[500px] w-full rounded-lg border border-surface-200-800 bg-surface-50-950 p-4"
+          class="prose prose-sm min-h-125 w-full rounded-lg border border-surface-200-800 bg-surface-50-950 p-4 dark:prose-invert"
         >
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
           {@html previewHtml}
         </div>
       {/if}
@@ -291,7 +323,7 @@
 
     <div class="flex justify-end gap-4">
       <a
-        href="/"
+        href={resolve('/')}
         class="rounded-lg border border-surface-200-800 px-6 py-2 text-surface-700-300 hover:bg-surface-100-900"
       >
         Cancel

@@ -1,4 +1,4 @@
-import { GITHUB_OWNER } from '$env/dynamic/private';
+import { GITHUB_OWNER } from '$env/static/private';
 
 export interface MicropubProperties {
   name?: string | string[];
@@ -94,8 +94,7 @@ export function parseMicropubRequest(request: MicropubRequest): BlogPost {
   // Support both JSON format (properties) and form-encoded format (direct fields)
   const props = request.properties || {};
 
-  const title =
-    normalizeProperty(props.name || request.name) || 'Untitled Post';
+  const title = normalizeProperty(props.name || request.name) || 'Untitled Post';
   const content = normalizeContent(props.content || request.content);
   const rawSlug = normalizeProperty(props.slug || request.slug);
   const slug = rawSlug || generateSlug(title);

@@ -5,6 +5,7 @@ This document explains how to set up and use the GitHub OAuth authentication and
 ## Overview
 
 This implementation allows you to:
+
 - **Authenticate** via GitHub OAuth to access the blog editor
 - **Create blog posts** through a web-based editor with live markdown preview
 - **Upload images** directly to your repository
@@ -14,7 +15,7 @@ This implementation allows you to:
 
 ### Components
 
-1. **Authentication Layer** (`/auth/*`)
+1. **Authentication Layer** (`/auth/github/*`)
    - GitHub OAuth login/callback/logout
    - Encrypted session cookies using iron-session
    - Repository ownership verification
@@ -37,40 +38,8 @@ This implementation allows you to:
 
 ## Setup Instructions
 
-### 1. Create GitHub OAuth Application
-
-1. Go to https://github.com/settings/developers
-2. Click "New OAuth App"
-3. Fill in the application details:
-   - **Application name**: Your Blog Editor (or any name)
-   - **Homepage URL**: `https://yourdomain.com` (or `http://localhost:5173` for development)
-   - **Authorization callback URL**: `https://yourdomain.com/auth/callback` (or `http://localhost:5173/auth/callback`)
-4. Click "Register application"
-5. Copy the **Client ID**
-6. Click "Generate a new client secret" and copy the **Client Secret**
-
-### 2. Configure Environment Variables
-
-**For local development**, create a `.env.local` file in the root of your project (use `.env.example` as a template):
-
-```bash
-# GitHub OAuth Application Credentials
-GITHUB_CLIENT_ID=your_github_oauth_client_id_here
-GITHUB_CLIENT_SECRET=your_github_oauth_client_secret_here
-
-# GitHub Repository Configuration
-GITHUB_OWNER=your_github_username
-GITHUB_REPO=your_repository_name
-
-# Session Encryption
-# Generate a random secret: openssl rand -base64 32
-SESSION_SECRET=your_random_32_char_or_longer_secret_key_here
-
-# Application URL
-PUBLIC_APP_URL=http://localhost:5173
-```
-
 **Important:**
+
 - `.env` (committed) contains placeholder values for build-time type generation
 - `.env.local` (gitignored) should contain your real secrets for local development
 - For production, set real values in Cloudflare Pages dashboard
@@ -87,6 +56,7 @@ bun add @octokit/rest iron-session
 ```
 
 Existing dependencies used:
+
 - `unified`, `remark-parse`, `remark-html` (for markdown rendering)
 - `lucide-svelte` (for icons)
 
@@ -99,6 +69,7 @@ bun run dev
 ```
 
 Navigate to:
+
 - `http://localhost:5173/auth/login` - Start OAuth flow
 - `http://localhost:5173/editor` - Blog editor (publicly accessible, authentication required to publish)
 
@@ -115,6 +86,7 @@ Navigate to:
    - Update `PUBLIC_APP_URL` to `https://yourdomain.com`
 
 3. Deploy:
+
    ```bash
    bun run build
    ```
@@ -168,6 +140,7 @@ curl -X POST https://yourdomain.com/micropub \
 ### Image Upload
 
 Images uploaded through the editor or media endpoint are stored in:
+
 - Path: `static/images/blog/YYYY-MM-DD-filename.ext`
 - Public URL: `/images/blog/YYYY-MM-DD-filename.ext`
 
@@ -199,62 +172,16 @@ Images uploaded through the editor or media endpoint are stored in:
    - Markdown preview rendered in browser (no server interaction)
    - No sensitive data exposed in preview rendering
 
-## Troubleshooting
-
-### "Unauthorized" errors
-- Check that you're logged in: `/auth/login`
-- Verify environment variables are set correctly
-- Check GitHub OAuth app settings
-
-### "You do not have access to this repository"
-- Verify `GITHUB_OWNER` and `GITHUB_REPO` match your repository
-- Ensure you own the repository or have admin access
-- Check that OAuth app has `repo` scope
-
-### Build fails with environment variable errors
-- This is expected if `.env` is not configured
-- Set up `.env` file with all required variables
-- For type checking without .env, these errors can be ignored
-
-### Session/cookie issues
-- Clear browser cookies
-- Check `SESSION_SECRET` is set
-- Verify cookie settings (secure flag requires HTTPS in production)
-
 ### Images not uploading
+
 - Check repository permissions
 - Verify `static/images/blog/` directory exists (will be created automatically)
 - Check file size limits
 
-## File Structure
-
-```
-src/
-├── hooks.server.ts                 # Session middleware
-├── app.d.ts                        # TypeScript types (Locals interface)
-├── lib/
-│   └── server/
-│       ├── auth.ts                 # OAuth and session utilities
-│       ├── github.ts               # GitHub API wrapper
-│       └── micropub.ts             # Micropub transformations
-└── routes/
-    ├── auth/
-    │   ├── login/+server.ts        # OAuth initiation
-    │   ├── callback/+server.ts     # OAuth callback handler
-    │   └── logout/+server.ts       # Logout handler
-    ├── micropub/
-    │   ├── +server.ts              # Main Micropub endpoint
-    │   └── media/+server.ts        # Image upload endpoint
-    ├── editor/
-    │   ├── +page.svelte            # Editor UI
-    │   └── +page.server.ts         # Auth guard
-    └── api/
-        └── preview/+server.ts      # Markdown preview API
-```
-
 ## Future Enhancements
 
 Possible improvements:
+
 - **IndieAuth**: Add IndieAuth support for broader compatibility
 - **Draft support**: Save drafts without publishing
 - **Post editing**: Load and edit existing posts

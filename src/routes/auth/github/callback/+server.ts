@@ -38,11 +38,11 @@ export const GET: RequestHandler = async (event) => {
       user,
       githubToken: token
     });
-
-    // Redirect to editor
-    redirect(302, '/editor');
   } catch (err) {
     console.error('OAuth callback error:', err);
     error(500, 'Authentication failed');
   }
+
+  // Redirect to editor (outside try-catch to avoid catching the redirect)
+  redirect(302, '/editor');
 };

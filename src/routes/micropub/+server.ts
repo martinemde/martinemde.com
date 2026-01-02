@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { PUBLIC_APP_URL } from '$env/dynamic/public';
+import { PUBLIC_APP_URL } from '$env/static/public';
 import {
   parseMicropubRequest,
   generateMarkdownFile,
@@ -54,7 +54,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
       const formData = await request.formData();
       micropubRequest = Object.fromEntries(formData);
     } else {
-      error(415, 'Unsupported content type. Use application/json or application/x-www-form-urlencoded');
+      error(
+        415,
+        'Unsupported content type. Use application/json or application/x-www-form-urlencoded'
+      );
     }
 
     // Parse Micropub request to blog post data
@@ -69,7 +72,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     // Create or update file in GitHub
     const commitMessage = generateCommitMessage(post, exists);
-    const fileUrl = await createOrUpdateFile({
+    await createOrUpdateFile({
       path: filePath,
       content,
       message: commitMessage,

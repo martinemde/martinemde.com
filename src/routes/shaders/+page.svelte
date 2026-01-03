@@ -7,8 +7,10 @@
     { name: 'Cursor Rectangle', filename: 'cursor_rectangle.glsl', enabled: true },
     { name: 'Cursor Smear', filename: 'cursor_smear_rocket.glsl', enabled: true },
     { name: 'Focus Cursor', filename: 'focus_cursor.glsl', enabled: true },
-    { name: 'CRT Blur', filename: 'blur_crt.glsl', enabled: true },
-    { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false }
+    { name: 'In-Game CRT Cursor', filename: 'in_game_crt_cursor.glsl', enabled: false },
+    { name: 'Blur CRT', filename: 'blur_crt.glsl', enabled: true },
+    { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false },
+    { name: 'Blur Bloom', filename: 'blur_bloom.glsl', enabled: false }
   ];
 
   let shaders = $state<ShaderInfo[]>([]);
@@ -49,12 +51,12 @@
   });
 </script>
 
-<div class="container mx-auto p-8">
+<div class="container mx-auto prose-lg p-8">
   <h1 class="mb-8 h1">Ghostty Shaders</h1>
 
   <p>
-    This canvas renders ghostty shaders using WebGL. There are some slight differences that can
-    cause issues, so not all shaders that work in Ghostty will work here without cleanup.
+    This canvas renders ghostty shaders using WebGL. Use the menu in the top left to enable or
+    disable. Check the debug menu in the bottom right.<i>There will be glitches.</i>
   </p>
 
   <div class="relative card py-4">
@@ -74,6 +76,22 @@
       </div>
     {/if}
   </div>
+
+  <p>
+    There are some slight differences that can cause issues. Many Ghostty shaders don't load
+    directly.
+  </p>
+  <p>
+    Often the cleanup is just explicitly setting types correctly. It seems like WebGL does not like
+    coercing integers to float, while Ghostty does this fine.
+  </p>
+  <p>
+    Thanks to <a href="https://github.com/0xhckr">0xhckr</a> for
+    <a href="https://github.com/0xhckr/ghostty-shaders">collecting</a> some excellent shaders,
+    <a href="https://github.com/0xhckr/ghostty-shaders/blob/main/in-game-crt-cursor.glsl">some</a>
+    of
+    <a href="https://github.com/0xhckr/ghostty-shaders/blob/main/in-game-crt.glsl">which</a> I load here.
+  </p>
 
   <div class="mt-8">
     <h2 class="mb-4 h2">Available Uniforms</h2>

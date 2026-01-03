@@ -56,6 +56,7 @@
   let showDebug = $state(false);
   let showShaderMenu = $state(false);
   let uniformManager = new UniformManager();
+  let renderVersion = $state(0);
 
   // Helper to get current uniform values
   const getCurrentUniforms = () => {
@@ -272,7 +273,7 @@
   };
 
   // Render frame (multi-pass shader chain)
-  const render = () => {
+  const render = (capturedVersion: number) => {
     if (!gl || programs.length === 0) return;
 
     gl.viewport(0, 0, canvas?.width || width, canvas?.height || height);
@@ -306,12 +307,25 @@
       }
     }
 
-    animationFrameId = requestAnimationFrame(render);
+    // Only schedule next frame if version hasn't changed (no restart happened)
+    if (capturedVersion === renderVersion) {
+      animationFrameId = requestAnimationFrame(() => render(capturedVersion));
+    }
   };
 
   // Start rendering
   const start = () => {
     if (!gl || !canvas) return;
+
+    // Increment version to stop any existing render loops
+    renderVersion++;
+    const currentVersion = renderVersion;
+
+    // Cancel any pending animation frame
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = null;
+    }
 
     // Clean up old programs
     programs.forEach((prog) => gl?.deleteProgram(prog));
@@ -346,14 +360,17 @@
       createRenderTargets(programs.length - 1);
     }
 
-    // Start render loop
+    // Start render loop with current version
     startTime = performance.now();
     focusTime = 0;
-    render();
+    render(currentVersion);
   };
 
   // Stop rendering
   const stop = () => {
+    // Increment version to stop any in-flight render calls from scheduling more frames
+    renderVersion++;
+
     if (animationFrameId !== null) {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
@@ -487,10 +504,15 @@
     const currentShaderCodes = activeShaderCodes;
 
     // Use untrack to prevent infinite loops from start() modifying state
+    // start() will call stop() internally to prevent race conditions
     if (currentShaderCodes.length > 0 && gl) {
       untrack(() => {
-        stop();
         start();
+      });
+    } else if (gl) {
+      // If no shaders enabled, just stop rendering
+      untrack(() => {
+        stop();
       });
     }
   });

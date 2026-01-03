@@ -16,10 +16,7 @@ async function createCodeChallenge(verifier: string): Promise<string> {
 }
 
 // Helper to create mock request event
-function createRequestEvent(
-  body: any,
-  contentType: string = 'application/json'
-): RequestEvent {
+function createRequestEvent(body: any, contentType: string = 'application/json'): RequestEvent {
   const url = new URL('https://example.com/auth/indieauth/token');
 
   let requestBody: BodyInit;
@@ -389,6 +386,113 @@ describe('IndieAuth Token Endpoint', () => {
       expect(tokenData?.githubToken).toBe('github_token_123');
       expect(tokenData?.me).toBe('https://example.com/');
       expect(tokenData?.scope).toBe('create update');
+    });
+  });
+
+  describe('Security: Authorization Code Replay Protection', () => {
+    it('should prevent authorization code reuse', async () => {
+      const authCode = await createAuthCode({
+        githubToken: 'github_token_123',
+        me: 'https://example.com/',
+        clientId: 'https://client.example.com/',
+        redirectUri: 'https://client.example.com/callback'
+      });
+
+      const requestParams = {
+        grant_type: 'authorization_code',
+        code: authCode,
+        client_id: 'https://client.example.com/',
+        redirect_uri: 'https://client.example.com/callback'
+      };
+
+      // First use of the code should succeed
+      const event1 = createRequestEvent(requestParams);
+      const response1 = await POST(event1);
+      expect(response1.status).toBe(200);
+
+      // Second use of the same code should fail
+      const event2 = createRequestEvent(requestParams);
+      try {
+        await POST(event2);
+        expect.fail('Should have thrown an error for reused code');
+      } catch (e: any) {
+        expect(e.status).toBe(400);
+        expect(e.body.message).toContain('Invalid or expired authorization code');
+      }
+    });
+
+    it('should invalidate code after first successful use', async () => {
+      const authCode = await createAuthCode({
+        githubToken: 'github_token_456',
+        me: 'https://example.com/',
+        clientId: 'https://client.example.com/',
+        redirectUri: 'https://client.example.com/callback'
+      });
+
+      const requestParams = {
+        grant_type: 'authorization_code',
+        code: authCode,
+        client_id: 'https://client.example.com/',
+        redirect_uri: 'https://client.example.com/callback'
+      };
+
+      // Exchange code for token
+      const event1 = createRequestEvent(requestParams);
+      await POST(event1);
+
+      // Attempt to reuse code after 1 second
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      const event2 = createRequestEvent(requestParams);
+      try {
+        await POST(event2);
+        expect.fail('Should have thrown an error for reused code');
+      } catch (e: any) {
+        expect(e.status).toBe(400);
+        expect(e.body.message).toContain('Invalid or expired authorization code');
+      }
+    });
+  });
+
+  describe('Security: Timing Attack Protection', () => {
+    it('should have consistent timing for invalid vs valid codes', async () => {
+      // This test ensures we don't leak information via timing
+      const validCode = await createAuthCode({
+        githubToken: 'github_token_123',
+        me: 'https://example.com/',
+        clientId: 'https://client.example.com/',
+        redirectUri: 'https://client.example.com/callback'
+      });
+
+      // Measure time for valid code
+      const start1 = Date.now();
+      const event1 = createRequestEvent({
+        grant_type: 'authorization_code',
+        code: validCode,
+        client_id: 'https://client.example.com/',
+        redirect_uri: 'https://client.example.com/callback'
+      });
+      await POST(event1);
+      const time1 = Date.now() - start1;
+
+      // Measure time for invalid code
+      const start2 = Date.now();
+      const event2 = createRequestEvent({
+        grant_type: 'authorization_code',
+        code: 'invalid_code_xxx',
+        client_id: 'https://client.example.com/',
+        redirect_uri: 'https://client.example.com/callback'
+      });
+      try {
+        await POST(event2);
+      } catch (e) {
+        // Expected to fail
+      }
+      const time2 = Date.now() - start2;
+
+      // Timing should be relatively similar (within 100ms)
+      // This is a loose check - in production use constant-time comparison
+      expect(Math.abs(time1 - time2)).toBeLessThan(100);
     });
   });
 });

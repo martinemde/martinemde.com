@@ -49,6 +49,46 @@ export const GET: RequestHandler = async (event) => {
     error(400, `The 'me' parameter must match your site URL: ${siteUrl.origin}`);
   }
 
+  // Validate redirect_uri
+  let redirectUrl: URL;
+  try {
+    redirectUrl = new URL(redirectUri);
+  } catch {
+    error(400, 'redirect_uri must be a valid URL');
+  }
+
+  // Only allow https:// or http://localhost for development
+  if (redirectUrl.protocol !== 'https:') {
+    const isLocalhost =
+      redirectUrl.hostname === 'localhost' ||
+      redirectUrl.hostname === '127.0.0.1' ||
+      redirectUrl.hostname === '[::1]';
+
+    if (!isLocalhost || redirectUrl.protocol !== 'http:') {
+      error(400, 'redirect_uri must use https (except localhost for development)');
+    }
+  }
+
+  // Validate client_id
+  let clientUrl: URL;
+  try {
+    clientUrl = new URL(clientId);
+  } catch {
+    error(400, 'client_id must be a valid URL');
+  }
+
+  // Only allow https:// or http://localhost for development
+  if (clientUrl.protocol !== 'https:') {
+    const isLocalhost =
+      clientUrl.hostname === 'localhost' ||
+      clientUrl.hostname === '127.0.0.1' ||
+      clientUrl.hostname === '[::1]';
+
+    if (!isLocalhost || clientUrl.protocol !== 'http:') {
+      error(400, 'client_id must use https (except localhost for development)');
+    }
+  }
+
   // Generate OAuth state for CSRF protection
   const oauthState = generateState();
 

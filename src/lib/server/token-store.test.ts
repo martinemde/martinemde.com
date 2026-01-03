@@ -31,11 +31,7 @@ describe('Token Store', () => {
 
   describe('getAccessToken', () => {
     it('should retrieve a stored token', () => {
-      const tokenId = storeAccessToken(
-        'github_token_123',
-        'https://example.com/',
-        'create update'
-      );
+      const tokenId = storeAccessToken('github_token_123', 'https://example.com/', 'create update');
 
       const result = getAccessToken(tokenId);
 

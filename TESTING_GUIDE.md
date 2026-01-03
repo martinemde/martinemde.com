@@ -3,12 +3,14 @@
 ## What We've Built
 
 ✅ **Complete IndieAuth Implementation**
+
 - Authorization endpoint with PKCE support
 - Token endpoint with secure token storage
 - GitHub OAuth integration
 - Full spec compliance
 
 ✅ **Micropub Spec Compliance**
+
 - Bearer token authentication (Authorization header) ✓
 - access_token in query/body parameters ✓
 - Form-encoded requests ✓
@@ -17,6 +19,7 @@
 - Proper HTTP status codes (201, 401, 415, etc.) ✓
 
 ✅ **Security Features**
+
 - GitHub tokens never exposed to clients
 - PKCE support
 - Token expiration (30 days)
@@ -26,12 +29,15 @@
 ## Test Status
 
 ### Unit Tests Created
+
 - ✅ Token store tests (8/9 passing)
 - ✅ Micropub endpoint tests (9/16 passing)
 - ✅ IndieAuth token endpoint tests (5/17 passing)
 
 ### Test Infrastructure Issues
+
 The failing tests are due to SvelteKit testing infrastructure challenges:
+
 - Mock RequestEvent setup
 - Error handling in tests (`error()` function)
 - FormData encoding for form-urlencoded requests
@@ -45,11 +51,13 @@ The best way to verify everything works is to test with real micropub clients:
 ### Option 1: Test Locally with Dev Server
 
 1. **Start dev server**:
+
    ```bash
    bun run dev
    ```
 
 2. **Update app.html for local testing** (temporarily):
+
    ```html
    <link rel="authorization_endpoint" href="http://localhost:5173/auth/indieauth/authorize" />
    <link rel="token_endpoint" href="http://localhost:5173/auth/indieauth/token" />
@@ -65,6 +73,7 @@ The best way to verify everything works is to test with real micropub clients:
 ### Option 2: Deploy and Test on Production
 
 1. **Deploy to Cloudflare Pages**:
+
    ```bash
    bun run build
    # Deploy via Cloudflare dashboard or CLI
@@ -148,6 +157,7 @@ Once deployed, you can run official conformance tests:
 ### Expected Test Results
 
 ✅ **Should Pass**:
+
 - Endpoint discovery
 - Authentication (Bearer token)
 - Create h-entry (JSON)
@@ -156,6 +166,7 @@ Once deployed, you can run official conformance tests:
 - Media endpoint discovery
 
 ❓ **May Need Implementation**:
+
 - Update operations (not implemented yet)
 - Delete operations (not implemented yet)
 - Source query (not implemented yet)
@@ -164,6 +175,7 @@ Once deployed, you can run official conformance tests:
 ## What to Watch For
 
 ### Success Indicators
+
 - GitHub OAuth redirect works
 - Authorization code is generated
 - Token exchange succeeds
@@ -173,18 +185,22 @@ Once deployed, you can run official conformance tests:
 ### Common Issues
 
 **1. CORS Errors**
+
 - If testing locally, micropub clients may hit CORS issues
 - Deploy to production for best results
 
 **2. Redirect URI Mismatch**
+
 - Ensure client's redirect_uri matches exactly
 - Check for trailing slashes
 
 **3. Token Not Found**
+
 - Tokens are in-memory (lost on server restart)
 - Re-authenticate if server restarted
 
 **4. Repository Access**
+
 - Ensure you're logged in as the repo owner
 - Check `GITHUB_OWNER` and `GITHUB_REPO` env vars
 
@@ -193,6 +209,7 @@ Once deployed, you can run official conformance tests:
 ### Enable Verbose Logging
 
 Add to your endpoints:
+
 ```typescript
 console.log('Auth request:', { me, clientId, redirectUri });
 console.log('Token exchange:', { code, clientId });
@@ -202,16 +219,19 @@ console.log('Micropub request:', micropubRequest);
 ### Check Server Logs
 
 In Cloudflare Pages:
+
 - Functions → Logs
 - Look for errors during auth flow
 
 In local dev:
+
 - Watch terminal output
 - Check for error messages
 
 ### Verify Token Storage
 
 Add a debug endpoint (remove before production!):
+
 ```typescript
 // src/routes/debug/tokens/+server.ts
 import { json } from '@sveltejs/kit';

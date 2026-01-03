@@ -152,10 +152,19 @@ export async function createAuthCode(data: Omit<AuthCode, 'issuedAt'>): Promise<
   });
 }
 
+// Store for used authorization codes (prevents replay attacks)
+const usedAuthCodes = new Set<string>();
+
 /**
  * Verify and decode an IndieAuth authorization code
+ * Ensures codes can only be used once
  */
 export async function verifyAuthCode(code: string): Promise<AuthCode | null> {
+  // Check if code has already been used
+  if (usedAuthCodes.has(code)) {
+    return null;
+  }
+
   try {
     const data = await unsealData<AuthCode>(code, {
       password: SESSION_SECRET!,
@@ -166,6 +175,14 @@ export async function verifyAuthCode(code: string): Promise<AuthCode | null> {
     if (Date.now() - data.issuedAt > 600000) {
       return null;
     }
+
+    // Mark code as used
+    usedAuthCodes.add(code);
+
+    // Clean up old codes after 15 minutes (longer than TTL to prevent race conditions)
+    setTimeout(() => {
+      usedAuthCodes.delete(code);
+    }, 900000);
 
     return data;
   } catch {

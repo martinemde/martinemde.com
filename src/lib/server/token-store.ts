@@ -80,6 +80,23 @@ export function revokeAccessToken(tokenId: string): boolean {
 }
 
 /**
+ * Revoke all tokens associated with a GitHub token
+ * Used on logout to invalidate all IndieAuth sessions
+ */
+export function revokeTokensByGithubToken(githubToken: string): number {
+  let revoked = 0;
+
+  for (const [tokenId, token] of tokenStore.entries()) {
+    if (token.githubToken === githubToken) {
+      tokenStore.delete(tokenId);
+      revoked++;
+    }
+  }
+
+  return revoked;
+}
+
+/**
  * Clean up expired tokens (run periodically)
  */
 export function cleanupExpiredTokens(): number {

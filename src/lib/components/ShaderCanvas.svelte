@@ -496,7 +496,12 @@
 
   <!-- Shader selection menu -->
   {#if shaders.length > 0}
-    <ShaderSelectionMenu bind:shaders bind:show={showShaderMenu} />
+    <ShaderSelectionMenu
+      bind:shaders
+      bind:cursorColor
+      bind:prevCursorColor
+      bind:show={showShaderMenu}
+    />
   {/if}
 
   <!-- Debug window -->

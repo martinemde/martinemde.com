@@ -47,53 +47,12 @@
 
     shaders = loadedShaders;
   });
-
-  // Helper functions for color conversion
-  function colorToHex(color: number[]): string {
-    const r = Math.round(color[0] * 255)
-      .toString(16)
-      .padStart(2, '0');
-    const g = Math.round(color[1] * 255)
-      .toString(16)
-      .padStart(2, '0');
-    const b = Math.round(color[2] * 255)
-      .toString(16)
-      .padStart(2, '0');
-    return `#${r}${g}${b}`;
-  }
-
-  function hexToColor(hex: string): number[] {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    return [r, g, b, 1.0];
-  }
 </script>
 
 <div class="container mx-auto p-8">
   <h1 class="mb-8 h1">Ghostty Shaders</h1>
 
-  <div class="mb-4 space-y-4">
-    <div class="grid grid-cols-2 gap-4">
-      <label class="label">
-        <span>Current Cursor Color</span>
-        <input
-          type="color"
-          value={colorToHex(cursorColor)}
-          onchange={(e) => (cursorColor = hexToColor(e.currentTarget.value))}
-        />
-      </label>
-
-      <label class="label">
-        <span>Previous Cursor Color (swaps on click)</span>
-        <input
-          type="color"
-          value={colorToHex(prevCursorColor)}
-          onchange={(e) => (prevCursorColor = hexToColor(e.currentTarget.value))}
-        />
-      </label>
-    </div>
-
+  <div class="mb-4">
     <label class="label">
       <span>Background Image URL</span>
       <input

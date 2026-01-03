@@ -52,7 +52,12 @@
 <div class="container mx-auto p-8">
   <h1 class="mb-8 h1">Ghostty Shaders</h1>
 
-  <div class="relative card p-4">
+  <p>
+    This canvas renders ghostty shaders using WebGL. There are some slight differences that can
+    cause issues, so not all shaders that work in Ghostty will work here without cleanup.
+  </p>
+
+  <div class="relative card py-4">
     {#if shaders.length > 0}
       <ShaderCanvas
         bind:shaders

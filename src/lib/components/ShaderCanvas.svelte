@@ -365,18 +365,27 @@
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
 
-    // Store if we're transitioning from unfocused to focused
+    // Capture focus state before any changes
     const wasUnfocused = !isFocused;
 
-    // Update cursor position FIRST (before focus animation starts)
-    prevCursorPos = { ...cursorPos };
-    cursorPos = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      width: cursorPos.width,
-      height: cursorPos.height
-    };
-    cursorChangeTime = (performance.now() - startTime) / 1000.0;
+    // Use a single timestamp for both cursor and focus animations
+    const currentTime = (performance.now() - startTime) / 1000.0;
+
+    // Calculate new cursor position
+    const newX = e.clientX - rect.left;
+    const newY = e.clientY - rect.top;
+
+    // Only update cursor change time if position actually changed
+    if (newX !== cursorPos.x || newY !== cursorPos.y) {
+      prevCursorPos = { ...cursorPos };
+      cursorPos = {
+        x: newX,
+        y: newY,
+        width: cursorPos.width,
+        height: cursorPos.height
+      };
+      cursorChangeTime = currentTime;
+    }
 
     // Swap colors if enabled
     if (swapColorsOnClick) {
@@ -385,10 +394,10 @@
       prevCursorColor = temp;
     }
 
-    // If clicking caused focus transition, set focus time AFTER cursor update
+    // If transitioning from unfocused to focused, set focus time
     if (wasUnfocused) {
       isFocused = true;
-      focusTime = (performance.now() - startTime) / 1000.0;
+      focusTime = currentTime;
     }
   };
 

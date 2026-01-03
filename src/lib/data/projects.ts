@@ -5,7 +5,10 @@
 import { resolve } from '$app/paths';
 import {
   Armchair,
+  Cat,
+  Code,
   Gem,
+  Ghost,
   FolderOpenDot,
   Shrimp,
   Volleyball,
@@ -49,6 +52,26 @@ export const projects: Project[] = [
     url: 'https://github.com/martinemde/dotfiles',
     linktext: 'martinemde/dotfiles',
     icon: FolderOpenDot
+  },
+  {
+    name: 'Ghostty Shaders',
+    description:
+      'A Ghostty shader emulator using WebGL. Built to help preview shaders for Ghostty on the web.',
+    url: resolve('/shaders'),
+    icon: Ghost
+  },
+  {
+    name: 'LLM FIM Tester',
+    description: 'A Fill-In-The-Middle tester for large language models powered by OpenRouter.',
+    url: resolve('/models'),
+    icon: Code
+  },
+  {
+    name: 'Toy LLM',
+    description:
+      'A Toy LLM proof-of-concept that uses only canned phrases to respond safely but still coherently.',
+    url: resolve('/toy'),
+    icon: Cat
   },
   {
     name: 'Tossball',

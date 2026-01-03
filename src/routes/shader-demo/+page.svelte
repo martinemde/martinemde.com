@@ -1,43 +1,18 @@
 <script lang="ts">
-  import ShaderCanvas from '$lib/components/ShaderCanvas.svelte';
+  import ShaderCanvas, { type ShaderInfo } from '$lib/components/ShaderCanvas.svelte';
   import { onMount } from 'svelte';
 
-  type ShaderInfo = {
-    name: string;
-    filename: string;
-    description: string;
-    enabled: boolean;
-  };
+  // Shader configurations with filenames
+  const shaderConfigs = [
+    { name: 'Focus Cursor', filename: 'focus_cursor.glsl', enabled: true },
+    { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false },
+    { name: 'Cursor Smear', filename: 'cursor_smear_rocket.glsl', enabled: true },
+    { name: 'CRT Blur', filename: 'blur_crt.glsl', enabled: true }
+  ];
 
-  let shaders = $state<ShaderInfo[]>([
-    {
-      name: 'Focus Cursor',
-      filename: 'focus_cursor.glsl',
-      description: 'Zooming cursor highlight on focus',
-      enabled: true
-    },
-    {
-      name: 'Blur Vignette',
-      filename: 'blur_vignette.glsl',
-      description: 'Vignette and bloom when unfocused',
-      enabled: false
-    },
-    {
-      name: 'Cursor Smear',
-      filename: 'cursor_smear_rocket.glsl',
-      description: 'Rocket trail when cursor moves',
-      enabled: false
-    },
-    {
-      name: 'CRT Blur',
-      filename: 'blur_crt.glsl',
-      description: 'Retro CRT effect when unfocused',
-      enabled: false
-    }
-  ]);
-
-  let shaderCode = $state<Map<string, string>>(new Map());
+  let shaders = $state<ShaderInfo[]>([]);
   let cursorColor = $state([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach
+  let prevCursorColor = $state([0.71, 0.733, 0.98, 1.0]); // Catppuccin Lavender
   let imageUrl = $state<string | null>('/images/editor-bg.png');
 
   // Load shader from file
@@ -45,7 +20,7 @@
     try {
       const response = await fetch(`/shaders/${filename}`);
       if (!response.ok) {
-        console.error(`Failed to load shader: ${filename}`);
+        console.error(`Failed to load shader: ${filename} (${response.status})`);
         return null;
       }
       return await response.text();
@@ -57,67 +32,67 @@
 
   // Load all shaders on mount
   onMount(async () => {
-    for (const shader of shaders) {
-      const code = await loadShader(shader.filename);
+    const loadedShaders: ShaderInfo[] = [];
+
+    for (const config of shaderConfigs) {
+      const code = await loadShader(config.filename);
       if (code) {
-        shaderCode.set(shader.filename, code);
+        loadedShaders.push({
+          name: config.name,
+          code,
+          enabled: config.enabled
+        });
       }
     }
-    // Trigger reactivity
-    shaderCode = new Map(shaderCode);
+
+    shaders = loadedShaders;
   });
 
-  // Get active shaders in order
-  const activeShaders = $derived(
-    shaders
-      .filter((s) => s.enabled && shaderCode.has(s.filename))
-      .map((s) => shaderCode.get(s.filename)!)
-  );
+  // Helper functions for color conversion
+  function colorToHex(color: number[]): string {
+    const r = Math.round(color[0] * 255)
+      .toString(16)
+      .padStart(2, '0');
+    const g = Math.round(color[1] * 255)
+      .toString(16)
+      .padStart(2, '0');
+    const b = Math.round(color[2] * 255)
+      .toString(16)
+      .padStart(2, '0');
+    return `#${r}${g}${b}`;
+  }
 
-  // Toggle shader enabled state
-  function toggleShader(index: number) {
-    shaders[index].enabled = !shaders[index].enabled;
+  function hexToColor(hex: string): number[] {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    return [r, g, b, 1.0];
   }
 </script>
 
 <div class="container mx-auto p-8">
-  <h1 class="mb-8 h1">Shader Canvas Demo</h1>
+  <h1 class="mb-8 h1">Ghostty Shaders</h1>
 
-  <div class="mb-6">
-    <h2 class="mb-3 h3">Active Shaders</h2>
-    <div class="space-y-2">
-      {#each shaders as shader, index}
-        <label class="flex cursor-pointer items-center gap-3 rounded-lg p-3 hover:bg-surface-100-900">
-          <input
-            type="checkbox"
-            class="checkbox"
-            checked={shader.enabled}
-            onchange={() => toggleShader(index)}
-          />
-          <div class="flex-1">
-            <div class="font-semibold">{shader.name}</div>
-            <div class="text-surface-600-400 text-sm">{shader.description}</div>
-          </div>
-        </label>
-      {/each}
+  <div class="mb-4 space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <label class="label">
+        <span>Current Cursor Color</span>
+        <input
+          type="color"
+          value={colorToHex(cursorColor)}
+          onchange={(e) => (cursorColor = hexToColor(e.currentTarget.value))}
+        />
+      </label>
+
+      <label class="label">
+        <span>Previous Cursor Color (swaps on click)</span>
+        <input
+          type="color"
+          value={colorToHex(prevCursorColor)}
+          onchange={(e) => (prevCursorColor = hexToColor(e.currentTarget.value))}
+        />
+      </label>
     </div>
-  </div>
-
-  <div class="mb-4 grid grid-cols-2 gap-4">
-    <label class="label">
-      <span>Cursor Color</span>
-      <input
-        type="color"
-        value="#f5a97f"
-        onchange={(e) => {
-          const hex = e.currentTarget.value;
-          const r = parseInt(hex.slice(1, 3), 16) / 255;
-          const g = parseInt(hex.slice(3, 5), 16) / 255;
-          const b = parseInt(hex.slice(5, 7), 16) / 255;
-          cursorColor = [r, g, b, 1.0];
-        }}
-      />
-    </label>
 
     <label class="label">
       <span>Background Image URL</span>
@@ -134,47 +109,23 @@
     </label>
   </div>
 
-  <div class="card p-4">
-    {#if activeShaders.length > 0}
+  <div class="card relative p-4">
+    {#if shaders.length > 0}
       <ShaderCanvas
-        fragmentShaders={activeShaders}
+        bind:shaders
         {imageUrl}
         width={800}
         height={600}
-        {cursorColor}
+        swapColorsOnClick={true}
         className="rounded-lg border-2 border-surface-400-600"
+        bind:cursorColor
+        bind:prevCursorColor
       />
     {:else}
-      <div class="bg-surface-100-900 flex h-[600px] w-[800px] items-center justify-center rounded-lg">
-        <p class="text-surface-600-400">Select at least one shader to see the effect</p>
+      <div class="flex h-150 w-200 items-center justify-center rounded-lg bg-surface-100-900">
+        <p class="text-surface-600-400">Loading shaders...</p>
       </div>
     {/if}
-  </div>
-
-  <div class="mt-8">
-    <h2 class="mb-4 h2">Instructions</h2>
-    <ul class="list">
-      <li><strong>Select shaders:</strong> Check/uncheck boxes to enable multiple shaders at once</li>
-      <li><strong>Shader order:</strong> Shaders are applied in the order shown (top to bottom)</li>
-      <li><strong>Click the canvas</strong> to move the cursor position (affects cursor-based shaders)</li>
-      <li><strong>Focus/blur:</strong> Click outside canvas to see unfocus effects (blur shaders)</li>
-      <li><strong>Cursor color:</strong> Change the color picker to customize cursor appearance</li>
-      <li>
-        <strong>Background image:</strong> Change the URL to use a different background (default is editor screenshot)
-      </li>
-      <li>
-        <strong>Multi-pass rendering:</strong> Each shader processes the output of the previous shader
-        in sequence
-      </li>
-    </ul>
-
-    <h3 class="mb-2 mt-6 h3">Shader Descriptions</h3>
-    <ul class="list">
-      <li><strong>Focus Cursor:</strong> Zooming cursor highlight animation when canvas gains focus</li>
-      <li><strong>Blur Vignette:</strong> Vignette and subtle bloom when canvas is unfocused</li>
-      <li><strong>Cursor Smear:</strong> Rocket trail effect following cursor movement</li>
-      <li><strong>CRT Blur:</strong> Retro CRT monitor effect when unfocused (scan lines, bloom, etc.)</li>
-    </ul>
   </div>
 
   <div class="mt-8">

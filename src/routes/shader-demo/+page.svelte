@@ -7,13 +7,13 @@
     { name: 'Focus Cursor', filename: 'focus_cursor.glsl', enabled: true },
     { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false },
     { name: 'Cursor Smear', filename: 'cursor_smear_rocket.glsl', enabled: true },
-    { name: 'CRT Blur', filename: 'blur_crt.glsl', enabled: true }
+    { name: 'CRT Blur', filename: 'blur_crt.glsl', enabled: true },
+    { name: 'Cursor Rectangle', filename: 'cursor_rectangle.glsl', enabled: true }
   ];
 
   let shaders = $state<ShaderInfo[]>([]);
   let cursorColor = $state([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach
   let prevCursorColor = $state([0.71, 0.733, 0.98, 1.0]); // Catppuccin Lavender
-  let imageUrl = $state<string | null>('/images/editor-bg.png');
 
   // Load shader from file
   async function loadShader(filename: string): Promise<string | null> {
@@ -52,27 +52,10 @@
 <div class="container mx-auto p-8">
   <h1 class="mb-8 h1">Ghostty Shaders</h1>
 
-  <div class="mb-4">
-    <label class="label">
-      <span>Background Image URL</span>
-      <input
-        class="input"
-        type="text"
-        placeholder="https://example.com/image.jpg or /path/to/image.jpg"
-        value={imageUrl || ''}
-        oninput={(e) => {
-          const value = e.currentTarget.value.trim();
-          imageUrl = value || null;
-        }}
-      />
-    </label>
-  </div>
-
   <div class="card relative p-4">
     {#if shaders.length > 0}
       <ShaderCanvas
         bind:shaders
-        {imageUrl}
         width={800}
         height={600}
         swapColorsOnClick={true}

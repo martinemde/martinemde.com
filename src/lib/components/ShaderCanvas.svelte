@@ -14,7 +14,7 @@
   // Props
   let {
     shaders = $bindable<ShaderInfo[]>([]),
-    imageUrl = null,
+    imageUrl = '/images/editor-bg.png',
     width = 800,
     height = 600,
     cursorColor = $bindable([1.0, 1.0, 1.0, 1.0]),

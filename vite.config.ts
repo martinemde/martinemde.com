@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   plugins: [tailwindcss(), sveltekit()],
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}'],
@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     setupFiles: ['./vitest-setup.ts']
   },
   resolve: {
-    // Use default conditions (including 'node') for tests, 'browser' for build
-    conditions: mode === 'test' ? undefined : ['browser']
+    // Always use browser conditions to properly resolve Svelte 5 client-side entry points
+    conditions: ['browser']
   }
 }));

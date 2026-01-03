@@ -14,8 +14,11 @@ node_modules
 Thumbs.db
 
 # Env
-.env
-.env.*
+# Follow Vite conventions:
+# - .env and .env.[mode] are committed (shared defaults)
+# - .env.local and .env.[mode].local are ignored (local overrides with secrets)
+.env.local
+.env.*.local
 !.env.example
 
 # Vite

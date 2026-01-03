@@ -15,33 +15,33 @@ import { TestStorageBackend } from './test';
  * @returns StorageBackend instance
  */
 export function createStorageBackend(token?: string): StorageBackend {
-	// Environment variable override
-	const backendType = process.env.MICROPUB_BACKEND;
+  // Environment variable override
+  const backendType = process.env.MICROPUB_BACKEND;
 
-	if (backendType === 'test') {
-		return new TestStorageBackend();
-	}
+  if (backendType === 'test') {
+    return new TestStorageBackend();
+  }
 
-	if (backendType === 'file') {
-		return new FileStorageBackend();
-	}
+  if (backendType === 'file') {
+    return new FileStorageBackend();
+  }
 
-	if (backendType === 'github') {
-		if (!token) {
-			throw new Error('GitHub backend requires authentication token');
-		}
-		return new GitHubStorageBackend(token);
-	}
+  if (backendType === 'github') {
+    if (!token) {
+      throw new Error('GitHub backend requires authentication token');
+    }
+    return new GitHubStorageBackend(token);
+  }
 
-	// Auto-detect based on environment
-	if (dev) {
-		// Local development: use file backend
-		return new FileStorageBackend();
-	} else {
-		// Production: use GitHub backend
-		if (!token) {
-			throw new Error('GitHub token required for production storage backend');
-		}
-		return new GitHubStorageBackend(token);
-	}
+  // Auto-detect based on environment
+  if (dev) {
+    // Local development: use file backend
+    return new FileStorageBackend();
+  } else {
+    // Production: use GitHub backend
+    if (!token) {
+      throw new Error('GitHub token required for production storage backend');
+    }
+    return new GitHubStorageBackend(token);
+  }
 }

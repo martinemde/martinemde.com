@@ -136,8 +136,8 @@
 
   // Auto-save when form fields change (debounced 1 second)
   $effect(() => {
-    // Watch all form fields
-    const _ = [title, content, slug, description, categories, autoSlug];
+    // Watch all form fields to trigger auto-save
+    void [title, content, slug, description, categories, autoSlug];
 
     // Only auto-save if there's actual content
     if (!title && !content && !description && !categories) return;
@@ -257,7 +257,7 @@
       // Render markdown directly in the browser
       const result = await unified().use(remarkParse).use(remarkHtml).process(content);
       previewHtml = String(result);
-    } catch (err) {
+    } catch {
       previewHtml = '<p class="text-error-500">Error rendering preview</p>';
     } finally {
       previewLoading = false;

@@ -67,7 +67,7 @@
       <div class="grid gap-4 md:grid-cols-2">
         {#each toys as toy (toy.name)}
           <a
-            href={toy.href}
+            href={resolve(toy.href)}
             class="variant-filled-surface group space-y-3 card p-6 transition-all hover:scale-105 hover:shadow-lg"
           >
             <div class="flex items-start justify-between">

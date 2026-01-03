@@ -54,9 +54,16 @@ export function generateVoteGrid(
 
 /**
  * Calculate majorities based on fraction (numerator/denominator)
- * Always rounds UP to ensure threshold is met
+ * For simple majority (1/2), requires STRICTLY more than half
+ * For other fractions, rounds UP to ensure threshold is met
  */
 export const fractionCalculation =
   (numerator: number, denominator: number) =>
-  (attendance: number): number =>
-    Math.ceil((attendance * numerator) / denominator);
+  (attendance: number): number => {
+    // For simple majority (1/2), we need strictly more than half
+    if (numerator * 2 === denominator) {
+      return Math.floor(attendance / 2) + 1;
+    }
+    // For other fractions, round up
+    return Math.ceil((attendance * numerator) / denominator);
+  };

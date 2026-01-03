@@ -4,11 +4,11 @@
 
   // Shader configurations with filenames
   const shaderConfigs = [
-    { name: 'Focus Cursor', filename: 'focus_cursor.glsl', enabled: true },
-    { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false },
+    { name: 'Cursor Rectangle', filename: 'cursor_rectangle.glsl', enabled: true },
     { name: 'Cursor Smear', filename: 'cursor_smear_rocket.glsl', enabled: true },
+    { name: 'Focus Cursor', filename: 'focus_cursor.glsl', enabled: true },
     { name: 'CRT Blur', filename: 'blur_crt.glsl', enabled: true },
-    { name: 'Cursor Rectangle', filename: 'cursor_rectangle.glsl', enabled: true }
+    { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false }
   ];
 
   let shaders = $state<ShaderInfo[]>([]);
@@ -52,7 +52,7 @@
 <div class="container mx-auto p-8">
   <h1 class="mb-8 h1">Ghostty Shaders</h1>
 
-  <div class="card relative p-4">
+  <div class="relative card p-4">
     {#if shaders.length > 0}
       <ShaderCanvas
         bind:shaders

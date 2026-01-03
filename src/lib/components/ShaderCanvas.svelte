@@ -425,6 +425,11 @@
         isFocused = false;
         canvas.blur();
       }
+
+      // Close shader menu when clicking outside
+      if (isOutside && showShaderMenu) {
+        showShaderMenu = false;
+      }
     };
 
     document.addEventListener('click', handleGlobalClick);

@@ -48,6 +48,7 @@ The Micropub implementation uses a pluggable storage backend system that separat
 ### Available Backends
 
 #### 1. GitHub Backend (Production)
+
 - **When**: Production environment or when `MICROPUB_BACKEND=github`
 - **Requires**: GitHub OAuth token, `GITHUB_OWNER` and `GITHUB_REPO` env vars
 - **Storage**: Commits directly to GitHub repository via API
@@ -55,6 +56,7 @@ The Micropub implementation uses a pluggable storage backend system that separat
 - **Images**: `static/images/blog/filename.ext`
 
 #### 2. File Backend (Local Development)
+
 - **When**: Development mode or when `MICROPUB_BACKEND=file`
 - **Requires**: No authentication needed
 - **Storage**: Writes directly to local filesystem
@@ -63,6 +65,7 @@ The Micropub implementation uses a pluggable storage backend system that separat
 - **Use case**: Local development without GitHub API calls
 
 #### 3. Test Backend (Testing)
+
 - **When**: `MICROPUB_BACKEND=test` or injected in tests
 - **Requires**: Nothing
 - **Storage**: In-memory only (data lost when process ends)

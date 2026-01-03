@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => ({
     setupFiles: ['./vitest-setup.ts']
   },
   resolve: {
-    // Use default conditions (including 'node') for tests, 'browser' for build
-    conditions: mode === 'test' ? undefined : ['browser']
+    // Always use browser conditions to properly resolve Svelte 5 client-side entry points
+    conditions: ['browser']
   }
 }));

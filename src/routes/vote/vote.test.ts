@@ -110,7 +110,7 @@ describe('Vote Threshold Calculations', () => {
       const grid = generateVoteGrid(10, 8, customThresholds);
 
       expect(grid[0].fourFifths).toBe(8); // 80% of 10
-      expect(grid[0].all).toBe(10);
+      expect(grid[0].unanimous).toBe(10); // 100% of 10
     });
 
     it('handles minimum viable committee', () => {

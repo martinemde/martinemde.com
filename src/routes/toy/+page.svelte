@@ -32,8 +32,8 @@
   let autoListenMode = $state(false);
   let conversationHistory = $state<Message[]>([]);
 
-  // Speech API references (types not available in TypeScript by default)
-  let recognition: any = null;
+  // Speech API references
+  let recognition: SpeechRecognition | null = null;
   let synthesis: SpeechSynthesis | null = null;
   let messageContainer = $state<HTMLDivElement | null>(null);
 
@@ -279,7 +279,7 @@
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
 
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         userInput = transcript;
         isListening = false;
@@ -295,7 +295,7 @@
         isListening = false;
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Recognition error:', event.error);
         isListening = false;
       };

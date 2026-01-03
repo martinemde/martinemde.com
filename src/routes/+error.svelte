@@ -29,7 +29,7 @@
   </p>
 
   <div class="flex gap-4">
-    <a href={resolve('/')} class="btn preset-filled-primary-500"> Go Home </a>
-    <a href={resolve('/blog')} class="btn preset-filled-secondary-500"> View Blog </a>
+    <a href={resolve('/')} class="btn preset-outlined-primary-500 text-primary-500"> Go Home </a>
+    <a href={resolve('/blog')} class="btn preset-outlined-secondary-500 text-secondary-500"> View Blog </a>
   </div>
 </div>

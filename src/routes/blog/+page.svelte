@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
   import { formatPostDate } from '$lib/utils/posts';
   import { resolve } from '$app/paths';
 
@@ -12,6 +13,8 @@
 </svelte:head>
 
 <div>
+  <Breadcrumbs crumbs={[{ label: 'Home', href: '/' }, { label: 'Blog' }]} />
+
   <h1 class="preset-typo-display-1 mb-12">Blog Posts</h1>
 
   <div class="space-y-12">

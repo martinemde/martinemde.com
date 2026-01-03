@@ -14,6 +14,9 @@
 
   // Derive the page description
   const pageDescription = $derived(page.data.metadata?.description || undefined);
+
+  // Derive the page image
+  const pageImage = $derived(page.data.metadata?.image || undefined);
 </script>
 
 <svelte:head>
@@ -29,6 +32,12 @@
   {#if pageDescription}
     <meta property="og:description" content={pageDescription} />
     <meta name="twitter:description" content={pageDescription} />
+  {/if}
+
+  {#if pageImage}
+    <meta property="og:image" content={pageImage} />
+    <meta name="twitter:image" content={pageImage} />
+    <meta name="twitter:card" content="summary_large_image" />
   {/if}
 </svelte:head>
 <div class="min-h-screen bg-surface-50-950 text-surface-950-50">

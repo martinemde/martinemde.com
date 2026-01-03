@@ -12,6 +12,7 @@ export interface PostMetadata {
   description?: string;
   published?: boolean;
   slug: string;
+  image?: string; // Optional header image URL
 }
 
 export interface Post extends PostMetadata {
@@ -131,7 +132,8 @@ function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
     slug: typeof meta.slug === 'string' ? meta.slug : basename,
     author: typeof meta.author === 'string' ? meta.author : 'Martin Emde',
     description: typeof meta.description === 'string' ? meta.description : `Draft: ${basename}`,
-    published: isComplete ? meta.published !== false : false
+    published: isComplete ? meta.published !== false : false,
+    image: typeof meta.image === 'string' ? meta.image : undefined
   };
 }
 
@@ -276,4 +278,34 @@ export function formatPostDate(date: Date): string {
     month: 'long',
     day: 'numeric'
   });
+}
+
+/**
+ * Calculate estimated reading time for a blog post
+ * Uses 200 words per minute as the baseline reading speed
+ * Strips frontmatter and counts remaining words
+ */
+export function calculateReadingTime(rawContent: string): string {
+  // Remove frontmatter (everything between --- delimiters)
+  const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---/, '');
+
+  // Count words (split by whitespace and filter empty strings)
+  const words = contentWithoutFrontmatter.trim().split(/\s+/).filter(Boolean);
+  const wordCount = words.length;
+
+  // Calculate reading time (200 words per minute)
+  const minutes = Math.ceil(wordCount / 200);
+
+  return `${minutes} min read`;
+}
+
+/**
+ * Get reading time for a post by slug
+ */
+export function getReadingTime(slug: string): string {
+  const rawContent = getRawPostBySlug(slug);
+  if (!rawContent) {
+    return '1 min read';
+  }
+  return calculateReadingTime(rawContent);
 }

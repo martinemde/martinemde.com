@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
   import { projects, type Project } from '$lib/data/projects';
 
   function formatLinkText(project: Project) {
@@ -16,6 +17,8 @@
 </svelte:head>
 
 <div class="space-y-8">
+  <Breadcrumbs crumbs={[{ label: 'Home', href: '/' }, { label: 'Projects' }]} />
+
   <h1 class="preset-typo-headline">Projects</h1>
   <p class="preset-typo-subtitle">A selection of open source projects and other things.</p>
 

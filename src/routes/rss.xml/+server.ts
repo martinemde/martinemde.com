@@ -38,6 +38,12 @@ async function createFeedItem(post: Post): Promise<string> {
   const htmlContent = await convertMarkdownToHtml(post.slug);
   const pubDate = convertToUtcDate(post.date);
 
+  // Prepend header image if exists
+  const imageHtml = post.image
+    ? `<img src="${escapeXml(post.image)}" alt="${escapeXml(post.title)}" style="max-width: 100%; height: auto; margin-bottom: 1em;" />`
+    : '';
+  const fullContent = imageHtml + htmlContent;
+
   return `
 		<item>
 			<title>${escapeXml(post.title)}</title>
@@ -45,7 +51,8 @@ async function createFeedItem(post: Post): Promise<string> {
 			<link>${siteUrl}/blog/${post.slug}</link>
 			<guid isPermaLink="true">${siteUrl}/blog/${post.slug}</guid>
 			<pubDate>${pubDate.toUTCString()}</pubDate>
-			<content:encoded><![CDATA[${htmlContent}]]></content:encoded>
+			${post.image ? `<enclosure url="${escapeXml(post.image)}" type="image/jpeg" length="0"/>` : ''}
+			<content:encoded><![CDATA[${fullContent}]]></content:encoded>
 		</item>`;
 }
 

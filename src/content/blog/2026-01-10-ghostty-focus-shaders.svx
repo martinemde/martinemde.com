@@ -1,0 +1,215 @@
+---
+title: 'Ghostty Focus and Blur Shaders'
+date: 2026-01-10T15:38:00-08:00
+author: martinemde
+description: 'How to create dynamic focus and unfocus state shaders in Ghostty with the new iFocus and iTimeFocus uniforms available in Ghostty prerelease.'
+published: true
+slug: ghostty-focus-shaders
+---
+
+<script lang="ts">
+  import ShaderCanvas, { type ShaderInfo } from '$lib/components/ShaderCanvas.svelte';
+  import { onMount } from 'svelte';
+
+  let cursorColor = $state([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach
+  let prevCursorColor = $state([0.71, 0.733, 0.98, 1.0]); // Catppuccin Lavender
+
+  // Shaders for blur demo (CRT enabled, focus cursor disabled)
+  let blurDemoShaders = $state<ShaderInfo[]>([]);
+
+  // Shaders for focus demo (focus cursor enabled, CRT disabled)
+  let focusDemoShaders = $state<ShaderInfo[]>([]);
+
+  // Load shaders on mount
+  onMount(async () => {
+    try {
+      const [blurResponse, focusResponse, cursorRectResponse] = await Promise.all([
+        fetch('/shaders/blur_crt.glsl'),
+        fetch('/shaders/focus_cursor.glsl'),
+        fetch('/shaders/cursor_rectangle.glsl')
+      ]);
+
+      const blurCode = blurResponse.ok ? await blurResponse.text() : null;
+      const focusCode = focusResponse.ok ? await focusResponse.text() : null;
+      const cursorRectCode = cursorRectResponse.ok ? await cursorRectResponse.text() : null;
+
+      // Blur demo: CRT enabled, others disabled
+      if (blurCode && focusCode && cursorRectCode) {
+        blurDemoShaders = [
+          { name: 'Cursor Rectangle', code: cursorRectCode, enabled: true },
+          { name: 'Focus Cursor', code: focusCode, enabled: false },
+          { name: 'CRT Blur', code: blurCode, enabled: true },
+        ];
+      }
+
+      // Focus demo: Focus cursor enabled, CRT disabled
+      if (blurCode && focusCode && cursorRectCode) {
+        focusDemoShaders = [
+          { name: 'Cursor Rectangle', code: cursorRectCode, enabled: true },
+          { name: 'Focus Cursor', code: focusCode, enabled: true },
+          { name: 'CRT Blur', code: blurCode, enabled: false }
+        ];
+      }
+    } catch (error) {
+      console.error('Failed to load shaders:', error);
+    }
+  });
+</script>
+
+I recently [added][pr] a feature to Ghostty enables
+
+There are some [amazing Ghostty shaders][fun-with-shaders] that can totally wreck the usability of a terminal _in style_.
+They're awesome, but not for a daily driver.
+Others can add cool effects to the cursor that help you find it, but applying it on every cursor
+movement can be distracting.
+
+What if you could have that sick CRT effect, but only on unfocused windows, or a rad cursor
+highlight but only once when you focused the window?
+
+## Introducing the iFocus and iTimeFocus uniforms
+
+The prerelease channel of Ghostty now supports new input variables in custom shaders: `iFocus` and `iTimeFocus`.
+These inputs, known as "uniforms" in Shadertoy GLSL, allow shaders to react to focus and blur events.
+This makes new shaders effects possible that previously couldn't be done.
+
+_Note: Until the next Ghostty release, you'll need to [install a recent Ghostty prerelease version][prerelease] to try this out._
+
+## Example: CRT Shader on Blur
+
+Let's get right to it with a live demo. This is the _actual_ shader that I use in Ghostty rendered on a canvas with OpenGL. It demonstrates the `iFocus` uniform in action.
+
+{#if blurDemoShaders.length > 0}
+  <ShaderCanvas
+    bind:shaders={blurDemoShaders}
+    width={800}
+    height={600}
+    swapColorsOnClick={true}
+    bind:cursorColor
+    bind:prevCursorColor
+    className="rounded-lg border-2 border-surface-400-600"
+  />
+{:else}
+  <div class="flex h-[600px] w-full items-center justify-center rounded-lg border-2 border-surface-400-600 bg-surface-100-900">
+    <p class="text-surface-600-400">Loading shader...</p>
+  </div>
+{/if}
+
+I'm emulating Ghostty's `iFocus` uniform here to apply a CRT shader effect when the canvas itself receives focus or blur events. It may not render in every browser, so try it directly on my site with a modern browser.
+
+## Example: Focus Resume Animations
+
+Here we emulate the `iTimeFocus` uniform to create a cursor highlight effect that triggers only when the canvas receives focus.
+
+{#if focusDemoShaders.length > 0}
+  <ShaderCanvas
+    bind:shaders={focusDemoShaders}
+    width={800}
+    height={600}
+    swapColorsOnClick={true}
+    bind:cursorColor
+    bind:prevCursorColor
+    className="rounded-lg border-2 border-surface-400-600"
+  />
+{:else}
+  <div class="flex h-[600px] w-full items-center justify-center rounded-lg border-2 border-surface-400-600 bg-surface-100-900">
+    <p class="text-surface-600-400">Loading shader...</p>
+  </div>
+{/if}
+
+If you'd like to play with this more, check out my [shaders][shaders] page.
+
+Toggle between the shaders using the menu button in the top-left of each demo, or check out the uniform values with the bottom right debug button.
+
+## How it works: Focus/Blur Effects
+
+The `iFocus` uniform is an `int` set to either `0` (blurred) or `1` (focused).
+This uniform is useful for controlling whether a shader renders on focused or blurred surfaces (panes or windows).
+
+To save resources, Ghostty shaders do not run on every frame for unfocused surface.
+This is generally a good thing and saves resources, except sometimes unfocused surfaces receive frames anyway.
+This can cause stutters and skips in a paused animation or cursor effect on blurred surfaces.
+
+With `iFocus` we can intentionally apply blurred styles to unfocused surfaces or run shaders only on focused frames.
+This fixes the stutters and skips by allowing the shader to ignoring these deceptive frames.
+
+### Example Usage
+
+The following `if` statement can be added to any shader to make it render only when blurred. You can
+check `if (iFocus == 1)` to run something only when focused instead.
+
+```glsl
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord.xy / iResolution.xy;
+
+    // Early exit when focused
+    if (iFocus == 0) {
+        // Render normal texture when
+        fragColor = texture(iChannel0, uv);
+        return;
+    }
+
+    // The rest of the shader goes here...
+}
+```
+
+This example disables all shader effects when the surface is focused, allowing unfocused states such as CRT scanlines, vignettes, shadows, or faded colors that render only on the blurred surfaces.
+
+On the other hand, if you invert the logic you can run something only when the surface is focused,
+which I have used to make my cursor effects only appear on focused surfaces.
+
+## Focus Resume Animations
+
+The `iTimeFocus` uniform is a `float`, set to the `iTime` when the surface last received focus.
+We can use this to render effects that need to animate when the surface is focused.
+
+Here's an example of how to use `iTimeFocus` to create a resume animation.
+
+```glsl
+const float PULSE_DURATION = 0.15;  // Animation duration in seconds
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = fragCoord / iResolution.xy;
+
+    // Quick exit: only run during active focus animation
+    float timeSinceFocus = iTime - iTimeFocus;
+    if (iFocus == 0 || timeSinceFocus < 0.0 || timeSinceFocus > PULSE_DURATION) {
+        fragColor = texture(iChannel0, uv);
+        return;
+    }
+
+    // Render focus resume animation...
+}
+```
+
+In this example, the shader checks how much time has passed since the surface received focus.
+If the surface is blurred, or if the focus animation duration has passed, the shader exits early to
+save resources.
+
+You can see and install my [focus-cursor][focus-cursor] shader for a complete example.
+
+## Rendering shaders on blurred surfaces
+
+Ghostty shaders mostly don't receive frames when blurred.
+This is for performance reasons and can be disabled with the `custom-shader-animation=always` config option.
+
+However, it's inconsistent. Sometimes defocused surfaces get frames when a mod key is press (like
+command or alt) or when the mouse moves over a link.
+With `iFocus` you can intentionally filter these frames out to avoid ugly stutters.
+
+So far it seems blurred surfaces reliably receive at least one defocused frame to render the defocused state.
+While you can't ensure that an animation could complete on blur (without `custom-shader-animation=always`), you can at least ensure that the defocused state is rendered once.
+
+Therefore, I would suggest that all shaders should include this gating `if` statement unless they are intended to run `always`.
+It improves performance and polish on both focused state cursor animations and blurred state rendering.
+
+## Installing Ghostty prerelease
+
+Again, if you want to use these shaders, you'll need to [install the prerelease][prerelease] version of Ghostty.
+It might be glitchy (I immediately submitted another bug fix after this feature because the dev build had a problem)
+
+[prerelease]: https://ghostty.org/docs/install/pre 'Docs: Install Ghostty Prerelease'
+[fun-with-shaders]: https://catskull.net/fun-with-ghostty-shaders.html 'Fun with Ghostty Shaders'
+[pr]: https://github.com/ghostty-org/ghostty/pull/10130 'Add iFocus and iTimeFocus shader uniforms'
+[focus-cursor]: https://github.com/martinemde/dotfiles/blob/main/home/dot_config/ghostty/shaders/focus_cursor.glsl 'A shader that zoom fades the cursor on focus'
+[shaders]: /shaders "Martin's Ghostty Shaders"
+

@@ -150,6 +150,7 @@ slug: post-slug
 published: true
 description: 'Short preview description'
 author: Martin Emde
+image: /images/blog/header.jpg
 ---
 ```
 
@@ -161,6 +162,7 @@ author: Martin Emde
 - `published` (optional, default: true): Set to false to hide drafts
 - `description` (optional): Preview text shown on listing pages and in RSS
 - `author` (optional): Author name
+- `image` (optional): Header image URL displayed at top of post and in social media unfurls. Supports external URLs (e.g., `https://example.com/image.jpg`) or local paths (e.g., `/images/blog/post.jpg`)
 
 ### Blog Post Processing Pipeline
 

@@ -3,7 +3,16 @@
   import { resolve } from '$app/paths';
   import { authStore } from '$lib/auth/state.svelte';
   import { initiateOAuthLogin } from '$lib/auth/openrouter';
-  import { Lock, Shield, Clock, DollarSign, ExternalLink, Sparkles, TestTube } from 'lucide-svelte';
+  import {
+    Lock,
+    Shield,
+    Clock,
+    DollarSign,
+    ExternalLink,
+    Sparkles,
+    TestTube,
+    Wand2
+  } from 'lucide-svelte';
 
   const { state, isLoggedIn } = authStore;
 
@@ -16,6 +25,13 @@
   }
 
   const toys = [
+    {
+      name: 'Dynamic LLM UI',
+      href: '/llm-ui',
+      description:
+        'A visual REPL where an LLM generates interactive UIs that respond to your clicks and interactions in real-time',
+      icon: Wand2
+    },
     {
       name: 'Tab Model Tester',
       href: '/models',

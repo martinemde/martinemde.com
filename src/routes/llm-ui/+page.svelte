@@ -236,10 +236,21 @@ For subsequent interactions, you'll receive what the user did, and you should ge
 
         // Intercept all clicks anywhere in the document
         document.addEventListener('click', (e) => {
+          const target = e.target;
+          const tagName = target.tagName.toLowerCase();
+
+          // Allow form inputs to work normally - don't intercept their clicks
+          // They'll be handled when the form is submitted
+          if (tagName === 'input' || tagName === 'select' || tagName === 'textarea') {
+            // Let the input receive focus and work normally
+            return;
+          }
+
+          // For all other elements, intercept the click
           e.preventDefault();
           e.stopPropagation();
 
-          const elementInfo = getElementInfo(e.target);
+          const elementInfo = getElementInfo(target);
 
           window.parent.postMessage({
             type: 'interaction',

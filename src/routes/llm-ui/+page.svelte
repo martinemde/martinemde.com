@@ -202,10 +202,17 @@ For subsequent interactions, you'll receive what the user did, and you should ge
     return () => window.removeEventListener('message', handleInteraction);
   });
 
-  // Inject event handlers into iframe
-  function setupIframe(iframe: HTMLIFrameElement) {
-    iframe.onload = () => {
-      const iframeDoc = iframe.contentDocument;
+  // Reference to iframe element
+  let iframeElement = $state<HTMLIFrameElement | null>(null);
+
+  // Inject event handlers into iframe whenever content changes
+  $effect(() => {
+    // This effect runs whenever currentHtml changes
+    if (!iframeElement || !currentHtml) return;
+
+    // Wait for iframe to load the new content
+    const handleLoad = () => {
+      const iframeDoc = iframeElement?.contentDocument;
       if (!iframeDoc) return;
 
       // Inject event interception script
@@ -283,7 +290,20 @@ For subsequent interactions, you'll receive what the user did, and you should ge
       `;
       iframeDoc.head.appendChild(script);
     };
-  }
+
+    // Set up the load listener
+    iframeElement.addEventListener('load', handleLoad);
+
+    // If iframe is already loaded, inject immediately
+    if (iframeElement.contentDocument?.readyState === 'complete') {
+      handleLoad();
+    }
+
+    // Cleanup
+    return () => {
+      iframeElement?.removeEventListener('load', handleLoad);
+    };
+  });
 
   // Reset everything
   function reset() {
@@ -435,7 +455,7 @@ For subsequent interactions, you'll receive what the user did, and you should ge
           {:else}
             <div class="relative">
               <iframe
-                use:setupIframe
+                bind:this={iframeElement}
                 title="Generated UI"
                 srcdoc={currentHtml}
                 class="h-[600px] w-full rounded border border-surface-200-800 bg-white"

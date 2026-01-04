@@ -165,18 +165,30 @@ For subsequent interactions, you'll receive what the user did, and you should ge
   // Handle interaction from iframe
   function handleInteraction(event: MessageEvent) {
     if (event.data.type === 'interaction') {
-      const { action, element, value } = event.data;
+      const { action, elementInfo, formData } = event.data;
       let interactionDescription = '';
 
       if (action === 'click') {
-        interactionDescription = `Clicked on ${element}`;
-        if (value) {
-          interactionDescription += ` with text: "${value}"`;
+        // Build detailed description of the clicked element
+        const parts = [`Clicked on <${elementInfo.tag}>`];
+
+        if (elementInfo.id) parts.push(`with id="${elementInfo.id}"`);
+        if (elementInfo.classes) parts.push(`class="${elementInfo.classes}"`);
+        if (elementInfo.type) parts.push(`type="${elementInfo.type}"`);
+        if (elementInfo.name) parts.push(`name="${elementInfo.name}"`);
+        if (elementInfo.value) parts.push(`value="${elementInfo.value}"`);
+        if (elementInfo.href) parts.push(`href="${elementInfo.href}"`);
+        if (elementInfo.text) parts.push(`containing text: "${elementInfo.text}"`);
+        if (elementInfo.placeholder) parts.push(`placeholder="${elementInfo.placeholder}"`);
+
+        if (elementInfo.parentTag) {
+          parts.push(`inside <${elementInfo.parentTag}>`);
+          if (elementInfo.parentId) parts.push(`id="${elementInfo.parentId}"`);
         }
+
+        interactionDescription = parts.join(' ');
       } else if (action === 'submit') {
-        interactionDescription = `Submitted form with data: ${JSON.stringify(value)}`;
-      } else if (action === 'link') {
-        interactionDescription = `Clicked link to: ${value}`;
+        interactionDescription = `Submitted form with data: ${JSON.stringify(formData)}`;
       }
 
       interactionContext = interactionDescription;
@@ -199,29 +211,42 @@ For subsequent interactions, you'll receive what the user did, and you should ge
       // Inject event interception script
       const script = iframeDoc.createElement('script');
       script.textContent = `
-        // Intercept all clicks
+        // Helper function to extract element information
+        function getElementInfo(el) {
+          const info = {
+            tag: el.tagName.toLowerCase(),
+            id: el.id || null,
+            classes: el.className || null,
+            type: el.type || null,
+            name: el.name || null,
+            value: el.value || null,
+            href: el.href || null,
+            placeholder: el.placeholder || null,
+            text: el.textContent?.trim().substring(0, 100) || null, // Limit text to 100 chars
+            parentTag: el.parentElement?.tagName.toLowerCase() || null,
+            parentId: el.parentElement?.id || null,
+            parentClasses: el.parentElement?.className || null
+          };
+
+          // Remove null values
+          return Object.fromEntries(
+            Object.entries(info).filter(([_, v]) => v !== null && v !== '')
+          );
+        }
+
+        // Intercept all clicks anywhere in the document
         document.addEventListener('click', (e) => {
           e.preventDefault();
-          const element = e.target.tagName.toLowerCase();
-          const text = e.target.textContent?.trim() || '';
-          const href = e.target.href || '';
+          e.stopPropagation();
 
-          if (href) {
-            window.parent.postMessage({
-              type: 'interaction',
-              action: 'link',
-              element: element,
-              value: href
-            }, '*');
-          } else {
-            window.parent.postMessage({
-              type: 'interaction',
-              action: 'click',
-              element: element,
-              value: text
-            }, '*');
-          }
-        });
+          const elementInfo = getElementInfo(e.target);
+
+          window.parent.postMessage({
+            type: 'interaction',
+            action: 'click',
+            elementInfo: elementInfo
+          }, '*');
+        }, true); // Use capture phase to ensure we catch everything
 
         // Intercept all form submits
         document.addEventListener('submit', (e) => {
@@ -232,9 +257,17 @@ For subsequent interactions, you'll receive what the user did, and you should ge
           window.parent.postMessage({
             type: 'interaction',
             action: 'submit',
-            element: 'form',
-            value: data
+            elementInfo: getElementInfo(e.target),
+            formData: data
           }, '*');
+        });
+
+        // Intercept input changes (optional - can be useful for live updates)
+        document.addEventListener('change', (e) => {
+          if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+            // For now, we'll just track clicks and submits
+            // But this could be enabled for more interactive experiences
+          }
         });
       `;
       iframeDoc.head.appendChild(script);

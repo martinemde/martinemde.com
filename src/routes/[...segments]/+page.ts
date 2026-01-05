@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 import { getPostBySlug, validatePostDate } from '$lib/utils/posts';
 
@@ -12,7 +12,7 @@ export const load: PageLoad = async ({ params }) => {
 
   if (!match) {
     // Not a valid date-based URL pattern
-    throw redirect(301, '/blog');
+    throw error(404, 'Page not found');
   }
 
   const [, year, month, day, slug] = match;
@@ -24,8 +24,8 @@ export const load: PageLoad = async ({ params }) => {
 
   if (!post) {
     console.log('Post not found:', slug);
-    // No matching post found, redirect to blog index
-    throw redirect(302, '/blog');
+    // No matching post found
+    throw error(404, 'Post not found');
   }
 
   console.log('Post found, metadata date:', post.metadata.date);
@@ -33,8 +33,8 @@ export const load: PageLoad = async ({ params }) => {
   // Validate that the post's date matches the URL date
   if (!validatePostDate(post.metadata, year, month, day)) {
     console.log('Date mismatch - expected:', `${year}-${month}-${day}`, 'got:', post.metadata.date);
-    // Date mismatch, redirect to blog index
-    throw redirect(302, '/blog');
+    // Date mismatch
+    throw error(404, 'Post not found at this URL');
   }
 
   console.log('Redirecting to:', `/blog/${post.metadata.slug}`);

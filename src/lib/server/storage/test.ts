@@ -1,4 +1,4 @@
-import type { StorageBackend } from './types';
+import type { StorageBackend, BlogPostFileInfo } from './types';
 
 /**
  * In-memory storage backend for testing
@@ -10,7 +10,7 @@ export class TestStorageBackend implements StorageBackend {
   private files = new Map<string, string>();
   private images = new Map<string, Buffer>();
 
-  async createOrUpdateFile(path: string, content: string, _message: string): Promise<void> {
+  async createOrUpdateFile(path: string, content: string, message: string): Promise<void> {
     this.files.set(path, content);
   }
 
@@ -18,10 +18,49 @@ export class TestStorageBackend implements StorageBackend {
     return this.files.has(path);
   }
 
-  async uploadImage(filename: string, buffer: Buffer, _mimeType: string): Promise<string> {
+  async uploadImage(filename: string, buffer: Buffer, mimeType: string): Promise<string> {
     this.images.set(filename, buffer);
     // Return fake URL for testing
     return `/test-images/${filename}`;
+  }
+
+  async readFile(path: string): Promise<string> {
+    const content = this.files.get(path);
+    if (content === undefined) {
+      throw new Error(`File not found: ${path}`);
+    }
+    return content;
+  }
+
+  async listBlogPosts(): Promise<BlogPostFileInfo[]> {
+    const posts: BlogPostFileInfo[] = [];
+
+    for (const [path, _content] of this.files.entries()) {
+      // Only look at blog post files
+      if (!path.startsWith('src/content/blog/') || !path.endsWith('.md')) {
+        continue;
+      }
+
+      const filename = path.split('/').pop()!;
+
+      // Parse filename format: YYYY-MM-DD-slug.md
+      const match = filename.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+      if (!match) continue;
+
+      const [, dateStr, slug] = match;
+
+      posts.push({
+        filename,
+        path,
+        slug,
+        date: dateStr
+      });
+    }
+
+    // Sort by date, newest first
+    posts.sort((a, b) => b.date.localeCompare(a.date));
+
+    return posts;
   }
 
   // Test inspection methods

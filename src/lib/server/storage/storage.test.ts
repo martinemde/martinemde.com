@@ -136,7 +136,7 @@ describe('FileStorageBackend', () => {
   afterEach(() => {
     try {
       rmSync(testDir, { recursive: true, force: true });
-    } catch {
+    } catch (e) {
       // Ignore cleanup errors
     }
   });

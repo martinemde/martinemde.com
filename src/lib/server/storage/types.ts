@@ -1,4 +1,18 @@
 /**
+ * Metadata about a blog post file
+ */
+export interface BlogPostFileInfo {
+  /** Base filename (e.g., "2025-01-01-my-post.md") */
+  filename: string;
+  /** Full path to the file (e.g., "src/content/blog/2025-01-01-my-post.md") */
+  path: string;
+  /** Slug extracted from filename */
+  slug: string;
+  /** Date extracted from filename (ISO string) */
+  date: string;
+}
+
+/**
  * Storage backend interface for micropub content storage
  *
  * Implementations can use different backends (GitHub, filesystem, in-memory, etc.)
@@ -21,6 +35,21 @@ export interface StorageBackend {
    * @returns true if file exists, false otherwise
    */
   fileExists(path: string): Promise<boolean>;
+
+  /**
+   * Read the contents of a file
+   *
+   * @param path - Relative path to the file
+   * @returns File contents as a string
+   */
+  readFile(path: string): Promise<string>;
+
+  /**
+   * List all blog post files
+   *
+   * @returns Array of blog post file info, sorted by date (newest first)
+   */
+  listBlogPosts(): Promise<BlogPostFileInfo[]>;
 
   /**
    * Upload an image file

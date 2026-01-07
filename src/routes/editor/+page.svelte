@@ -1,11 +1,13 @@
 <script lang="ts">
   import remarkHtml from 'remark-html';
   import remarkParse from 'remark-parse';
+  import matter from 'gray-matter';
   import type { PageData } from './$types';
   import { Upload, Save } from 'lucide-svelte';
   import { resolve } from '$app/paths';
   import { unified } from 'unified';
   import { browser } from '$app/environment';
+  import BlogPostList from '$lib/components/BlogPostList.svelte';
 
   let { data }: { data: PageData } = $props();
 
@@ -17,8 +19,10 @@
     slug: string;
     description: string;
     categories: string;
+    published: boolean;
     autoSlug: boolean;
     savedAt: string;
+    currentPath: string;
   }
 
   // Form state
@@ -27,7 +31,9 @@
   let slug = $state('');
   let description = $state('');
   let categories = $state('');
+  let published = $state(false);
   let autoSlug = $state(true);
+  let currentPath = $state(''); // Empty string means new post, otherwise path to existing post
 
   // UI state
   let submitting = $state(false);
@@ -57,7 +63,9 @@
         slug = draft.slug;
         description = draft.description;
         categories = draft.categories;
+        published = draft.published ?? false;
         autoSlug = draft.autoSlug;
+        currentPath = draft.currentPath || '';
         lastSaved = new Date(draft.savedAt);
         saveStatus = 'saved';
       }
@@ -91,7 +99,9 @@
         slug,
         description,
         categories,
+        published,
         autoSlug,
+        currentPath,
         savedAt: new Date().toISOString()
       };
 
@@ -134,10 +144,93 @@
     return date.toLocaleDateString();
   }
 
+  // Check if current form has unsaved changes
+  function hasUnsavedChanges(): boolean {
+    if (!browser) return false;
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return !!(title || content || description || categories);
+
+      const draft: EditorDraft = JSON.parse(saved);
+
+      // Compare current state with saved draft
+      return (
+        title !== draft.title ||
+        content !== draft.content ||
+        slug !== draft.slug ||
+        description !== draft.description ||
+        categories !== draft.categories ||
+        published !== draft.published ||
+        currentPath !== draft.currentPath
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  // Load a blog post from the API
+  async function loadPost(path: string) {
+    if (!path) {
+      // Load draft from localStorage (already loaded on mount)
+      return;
+    }
+
+    try {
+      error = '';
+      const response = await fetch(`/api/posts/read?path=${encodeURIComponent(path)}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to load post');
+      }
+
+      const { content: rawContent } = await response.json();
+
+      // Parse frontmatter
+      const { data: frontmatter, content: postContent } = matter(rawContent);
+
+      // Populate form
+      title = frontmatter.title || '';
+      slug = frontmatter.slug || '';
+      description = frontmatter.description || '';
+      published = frontmatter.published ?? false;
+      categories = frontmatter.categories?.join(', ') || '';
+      content = postContent;
+      currentPath = path;
+      autoSlug = false; // Don't auto-generate slug for existing posts
+
+      // Clear draft from localStorage since we're loading an existing post
+      clearDraft();
+    } catch (err) {
+      error = `Failed to load post: ${err instanceof Error ? err.message : 'Unknown error'}`;
+      console.error('Error loading post:', err);
+    }
+  }
+
+  // Handle selecting a post from the list
+  async function handleSelectPost(path: string, isDraft: boolean) {
+    // If selecting draft, just reload from localStorage (already loaded)
+    if (isDraft) {
+      return;
+    }
+
+    // Check if there are unsaved changes
+    if (hasUnsavedChanges()) {
+      const confirmed = confirm(
+        'You have unsaved changes in your draft. Loading a different post will discard these changes. Continue?'
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    await loadPost(path);
+  }
+
   // Auto-save when form fields change (debounced 1 second)
   $effect(() => {
-    // Watch all form fields to trigger auto-save
-    void [title, content, slug, description, categories, autoSlug];
+    // Watch all form fields
+    const _ = [title, content, slug, description, categories, published, autoSlug];
 
     // Only auto-save if there's actual content
     if (!title && !content && !description && !categories) return;
@@ -167,6 +260,18 @@
     submitting = true;
 
     try {
+      // Determine the date to use
+      let postDate: string;
+      if (currentPath) {
+        // Extract date from filename for existing posts
+        const filename = currentPath.split('/').pop()!;
+        const match = filename.match(/^(\d{4}-\d{2}-\d{2})-/);
+        postDate = match ? match[1] : new Date().toISOString().split('T')[0];
+      } else {
+        // New post - use current date
+        postDate = new Date().toISOString().split('T')[0];
+      }
+
       const response = await fetch('/micropub', {
         method: 'POST',
         headers: {
@@ -180,25 +285,28 @@
             slug: [slug],
             description: description ? [description] : undefined,
             category: categories ? categories.split(',').map((c) => c.trim()) : undefined,
-            published: [new Date().toISOString()]
+            published: [postDate],
+            'post-status': [published ? 'published' : 'draft']
           }
         })
       });
 
       if (response.ok) {
         const location = response.headers.get('Location');
-        success = `Post created successfully! View at: ${location}`;
+        success = currentPath
+          ? `Post updated successfully! View at: ${location}`
+          : `Post created successfully! View at: ${location}`;
         // Clear draft from localStorage
         clearDraft();
-        // Reset form
-        title = '';
-        content = '';
-        slug = '';
-        description = '';
-        categories = '';
+        // Update currentPath if this was a new post
+        if (!currentPath) {
+          // Extract path from location or construct it
+          const datePrefix = postDate;
+          currentPath = `src/content/blog/${datePrefix}-${slug}.md`;
+        }
       } else {
         const errorText = await response.text();
-        error = `Failed to create post: ${errorText}`;
+        error = `Failed to ${currentPath ? 'update' : 'create'} post: ${errorText}`;
       }
     } catch (err) {
       error = `Error: ${err instanceof Error ? err.message : 'Unknown error'}`;
@@ -257,7 +365,7 @@
       // Render markdown directly in the browser
       const result = await unified().use(remarkParse).use(remarkHtml).process(content);
       previewHtml = String(result);
-    } catch {
+    } catch (err) {
       previewHtml = '<p class="text-error-500">Error rendering preview</p>';
     } finally {
       previewLoading = false;
@@ -276,10 +384,11 @@
   <title>Blog Editor - Martin Emde</title>
 </svelte:head>
 
-<div class="mx-auto max-w-4xl">
-  <div class="mb-8 flex items-center justify-between">
+<div class="mx-auto max-w-7xl px-4 py-6">
+  <!-- Header -->
+  <div class="mb-6 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <h1 class="preset-typo-display-1">Blog Editor</h1>
+      <h1 class="text-surface-900-50 text-2xl font-bold">Blog Editor</h1>
       {#if saveStatus === 'saving'}
         <span class="flex items-center gap-1.5 text-sm text-surface-600-400">
           <Save class="h-3.5 w-3.5 animate-pulse" />
@@ -294,7 +403,7 @@
     </div>
     <div class="flex items-center gap-4">
       {#if data.isAuthenticated && data.user}
-        <div class="flex items-center gap-3">
+        <div class="hidden items-center gap-3 sm:flex">
           <img
             src={data.user.avatar_url}
             alt={data.user.name || data.user.login}
@@ -323,156 +432,190 @@
     </div>
   </div>
 
-  {#if error}
-    <div class="text-error-900-50 mb-4 rounded-lg bg-error-50-950 p-4">
-      {error}
-    </div>
-  {/if}
-
-  {#if success}
-    <div class="text-success-900-50 mb-4 rounded-lg bg-success-50-950 p-4">
-      {success}
-    </div>
-  {/if}
-
-  <form onsubmit={handleSubmit} class="space-y-6">
-    <div>
-      <label for="title" class="mb-2 block text-sm font-medium text-surface-700-300">
-        Title <span class="text-error-500">*</span>
-      </label>
-      <input
-        type="text"
-        id="title"
-        bind:value={title}
-        required
-        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-      />
-    </div>
-
-    <div>
-      <label for="slug" class="mb-2 block text-sm font-medium text-surface-700-300">
-        Slug <span class="text-error-500">*</span>
-      </label>
-      <div class="flex items-center gap-2">
-        <input
-          type="text"
-          id="slug"
-          bind:value={slug}
-          required
-          disabled={autoSlug}
-          class="flex-1 rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50"
+  <!-- Mobile-first two-column layout -->
+  <div class="grid gap-6 {data.isAuthenticated ? 'lg:grid-cols-[320px_1fr]' : ''}">
+    <!-- Left sidebar: Post list (only when authenticated) -->
+    {#if data.isAuthenticated}
+      <aside
+        class="h-[400px] overflow-hidden rounded-lg border border-surface-200-800 bg-surface-50-950 p-4 lg:h-[calc(100vh-12rem)]"
+      >
+        <BlogPostList
+          onSelectPost={handleSelectPost}
+          {currentPath}
+          hasDraft={!!localStorage.getItem?.(STORAGE_KEY) && browser}
         />
-        <label class="flex items-center gap-2 text-sm text-surface-700-300">
-          <input type="checkbox" bind:checked={autoSlug} class="rounded" />
-          Auto-generate
-        </label>
-      </div>
-    </div>
+      </aside>
+    {/if}
 
-    <div>
-      <label for="description" class="mb-2 block text-sm font-medium text-surface-700-300">
-        Description
-      </label>
-      <input
-        type="text"
-        id="description"
-        bind:value={description}
-        placeholder="Short preview description"
-        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-      />
-    </div>
-
-    <div>
-      <label for="categories" class="mb-2 block text-sm font-medium text-surface-700-300">
-        Categories
-      </label>
-      <input
-        type="text"
-        id="categories"
-        bind:value={categories}
-        placeholder="Comma-separated (e.g., ruby, rails, web)"
-        class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-      />
-    </div>
-
-    <div>
-      <div class="mb-2 flex items-center justify-between">
-        <label for="content" class="text-sm font-medium text-surface-700-300">
-          Content (Markdown) <span class="text-error-500">*</span>
-        </label>
-        <label
-          class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200-800 bg-surface-50-950 px-3 py-1 text-sm text-surface-700-300 hover:bg-surface-100-900"
-        >
-          <Upload class="h-4 w-4" />
-          {uploadingImage ? 'Uploading...' : 'Upload Image'}
-          <input
-            type="file"
-            accept="image/*"
-            onchange={handleImageUpload}
-            disabled={uploadingImage}
-            class="hidden"
-          />
-        </label>
-      </div>
-
-      <!-- Tabs -->
-      <div class="mb-2 flex gap-2 border-b border-surface-200-800">
-        <button
-          type="button"
-          onclick={() => (activeTab = 'edit')}
-          class="px-4 py-2 text-sm {activeTab === 'edit'
-            ? 'border-b-2 border-primary-500 text-primary-500'
-            : 'text-surface-600-400 hover:text-surface-700-300'}"
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          onclick={() => (activeTab = 'preview')}
-          class="px-4 py-2 text-sm {activeTab === 'preview'
-            ? 'border-b-2 border-primary-500 text-primary-500'
-            : 'text-surface-600-400 hover:text-surface-700-300'}"
-        >
-          Preview {previewLoading ? '(loading...)' : ''}
-        </button>
-      </div>
-
-      <!-- Edit mode -->
-      {#if activeTab === 'edit'}
-        <textarea
-          id="content"
-          bind:value={content}
-          required
-          rows="20"
-          class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 font-mono text-sm text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
-        ></textarea>
-      {/if}
-
-      <!-- Preview mode -->
-      {#if activeTab === 'preview'}
-        <div
-          class="prose prose-sm min-h-125 w-full rounded-lg border border-surface-200-800 bg-surface-50-950 p-4 dark:prose-invert"
-        >
-          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-          {@html previewHtml}
+    <!-- Right main content: Editor form -->
+    <main>
+      {#if error}
+        <div class="text-error-900-50 mb-4 rounded-lg bg-error-50-950 p-4">
+          {error}
         </div>
       {/if}
-    </div>
 
-    <div class="flex justify-end gap-4">
-      <a
-        href={resolve('/')}
-        class="rounded-lg border border-surface-200-800 px-6 py-2 text-surface-700-300 hover:bg-surface-100-900"
-      >
-        Cancel
-      </a>
-      <button
-        type="submit"
-        disabled={submitting}
-        class="rounded-lg bg-primary-500 px-6 py-2 text-white hover:bg-primary-600 disabled:opacity-50"
-      >
-        {submitting ? 'Creating...' : 'Create Post'}
-      </button>
-    </div>
-  </form>
+      {#if success}
+        <div class="text-success-900-50 mb-4 rounded-lg bg-success-50-950 p-4">
+          {success}
+        </div>
+      {/if}
+
+      <form onsubmit={handleSubmit} class="space-y-6">
+        <div>
+          <label for="title" class="mb-2 block text-sm font-medium text-surface-700-300">
+            Title <span class="text-error-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="title"
+            bind:value={title}
+            required
+            class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label for="slug" class="mb-2 block text-sm font-medium text-surface-700-300">
+            Slug <span class="text-error-500">*</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              id="slug"
+              bind:value={slug}
+              required
+              disabled={autoSlug}
+              class="flex-1 rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none disabled:opacity-50"
+            />
+            <label class="flex items-center gap-2 text-sm text-surface-700-300">
+              <input type="checkbox" bind:checked={autoSlug} class="rounded" />
+              Auto-generate
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label for="description" class="mb-2 block text-sm font-medium text-surface-700-300">
+            Description
+          </label>
+          <input
+            type="text"
+            id="description"
+            bind:value={description}
+            placeholder="Short preview description"
+            class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label for="categories" class="mb-2 block text-sm font-medium text-surface-700-300">
+            Categories
+          </label>
+          <input
+            type="text"
+            id="categories"
+            bind:value={categories}
+            placeholder="Comma-separated (e.g., ruby, rails, web)"
+            class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label class="flex items-center gap-2 text-sm font-medium text-surface-700-300">
+            <input
+              type="checkbox"
+              bind:checked={published}
+              class="rounded border-surface-200-800 text-primary-500 focus:ring-2 focus:ring-primary-500"
+            />
+            Published (uncheck to save as draft)
+          </label>
+        </div>
+
+        <div>
+          <div class="mb-2 flex items-center justify-between">
+            <label for="content" class="text-sm font-medium text-surface-700-300">
+              Content (Markdown) <span class="text-error-500">*</span>
+            </label>
+            <label
+              class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-surface-200-800 bg-surface-50-950 px-3 py-1 text-sm text-surface-700-300 hover:bg-surface-100-900"
+            >
+              <Upload class="h-4 w-4" />
+              {uploadingImage ? 'Uploading...' : 'Upload Image'}
+              <input
+                type="file"
+                accept="image/*"
+                onchange={handleImageUpload}
+                disabled={uploadingImage}
+                class="hidden"
+              />
+            </label>
+          </div>
+
+          <!-- Tabs -->
+          <div class="mb-2 flex gap-2 border-b border-surface-200-800">
+            <button
+              type="button"
+              onclick={() => (activeTab = 'edit')}
+              class="px-4 py-2 text-sm {activeTab === 'edit'
+                ? 'border-b-2 border-primary-500 text-primary-500'
+                : 'text-surface-600-400 hover:text-surface-700-300'}"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onclick={() => (activeTab = 'preview')}
+              class="px-4 py-2 text-sm {activeTab === 'preview'
+                ? 'border-b-2 border-primary-500 text-primary-500'
+                : 'text-surface-600-400 hover:text-surface-700-300'}"
+            >
+              Preview {previewLoading ? '(loading...)' : ''}
+            </button>
+          </div>
+
+          <!-- Edit mode -->
+          {#if activeTab === 'edit'}
+            <textarea
+              id="content"
+              bind:value={content}
+              required
+              rows="20"
+              class="w-full rounded-lg border border-surface-200-800 bg-surface-50-950 px-4 py-2 font-mono text-sm text-surface-950-50 focus:border-primary-500 focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            ></textarea>
+          {/if}
+
+          <!-- Preview mode -->
+          {#if activeTab === 'preview'}
+            <div
+              class="prose prose-sm min-h-125 w-full rounded-lg border border-surface-200-800 bg-surface-50-950 p-4 dark:prose-invert"
+            >
+              <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+              {@html previewHtml}
+            </div>
+          {/if}
+        </div>
+
+        <div class="flex justify-end gap-4">
+          <a
+            href={resolve('/')}
+            class="rounded-lg border border-surface-200-800 px-6 py-2 text-surface-700-300 hover:bg-surface-100-900"
+          >
+            Cancel
+          </a>
+          <button
+            type="submit"
+            disabled={submitting}
+            class="rounded-lg bg-primary-500 px-6 py-2 text-white hover:bg-primary-600 disabled:opacity-50"
+          >
+            {#if submitting}
+              {currentPath ? 'Updating...' : 'Creating...'}
+            {:else}
+              {currentPath ? 'Update Post' : 'Create Post'}
+            {/if}
+          </button>
+        </div>
+      </form>
+    </main>
+  </div>
 </div>

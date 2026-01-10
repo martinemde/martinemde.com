@@ -56,7 +56,7 @@ slug: ghostty-focus-shaders
   });
 </script>
 
-I recently [added][pr] a feature to Ghostty enables
+I recently [added][pr] a feature to Ghostty enables focus based shaders.
 
 There are some [amazing Ghostty shaders][fun-with-shaders] that can totally wreck the usability of a terminal _in style_.
 They're awesome, but not for a daily driver.

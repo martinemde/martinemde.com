@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { POST } from './+server';
+import { POST, OPTIONS } from './+server';
 import { createAuthCode } from '$lib/server/auth';
 import { getAccessToken } from '$lib/server/token-store';
 import type { RequestEvent } from '@sveltejs/kit';
@@ -26,7 +26,15 @@ function createRequestEvent(body: any, contentType: string = 'application/json')
 
   if (contentType.includes('application/json')) {
     requestBody = JSON.stringify(body);
+  } else if (contentType.includes('application/x-www-form-urlencoded')) {
+    // Use URLSearchParams for form-encoded data
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(body)) {
+      params.append(key, value as string);
+    }
+    requestBody = params.toString();
   } else {
+    // For other content types, use FormData
     const formData = new FormData();
     for (const [key, value] of Object.entries(body)) {
       formData.append(key, value as string);
@@ -493,6 +501,124 @@ describe('IndieAuth Token Endpoint', () => {
       // Timing should be relatively similar (within 100ms)
       // This is a loose check - in production use constant-time comparison
       expect(Math.abs(time1 - time2)).toBeLessThan(100);
+    });
+  });
+
+  describe('CORS Support', () => {
+    it('should handle OPTIONS preflight requests', async () => {
+      // Create a minimal request event for OPTIONS
+      const url = new URL('https://example.com/auth/indieauth/token');
+      const request = new Request(url, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://micropub.rocks',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type'
+        }
+      });
+
+      const event = {
+        request,
+        url,
+        params: {},
+        locals: {} as App.Locals,
+        cookies: {} as any,
+        fetch: globalThis.fetch,
+        getClientAddress: () => '127.0.0.1',
+        isDataRequest: false,
+        isSubRequest: false,
+        platform: undefined,
+        route: { id: '/auth/indieauth/token' },
+        setHeaders: vi.fn()
+      } as unknown as RequestEvent;
+
+      const response = await OPTIONS(event);
+
+      // Check status
+      expect(response.status).toBe(204);
+
+      // Check CORS headers
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBe('POST, OPTIONS');
+      expect(response.headers.get('Access-Control-Allow-Headers')).toContain('Content-Type');
+      expect(response.headers.get('Access-Control-Max-Age')).toBe('86400');
+    });
+
+    it('should include CORS headers in POST response', async () => {
+      const authCode = await createAuthCode({
+        githubToken: 'github_token_123',
+        me: 'https://example.com/',
+        clientId: 'https://client.example.com/',
+        redirectUri: 'https://client.example.com/callback'
+      });
+
+      const event = createRequestEvent({
+        grant_type: 'authorization_code',
+        code: authCode,
+        client_id: 'https://client.example.com/',
+        redirect_uri: 'https://client.example.com/callback'
+      });
+
+      const response = await POST(event);
+
+      // Check CORS headers
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+      expect(response.headers.get('Access-Control-Allow-Methods')).toBe('POST, OPTIONS');
+      expect(response.headers.get('Access-Control-Allow-Headers')).toContain('Content-Type');
+    });
+
+    it('should accept cross-origin POST with form-encoded data', async () => {
+      // This simulates a request from micropub.rocks
+      const authCode = await createAuthCode({
+        githubToken: 'github_token_123',
+        me: 'https://example.com/',
+        clientId: 'https://micropub.rocks/',
+        redirectUri: 'https://micropub.rocks/callback'
+      });
+
+      const url = new URL('https://example.com/auth/indieauth/token');
+      const params = new URLSearchParams();
+      params.append('grant_type', 'authorization_code');
+      params.append('code', authCode);
+      params.append('client_id', 'https://micropub.rocks/');
+      params.append('redirect_uri', 'https://micropub.rocks/callback');
+
+      const request = new Request(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Origin: 'https://micropub.rocks'
+        },
+        body: params.toString()
+      });
+
+      const event = {
+        request,
+        url,
+        params: {},
+        locals: {} as App.Locals,
+        cookies: {} as any,
+        fetch: globalThis.fetch,
+        getClientAddress: () => '127.0.0.1',
+        isDataRequest: false,
+        isSubRequest: false,
+        platform: undefined,
+        route: { id: '/auth/indieauth/token' },
+        setHeaders: vi.fn()
+      } as unknown as RequestEvent;
+
+      const response = await POST(event);
+
+      // Should succeed
+      expect(response.status).toBe(200);
+
+      // Should include CORS headers
+      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+
+      // Should return valid token response
+      const data = await response.json();
+      expect(data).toHaveProperty('access_token');
+      expect(data).toHaveProperty('token_type', 'Bearer');
     });
   });
 });

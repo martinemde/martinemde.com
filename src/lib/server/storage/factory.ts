@@ -1,4 +1,5 @@
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import type { StorageBackend } from './types';
 import { GitHubStorageBackend } from './github';
 import { FileStorageBackend } from './file';
@@ -16,7 +17,7 @@ import { TestStorageBackend } from './test';
  */
 export function createStorageBackend(token?: string): StorageBackend {
   // Environment variable override
-  const backendType = process.env.MICROPUB_BACKEND;
+  const backendType = env.MICROPUB_BACKEND;
 
   if (backendType === 'test') {
     return new TestStorageBackend();

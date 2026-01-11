@@ -1,4 +1,6 @@
 import { Octokit } from '@octokit/rest';
+import { env } from '$env/dynamic/private';
+import { env as publicEnv } from '$env/dynamic/public';
 import type { StorageBackend, BlogPostFileInfo } from './types';
 
 /**
@@ -16,8 +18,8 @@ export class GitHubStorageBackend implements StorageBackend {
     this.octokit = new Octokit({ auth: token });
 
     // Get repository configuration from environment variables
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
+    const owner = env.GITHUB_OWNER;
+    const repo = env.GITHUB_REPO;
 
     if (!owner) {
       throw new Error('GITHUB_OWNER environment variable is required');
@@ -123,7 +125,7 @@ export class GitHubStorageBackend implements StorageBackend {
       });
 
       // Get public URL from environment
-      const baseUrl = process.env.PUBLIC_APP_URL || 'https://martinemde.com';
+      const baseUrl = publicEnv.PUBLIC_APP_URL || 'https://martinemde.com';
       const publicUrl = `${baseUrl}/images/blog/${filename}`;
 
       return publicUrl;

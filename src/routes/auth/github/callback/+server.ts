@@ -67,7 +67,9 @@ export const GET: RequestHandler = async (event) => {
       githubToken: token
     });
   } catch (err) {
-    console.error('OAuth callback error:', err);
+    console.error('OAuth callback error:', err instanceof Error ? err.message : String(err));
+    console.error('Error stack:', err instanceof Error ? err.stack : 'No stack trace');
+    console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));
     error(500, 'Authentication failed');
   }
 

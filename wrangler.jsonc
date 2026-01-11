@@ -14,11 +14,18 @@
   "compatibility_date": "2025-11-05",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
+    "enabled": false,
+    "head_sampling_rate": 1,
     "logs": {
-      "enabled": false,
+      "enabled": true,
       "head_sampling_rate": 1,
-      "invocation_logs": true,
-      "persist": true
+      "persist": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": false,
+      "persist": true,
+      "head_sampling_rate": 1
     }
   }
 }

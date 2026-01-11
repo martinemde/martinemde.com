@@ -7,6 +7,8 @@
 
   let { children } = $props();
 
+  const SITE_URL = 'https://martinemde.com';
+
   // Derive the page title from the current page data
   const pageTitle = $derived(
     page.data.metadata?.title ? `${page.data.metadata.title} - Martin Emde` : 'Martin Emde'
@@ -15,8 +17,21 @@
   // Derive the page description
   const pageDescription = $derived(page.data.metadata?.description || undefined);
 
-  // Derive the page image
-  const pageImage = $derived(page.data.metadata?.image || undefined);
+  // Derive the page image - convert relative URLs to absolute
+  const pageImage = $derived.by(() => {
+    const image = page.data.metadata?.image;
+    if (!image) return undefined;
+    // If it's already absolute, return as-is
+    if (image.startsWith('http://') || image.startsWith('https://')) return image;
+    // Convert relative path to absolute URL
+    return `${SITE_URL}${image}`;
+  });
+
+  // Get the current page URL
+  const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
+
+  // Determine content type - article for blog posts, website otherwise
+  const contentType = $derived(page.url.pathname.startsWith('/blog/') && page.data.metadata?.slug ? 'article' : 'website');
 </script>
 
 <svelte:head>
@@ -27,6 +42,8 @@
   {/if}
 
   <meta property="og:title" content={pageTitle} />
+  <meta property="og:url" content={pageUrl} />
+  <meta property="og:type" content={contentType} />
   <meta name="twitter:title" content={pageTitle} />
 
   {#if pageDescription}
@@ -38,6 +55,8 @@
     <meta property="og:image" content={pageImage} />
     <meta name="twitter:image" content={pageImage} />
     <meta name="twitter:card" content="summary_large_image" />
+  {:else}
+    <meta name="twitter:card" content="summary" />
   {/if}
 </svelte:head>
 <div class="min-h-screen bg-surface-50-950 text-surface-950-50">

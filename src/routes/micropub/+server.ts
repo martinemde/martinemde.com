@@ -1,5 +1,5 @@
 import { error, json } from '@sveltejs/kit';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 import {
   parseMicropubRequest,
   generateMarkdownFile,
@@ -69,7 +69,7 @@ export const GET: RequestHandler = async ({ url, request, locals }) => {
 
   if (query === 'config') {
     return json({
-      'media-endpoint': `${PUBLIC_APP_URL}/micropub/media`,
+      'media-endpoint': `${env.PUBLIC_APP_URL}/micropub/media`,
       'syndicate-to': []
     });
   }
@@ -135,7 +135,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
     await backend.createOrUpdateFile(filePath, content, commitMessage);
 
     // Return 201 Created with Location header
-    const postUrl = `${PUBLIC_APP_URL}/blog/${post.slug}`;
+    const postUrl = `${env.PUBLIC_APP_URL}/blog/${post.slug}`;
     return new Response(null, {
       status: 201,
       headers: {

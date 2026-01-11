@@ -4,6 +4,28 @@ import { storeAccessToken } from '$lib/server/token-store';
 import type { RequestHandler } from './$types';
 
 /**
+ * CORS headers for IndieAuth token endpoint
+ * Allows cross-origin requests from Micropub clients
+ */
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization',
+  'Access-Control-Max-Age': '86400' // 24 hours
+};
+
+/**
+ * OPTIONS /auth/indieauth/token
+ * Handle CORS preflight requests
+ */
+export const OPTIONS: RequestHandler = async () => {
+  return new Response(null, {
+    status: 204,
+    headers: corsHeaders
+  });
+};
+
+/**
  * IndieAuth Token Endpoint
  *
  * Exchanges an authorization code for an access token.
@@ -83,11 +105,16 @@ export const POST: RequestHandler = async ({ request }) => {
     'create update' // Micropub scopes
   );
 
-  // Return IndieAuth token response
-  return json({
-    access_token: accessToken,
-    token_type: 'Bearer',
-    scope: 'create update',
-    me: authCode.me
-  });
+  // Return IndieAuth token response with CORS headers
+  return json(
+    {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      scope: 'create update',
+      me: authCode.me
+    },
+    {
+      headers: corsHeaders
+    }
+  );
 };

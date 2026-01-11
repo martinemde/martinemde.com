@@ -533,7 +533,9 @@ describe('GitHub OAuth Callback Security', () => {
       const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
 
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
-      vi.mocked(auth.exchangeCodeForToken).mockRejectedValue(new Error('Invalid authorization code'));
+      vi.mocked(auth.exchangeCodeForToken).mockRejectedValue(
+        new Error('Invalid authorization code')
+      );
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -595,7 +597,9 @@ describe('GitHub OAuth Callback Security', () => {
       }
 
       expect(consoleErrorSpy).toHaveBeenCalled();
-      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Failed to obtain user information');
+      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain(
+        'Failed to obtain user information'
+      );
 
       consoleErrorSpy.mockRestore();
     });

@@ -31,7 +31,9 @@
   const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
 
   // Determine content type - article for blog posts, website otherwise
-  const contentType = $derived(page.url.pathname.startsWith('/blog/') && page.data.metadata?.slug ? 'article' : 'website');
+  const contentType = $derived(
+    page.url.pathname.startsWith('/blog/') && page.data.metadata?.slug ? 'article' : 'website'
+  );
 </script>
 
 <svelte:head>

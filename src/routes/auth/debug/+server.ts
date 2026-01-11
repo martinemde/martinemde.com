@@ -12,7 +12,9 @@ export const GET: RequestHandler = async () => {
       exists: !!env.SESSION_SECRET,
       length: env.SESSION_SECRET?.length || 0,
       valid: (env.SESSION_SECRET?.length || 0) >= 32,
-      preview: env.SESSION_SECRET ? `${env.SESSION_SECRET.slice(0, 4)}...${env.SESSION_SECRET.slice(-4)}` : 'NOT SET'
+      preview: env.SESSION_SECRET
+        ? `${env.SESSION_SECRET.slice(0, 4)}...${env.SESSION_SECRET.slice(-4)}`
+        : 'NOT SET'
     },
     GITHUB_CLIENT_ID: {
       exists: !!env.GITHUB_CLIENT_ID,

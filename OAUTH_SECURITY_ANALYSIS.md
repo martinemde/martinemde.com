@@ -1,6 +1,7 @@
 # OAuth Implementation Security Analysis
 
 ## Overview
+
 Analysis of the GitHub OAuth + IndieAuth implementation for security vulnerabilities and design issues.
 
 ## Current Security Posture ✅
@@ -44,10 +45,12 @@ Analysis of the GitHub OAuth + IndieAuth implementation for security vulnerabili
 ### 1. **HIGH: Session Race Condition / Flow Confusion**
 
 **Issue**: Different OAuth flows handle session differently:
+
 - Normal login: `setSession(event, { oauthState })` - **REPLACES** entire session
 - IndieAuth: `setSession(event, { ...session, oauthState, indieAuthRequest })` - **MERGES** session
 
 **Attack Scenario**:
+
 ```
 1. User starts IndieAuth flow in Tab 1
    → Session: { oauthState: 'A', indieAuthRequest: {...} }
@@ -79,22 +82,26 @@ OR WORSE:
 ### 2. **MEDIUM: Subdomain Wildcard Acceptance**
 
 **Current Behavior**:
+
 ```javascript
 // Only validates protocol, not domain specifics
 if (redirectUrl.protocol !== 'https:') { ... }
 ```
 
 **Allowed Redirects**:
+
 - ✅ `https://martinemde.com/callback`
 - ✅ `https://anything.martinemde.com/callback` ← RISK
 - ✅ `https://totally-different-domain.com/callback`
 
 **Risk**:
+
 - If `https://stale.martinemde.com` has subdomain takeover vulnerability
 - Attacker can register redirect_uri to that subdomain
 - Open redirect to attacker-controlled domain
 
 **Mitigation**:
+
 - Consider allowlist of specific domains/subdomains
 - Or require client registration with allowed redirect_uri patterns
 
@@ -105,15 +112,18 @@ if (redirectUrl.protocol !== 'https:') { ... }
 **Current State**: No validation that redirect_uri is under client_id domain
 
 **IndieAuth Spec Recommendation** (RFC 8252):
+
 - redirect_uri should be validated against client_id
 - Typically: redirect_uri must be under client_id domain
 - Example: `client_id=https://app.example.com` → redirect_uri must start with `https://app.example.com/`
 
 **Attack Scenario**:
+
 ```
 client_id: https://legitimate-app.com
 redirect_uri: https://attacker.com/steal-code
 ```
+
 Currently allowed! Auth code would be sent to attacker.com.
 
 **Fix**: Add domain relationship validation.
@@ -123,6 +133,7 @@ Currently allowed! Auth code would be sent to attacker.com.
 ### 4. **MEDIUM: Localhost Port Wildcard**
 
 **Current Behavior**:
+
 ```javascript
 const isLocalhost =
   redirectUrl.hostname === 'localhost' ||
@@ -135,11 +146,13 @@ if (!isLocalhost || redirectUrl.protocol !== 'http:') {
 ```
 
 **Allowed**:
+
 - ✅ `http://localhost:3000/callback`
 - ✅ `http://localhost:1/callback` ← Any port!
 - ✅ `http://127.0.0.1:8080/callback`
 
 **Risk**:
+
 - If a vulnerable service runs on localhost:PORT
 - Attacker could craft redirect_uri to exploit it
 - Low risk in practice (localhost-only), but worth noting
@@ -157,12 +170,13 @@ if (!isLocalhost || redirectUrl.protocol !== 'http:') {
 // In token endpoint:
 return json({
   access_token: accessToken,
-  scope: 'create update',  // Hardcoded
+  scope: 'create update', // Hardcoded
   me: authCode.me
 });
 ```
 
 **Issue**:
+
 - No way for client to request limited scopes
 - Always grants full write access
 - Not a vulnerability per se, but limits principle of least privilege
@@ -174,6 +188,7 @@ return json({
 ### Current Implementation
 
 **✅ ALLOWED**:
+
 ```
 https://any-domain.com/any-path
 https://subdomain.example.com/callback
@@ -184,6 +199,7 @@ http://[::1]:9000/callback
 ```
 
 **❌ REJECTED**:
+
 ```
 http://example.com/callback          (non-https, non-localhost)
 http://localhost.evil.com/callback   (hostname != 'localhost')
@@ -196,15 +212,19 @@ ftp://example.com/callback           (wrong protocol)
 ### Edge Cases to Consider
 
 **Protocol-relative URLs**: `//example.com/callback`
+
 - ❌ Rejected (URL constructor requires protocol)
 
 **Userinfo in URL**: `https://user:pass@example.com/callback`
+
 - ✅ Allowed (but probably harmless - just ignored by most clients)
 
 **Fragments**: `https://example.com/callback#fragment`
+
 - ✅ Allowed (fragments ignored in OAuth)
 
 **Non-standard ports**: `https://example.com:8443/callback`
+
 - ✅ Allowed (valid for custom HTTPS ports)
 
 ---
@@ -319,6 +339,7 @@ ftp://example.com/callback           (wrong protocol)
 ### Priority 1 (High - Fix Soon)
 
 1. **Fix Session Race Condition**
+
    ```typescript
    // Option 1: Always merge sessions
    await setSession(event, {
@@ -346,13 +367,9 @@ ftp://example.com/callback           (wrong protocol)
 ### Priority 2 (Medium - Consider for Hardening)
 
 3. **Domain Allowlist for redirect_uri**
+
    ```typescript
-   const ALLOWED_DOMAINS = [
-     'martinemde.com',
-     'localhost',
-     '127.0.0.1',
-     '[::1]'
-   ];
+   const ALLOWED_DOMAINS = ['martinemde.com', 'localhost', '127.0.0.1', '[::1]'];
    ```
 
 4. **Port Validation for Production**
@@ -392,6 +409,7 @@ ftp://example.com/callback           (wrong protocol)
 The implementation has **good foundational security** with proper CSRF protection, encrypted sessions, and one-time-use auth codes.
 
 The **main concerns** are:
+
 1. Session handling inconsistency (flow confusion risk)
 2. Permissive redirect_uri validation (open redirect potential)
 3. Missing client_id/redirect_uri relationship validation

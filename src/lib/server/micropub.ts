@@ -1,4 +1,4 @@
-import { GITHUB_OWNER } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export interface MicropubProperties {
   name?: string | string[];
@@ -113,7 +113,7 @@ export function parseMicropubRequest(request: MicropubRequest): BlogPost {
     date,
     published: postStatus === 'published', // Use post-status to determine published state
     description: description || undefined,
-    author: GITHUB_OWNER,
+    author: env.GITHUB_OWNER,
     categories
   };
 }

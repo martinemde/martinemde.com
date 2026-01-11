@@ -1,5 +1,5 @@
 import { sealData, unsealData } from 'iron-session';
-import { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, SESSION_SECRET } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export interface SessionData {
@@ -35,8 +35,20 @@ export interface AuthCode {
  * Get session options lazily to avoid accessing env vars during prerendering
  */
 function getSessionOptions() {
+  const secret = env.SESSION_SECRET;
+
+  if (!secret) {
+    throw new Error('SESSION_SECRET environment variable is not set');
+  }
+
+  if (secret.length < 32) {
+    throw new Error(
+      `SESSION_SECRET is too short (${secret.length} characters). Minimum 32 characters required for iron-session encryption.`
+    );
+  }
+
   return {
-    password: SESSION_SECRET!,
+    password: secret,
     ttl: 60 * 60 * 24 * 7 // 7 days
   };
 }
@@ -95,8 +107,8 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
       Accept: 'application/json'
     },
     body: JSON.stringify({
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
+      client_id: env.GITHUB_CLIENT_ID,
+      client_secret: env.GITHUB_CLIENT_SECRET,
       code
     })
   });
@@ -128,7 +140,7 @@ export function generateState(): string {
  */
 export function getAuthorizationUrl(state: string, redirectUri: string): string {
   const params = new URLSearchParams({
-    client_id: GITHUB_CLIENT_ID,
+    client_id: env.GITHUB_CLIENT_ID,
     redirect_uri: redirectUri,
     scope: 'repo',
     state
@@ -147,7 +159,7 @@ export async function createAuthCode(data: Omit<AuthCode, 'issuedAt'>): Promise<
   };
 
   return await sealData(authCode, {
-    password: SESSION_SECRET!,
+    password: env.SESSION_SECRET!,
     ttl: 600 // 10 minutes
   });
 }
@@ -167,7 +179,7 @@ export async function verifyAuthCode(code: string): Promise<AuthCode | null> {
 
   try {
     const data = await unsealData<AuthCode>(code, {
-      password: SESSION_SECRET!,
+      password: env.SESSION_SECRET!,
       ttl: 600
     });
 

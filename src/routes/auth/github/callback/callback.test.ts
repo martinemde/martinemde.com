@@ -69,14 +69,26 @@ describe('GitHub OAuth Callback Security', () => {
       const event = createRequestEvent('', 'valid_state', { oauthState: 'valid_state' });
       event.url.searchParams.delete('code');
 
-      await expect(GET(event)).rejects.toThrow('Missing code or state parameter');
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(400);
+        expect(e.body?.message).toBe('Missing code or state parameter');
+      }
     });
 
     it('should reject requests missing state parameter', async () => {
       const event = createRequestEvent('valid_code', '', { oauthState: 'valid_state' });
       event.url.searchParams.delete('state');
 
-      await expect(GET(event)).rejects.toThrow('Missing code or state parameter');
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(400);
+        expect(e.body?.message).toBe('Missing code or state parameter');
+      }
     });
   });
 
@@ -89,7 +101,13 @@ describe('GitHub OAuth Callback Security', () => {
       // Mock getSession to return the session with oauthState
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'correct_state' });
 
-      await expect(GET(event)).rejects.toThrow('Invalid state parameter');
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(400);
+        expect(e.body?.message).toBe('Invalid state parameter');
+      }
     });
 
     it('should reject requests with missing session state', async () => {
@@ -98,10 +116,16 @@ describe('GitHub OAuth Callback Security', () => {
       // Mock getSession to return empty session
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
 
-      await expect(GET(event)).rejects.toThrow('Invalid state parameter');
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(400);
+        expect(e.body?.message).toBe('Invalid state parameter');
+      }
     });
 
-    it('SECURITY ISSUE: should clear state after successful validation', async () => {
+    it('should clear state after successful validation', async () => {
       const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
 
       // Mock getSession and setSession
@@ -129,9 +153,8 @@ describe('GitHub OAuth Callback Security', () => {
         return !sessionData.oauthState;
       });
 
-      // VULNERABILITY: State is not cleared after use
-      // TODO: After fix, this should be true
-      expect(clearedState).toBe(false);
+      // State should be cleared after use (security best practice)
+      expect(clearedState).toBe(true);
     });
   });
 
@@ -179,7 +202,13 @@ describe('GitHub OAuth Callback Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
       vi.mocked(githubAuth.verifyRepoOwnership).mockResolvedValue(false);
 
-      await expect(GET(event)).rejects.toThrow('You do not have access to this repository');
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(403);
+        expect(e.body?.message).toContain('You do not have access to this repository');
+      }
     });
 
     it('should allow repository owners', async () => {
@@ -290,12 +319,151 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      await expect(GET(event)).rejects.toThrow('Authentication failed');
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        // Should return generic error message, not the detailed internal error
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
+        expect(e.body?.message).not.toContain('SECRET_KEY');
+      }
 
       // Verify sensitive data was logged but not exposed to user
       expect(consoleErrorSpy).toHaveBeenCalled();
       const errorLog = consoleErrorSpy.mock.calls[0][1];
-      expect(errorLog).toBeInstanceOf(Error);
+      expect(String(errorLog)).toContain('SECRET_KEY=abc123');
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Redirect Handling', () => {
+    it('should redirect to /editor on successful normal OAuth flow', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
+      const setSessionSpy = vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
+
+      let redirectError: any;
+      try {
+        await GET(event);
+      } catch (e: any) {
+        redirectError = e;
+      }
+
+      // Should throw redirect exception (SvelteKit's redirect mechanism)
+      expect(redirectError).toBeDefined();
+      expect(redirectError.status).toBe(302);
+      expect(redirectError.location).toBe('/editor');
+
+      // Should have saved user and token to session
+      expect(setSessionSpy).toHaveBeenCalledWith(event, {
+        user: {
+          id: 123,
+          login: 'testuser',
+          name: 'Test User',
+          avatar_url: 'https://example.com/avatar.jpg'
+        },
+        githubToken: 'mock_github_token'
+      });
+    });
+
+    it('should redirect to client callback on successful IndieAuth flow', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', {
+        oauthState: 'valid_state',
+        indieAuthRequest: {
+          me: 'https://example.com/',
+          clientId: 'https://client.example.com/',
+          redirectUri: 'https://client.example.com/callback',
+          state: 'client_state_123',
+          codeChallenge: 'challenge123',
+          codeChallengeMethod: 'S256'
+        }
+      });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({
+        oauthState: 'valid_state',
+        indieAuthRequest: {
+          me: 'https://example.com/',
+          clientId: 'https://client.example.com/',
+          redirectUri: 'https://client.example.com/callback',
+          state: 'client_state_123',
+          codeChallenge: 'challenge123',
+          codeChallengeMethod: 'S256'
+        }
+      });
+
+      vi.mocked(auth.createAuthCode).mockResolvedValue('sealed_auth_code_xyz');
+      const setSessionSpy = vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
+
+      let redirectError: any;
+      try {
+        await GET(event);
+      } catch (e: any) {
+        redirectError = e;
+      }
+
+      // Should throw redirect exception, NOT a 500 error
+      expect(redirectError).toBeDefined();
+      expect(redirectError.status).toBe(302);
+      expect(redirectError.location).toContain('https://client.example.com/callback');
+      expect(redirectError.location).toContain('code=sealed_auth_code_xyz');
+      expect(redirectError.location).toContain('state=client_state_123');
+
+      // Should have cleared IndieAuth request from session
+      expect(setSessionSpy).toHaveBeenCalledWith(event, {
+        user: {
+          id: 123,
+          login: 'testuser',
+          name: 'Test User',
+          avatar_url: 'https://example.com/avatar.jpg'
+        },
+        githubToken: 'mock_github_token'
+      });
+    });
+
+    it('should return 500 error on actual GitHub API failures', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
+      vi.mocked(githubAuth.getGitHubUser).mockRejectedValue(new Error('GitHub API error'));
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
+      }
+
+      // Should log the actual error
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('GitHub API error');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should return 500 error when token exchange fails', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
+      vi.mocked(auth.exchangeCodeForToken).mockRejectedValue(new Error('Invalid authorization code'));
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Invalid authorization code');
 
       consoleErrorSpy.mockRestore();
     });

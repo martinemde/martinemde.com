@@ -67,6 +67,16 @@ export const GET: RequestHandler = async (event) => {
       githubToken: token
     });
   } catch (err) {
+    // SvelteKit's redirect() throws a redirect object with status and location
+    // SvelteKit's error() throws an HttpError with status and body
+    // We need to rethrow both, only catching unexpected errors
+    if (err && typeof err === 'object' && 'status' in err) {
+      // Check if it's a redirect (has location) or HttpError (has body)
+      if ('location' in err || 'body' in err) {
+        throw err;
+      }
+    }
+
     console.error('OAuth callback error:', err instanceof Error ? err.message : String(err));
     console.error('Error stack:', err instanceof Error ? err.stack : 'No stack trace');
     console.error('Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)));

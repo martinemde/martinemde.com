@@ -33,9 +33,7 @@
   } = $props();
 
   // Filter to only enabled shaders for rendering
-  const activeShaderCodes = $derived(
-    shaders.filter((s) => s.enabled).map((s) => s.code)
-  );
+  const activeShaderCodes = $derived(shaders.filter((s) => s.enabled).map((s) => s.code));
 
   // State
   let canvas: HTMLCanvasElement | null = $state(null);
@@ -204,7 +202,6 @@
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   };
 
-
   // Setup full-screen quad geometry
   const setupGeometry = () => {
     if (!gl || programs.length === 0) return;
@@ -220,7 +217,6 @@
     gl.enableVertexAttribArray(positionLoc);
     gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
   };
-
 
   // Render a shader pass
   const renderPass = (prog: WebGLProgram, targetTexture: WebGLTexture | null) => {

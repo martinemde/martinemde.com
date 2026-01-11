@@ -22,7 +22,9 @@
     <p class="text-lg text-surface-700-300">Find me on:</p>
     <ul class="mt-2 list-inside list-disc text-lg text-surface-700-300">
       <li>
-        <a href="https://github.com/martinemde" rel="external" class="anchor">@martinemde on GitHub</a>
+        <a href="https://github.com/martinemde" rel="external" class="anchor"
+          >@martinemde on GitHub</a
+        >
       </li>
       <li>
         <a href="https://bsky.app/profile/martinemde.com" rel="external" class="anchor"

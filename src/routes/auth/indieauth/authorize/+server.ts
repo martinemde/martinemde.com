@@ -89,6 +89,28 @@ export const GET: RequestHandler = async (event) => {
     }
   }
 
+  // Validate redirect_uri is under client_id origin (security best practice)
+  // This prevents authorization code from being sent to a different domain
+  // Exception: Allow localhost redirect_uri with localhost client_id on any port
+  const isClientLocalhost =
+    clientUrl.hostname === 'localhost' ||
+    clientUrl.hostname === '127.0.0.1' ||
+    clientUrl.hostname === '[::1]';
+  const isRedirectLocalhost =
+    redirectUrl.hostname === 'localhost' ||
+    redirectUrl.hostname === '127.0.0.1' ||
+    redirectUrl.hostname === '[::1]';
+
+  if (isClientLocalhost && isRedirectLocalhost) {
+    // Both localhost - allow any port for development
+  } else if (redirectUrl.origin !== clientUrl.origin) {
+    // For non-localhost, redirect_uri must exactly match client_id origin
+    error(
+      400,
+      `redirect_uri origin (${redirectUrl.origin}) must match client_id origin (${clientUrl.origin})`
+    );
+  }
+
   // Generate OAuth state for CSRF protection
   const oauthState = generateState();
 

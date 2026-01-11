@@ -99,8 +99,8 @@ Try it directly on my site with a modern browser or zoom in really close on your
 Here we emulate the `iTimeFocus` and `iFocus` uniforms to create a cursor highlight effect.
 
 Click into the "terminal" and a cursor focus zoom effect triggers.
-Click around more. The effect only triggers on first focus so click out and back in to trigger it
-again.
+Click around more, the effect only plays once.
+Defocus the "terminal" then focus it again and you'll replay the focus animation.
 
 {#if focusDemoShaders.length > 0}
   <ShaderCanvas

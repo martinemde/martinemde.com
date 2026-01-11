@@ -5,6 +5,7 @@ author: martinemde
 description: 'How to create dynamic focus and unfocus state shaders in Ghostty with the new iFocus and iTimeFocus uniforms available in Ghostty prerelease.'
 published: true
 slug: ghostty-focus-shaders
+image: /images/blog/ghostty-focus-shaders.png
 ---
 
 <script lang="ts">
@@ -56,21 +57,13 @@ slug: ghostty-focus-shaders
   });
 </script>
 
-I recently [added][pr] a feature to Ghostty enables focus based shaders.
-
-There are some [amazing Ghostty shaders][fun-with-shaders] that can totally wreck the usability of a terminal _in style_.
-They're awesome, but not for a daily driver.
-Others can add cool effects to the cursor that help you find it, but applying it on every cursor
-movement can be distracting.
-
-What if you could have that sick CRT effect, but only on unfocused windows, or a rad cursor
-highlight but only once when you focused the window?
+What if you could have that sick Ghostty CRT effect but only on unfocused windows,
+or a rad flaming cursor highlight but only once when you focused the window?
 
 ## Introducing the iFocus and iTimeFocus uniforms
 
-The prerelease channel of Ghostty now supports new input variables in custom shaders: `iFocus` and `iTimeFocus`.
-These inputs, known as "uniforms" in Shadertoy GLSL, allow shaders to react to focus and blur events.
-This makes new shader effects possible were previous impossible.
+My recent [contribution][pr] to Ghostty enables new focus-based shaders.
+You can use these new input variables, `iFocus` and `iTimeFocus`, known as "uniforms" in Shadertoy GLSL, to allow shaders to react to focus and blur events.
 
 _Note: Until the next Ghostty release, you'll need to [install a recent Ghostty prerelease version][prerelease] to try this out._
 

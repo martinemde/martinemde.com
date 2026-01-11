@@ -70,13 +70,16 @@ highlight but only once when you focused the window?
 
 The prerelease channel of Ghostty now supports new input variables in custom shaders: `iFocus` and `iTimeFocus`.
 These inputs, known as "uniforms" in Shadertoy GLSL, allow shaders to react to focus and blur events.
-This makes new shaders effects possible that previously couldn't be done.
+This makes new shader effects possible were previous impossible.
 
 _Note: Until the next Ghostty release, you'll need to [install a recent Ghostty prerelease version][prerelease] to try this out._
 
 ## Example: CRT Shader on Blur
 
-Let's get right to it with a live demo. This is the _actual_ shader that I use in Ghostty rendered on a canvas with OpenGL. It demonstrates the `iFocus` uniform in action.
+Here's the shader I use in Ghostty for unfocused surfaces.
+
+Try clicking into and then outside of the "terminal" (yes it's upside down).
+You should see a CRT-style effect that clears when you focus the terminal.
 
 {#if blurDemoShaders.length > 0}
   <ShaderCanvas
@@ -94,11 +97,17 @@ Let's get right to it with a live demo. This is the _actual_ shader that I use i
   </div>
 {/if}
 
-I'm emulating Ghostty's `iFocus` uniform here to apply a CRT shader effect when the canvas itself receives focus or blur events. It may not render in every browser, so try it directly on my site with a modern browser.
+Here I'm emulating Ghostty's `iFocus` uniform to apply a CRT shader only when the canvas is unfocused.
+It may not render in every browser.
+Try it directly on my site with a modern browser or zoom in really close on your phone.
 
-## Example: Focus Resume Animations
+## Example: Focus Animations
 
-Here we emulate the `iTimeFocus` uniform to create a cursor highlight effect that triggers only when the canvas receives focus.
+Here we emulate the `iTimeFocus` and `iFocus` uniforms to create a cursor highlight effect.
+
+Click into the "terminal" and a cursor focus zoom effect triggers.
+Click around more. The effect only triggers on first focus so click out and back in to trigger it
+again.
 
 {#if focusDemoShaders.length > 0}
   <ShaderCanvas
@@ -116,9 +125,9 @@ Here we emulate the `iTimeFocus` uniform to create a cursor highlight effect tha
   </div>
 {/if}
 
-If you'd like to play with this more, check out my [shaders][shaders] page.
+If you'd like to play with these shaders more, check out my [Ghosty Shaders][shaders] demo page.
 
-Toggle between the shaders using the menu button in the top-left of each demo, or check out the uniform values with the bottom right debug button.
+Toggle between the shaders using the menu button in the top-left of the demo canvas, or look at the debug overlay (bottom right) for uniform details.
 
 ## How it works: Focus/Blur Effects
 

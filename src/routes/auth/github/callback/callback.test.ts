@@ -270,9 +270,8 @@ describe('GitHub OAuth Callback Security', () => {
       expect(finalSession.indieAuthRequest).toBeUndefined();
     });
 
-    it('SECURITY ISSUE: should validate redirect_uri URL scheme', async () => {
-      // This test documents that we don't validate the redirect_uri scheme
-      // An attacker could potentially use javascript: or data: URIs
+    it('should validate and reject dangerous redirect_uri schemes', async () => {
+      // Test that we reject javascript:, data:, and other dangerous URI schemes
 
       const event = createRequestEvent('valid_code', 'valid_state', {
         oauthState: 'valid_state',
@@ -294,17 +293,101 @@ describe('GitHub OAuth Callback Security', () => {
         }
       });
 
-      vi.mocked(auth.createAuthCode).mockResolvedValue('sealed_auth_code');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // VULNERABILITY: This should throw an error but doesn't
-      // After fix, this should reject non-https URIs
       try {
         await GET(event);
-        // Currently succeeds (vulnerability)
+        expect.fail('Should have thrown an error');
       } catch (e: any) {
-        // Will throw redirect, but with dangerous URI
-        // TODO: Should validate and throw 400 error instead
+        // Should return 500 error (caught as unexpected error)
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
       }
+
+      // Should have logged the validation error
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      const errorMessage = String(consoleErrorSpy.mock.calls[0][1]);
+      // javascript: scheme will fail either URL parsing or https validation
+      expect(errorMessage).toMatch(/Invalid redirect_uri|redirect_uri must use https/);
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should reject non-https redirect_uri (except localhost)', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', {
+        oauthState: 'valid_state',
+        indieAuthRequest: {
+          me: 'https://example.com/',
+          clientId: 'https://client.example.com/',
+          redirectUri: 'http://evil.com/callback',
+          state: 'client_state'
+        }
+      });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({
+        oauthState: 'valid_state',
+        indieAuthRequest: {
+          me: 'https://example.com/',
+          clientId: 'https://client.example.com/',
+          redirectUri: 'http://evil.com/callback',
+          state: 'client_state'
+        }
+      });
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('https');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should allow http://localhost redirect_uri for development', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', {
+        oauthState: 'valid_state',
+        indieAuthRequest: {
+          me: 'https://example.com/',
+          clientId: 'https://client.example.com/',
+          redirectUri: 'http://localhost:3000/callback',
+          state: 'client_state_123',
+          codeChallenge: 'challenge123',
+          codeChallengeMethod: 'S256'
+        }
+      });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({
+        oauthState: 'valid_state',
+        indieAuthRequest: {
+          me: 'https://example.com/',
+          clientId: 'https://client.example.com/',
+          redirectUri: 'http://localhost:3000/callback',
+          state: 'client_state_123',
+          codeChallenge: 'challenge123',
+          codeChallengeMethod: 'S256'
+        }
+      });
+
+      vi.mocked(auth.createAuthCode).mockResolvedValue('sealed_auth_code');
+
+      let redirectError: any;
+      try {
+        await GET(event);
+      } catch (e: any) {
+        redirectError = e;
+      }
+
+      // Should successfully redirect to localhost
+      expect(redirectError).toBeDefined();
+      expect(redirectError.status).toBe(302);
+      expect(redirectError.location).toContain('http://localhost:3000/callback');
     });
   });
 
@@ -464,6 +547,55 @@ describe('GitHub OAuth Callback Security', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Invalid authorization code');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should return 500 error when token is empty', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
+      vi.mocked(auth.exchangeCodeForToken).mockResolvedValue('');
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Failed to obtain access token');
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should return 500 error when user data is invalid', async () => {
+      const event = createRequestEvent('valid_code', 'valid_state', { oauthState: 'valid_state' });
+
+      vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
+      vi.mocked(githubAuth.getGitHubUser).mockResolvedValue({
+        id: 123,
+        login: '',
+        name: 'Test User',
+        avatar_url: 'https://example.com/avatar.jpg'
+      });
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await GET(event);
+        expect.fail('Should have thrown an error');
+      } catch (e: any) {
+        expect(e.status).toBe(500);
+        expect(e.body?.message).toBe('Authentication failed');
+      }
+
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Failed to obtain user information');
 
       consoleErrorSpy.mockRestore();
     });

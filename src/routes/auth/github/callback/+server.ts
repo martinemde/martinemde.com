@@ -20,9 +20,15 @@ export const GET: RequestHandler = async (event) => {
   try {
     // Exchange code for access token
     const token = await exchangeCodeForToken(code);
+    if (!token) {
+      throw new Error('Failed to obtain access token from GitHub');
+    }
 
     // Get user information
     const user = await getGitHubUser(token);
+    if (!user || !user.login) {
+      throw new Error('Failed to obtain user information from GitHub');
+    }
 
     // Verify user owns the repository
     const hasAccess = await verifyRepoOwnership(token, user.login);
@@ -37,6 +43,26 @@ export const GET: RequestHandler = async (event) => {
     if (session.indieAuthRequest) {
       const indieAuthReq = session.indieAuthRequest;
 
+      // Validate redirect URI before using it (defense in depth)
+      let redirectUrl: URL;
+      try {
+        redirectUrl = new URL(indieAuthReq.redirectUri);
+      } catch {
+        throw new Error('Invalid redirect_uri in session');
+      }
+
+      // Only allow https:// or http://localhost for development
+      if (redirectUrl.protocol !== 'https:') {
+        const isLocalhost =
+          redirectUrl.hostname === 'localhost' ||
+          redirectUrl.hostname === '127.0.0.1' ||
+          redirectUrl.hostname === '[::1]';
+
+        if (!isLocalhost || redirectUrl.protocol !== 'http:') {
+          throw new Error('redirect_uri must use https (except localhost for development)');
+        }
+      }
+
       // Generate authorization code for IndieAuth client
       const authCode = await createAuthCode({
         githubToken: token,
@@ -47,14 +73,14 @@ export const GET: RequestHandler = async (event) => {
         codeChallengeMethod: indieAuthReq.codeChallengeMethod
       });
 
-      // Clear IndieAuth request from session
+      // Clear IndieAuth request and OAuth state from session (CSRF protection)
       await setSession(event, {
         user,
         githubToken: token
+        // Explicitly not including: oauthState, indieAuthRequest
       });
 
       // Redirect back to client with authorization code
-      const redirectUrl = new URL(indieAuthReq.redirectUri);
       redirectUrl.searchParams.set('code', authCode);
       redirectUrl.searchParams.set('state', indieAuthReq.state);
 
@@ -62,9 +88,11 @@ export const GET: RequestHandler = async (event) => {
     }
 
     // Normal (non-IndieAuth) flow: store user and token in session
+    // Explicitly clear OAuth state (CSRF protection)
     await setSession(event, {
       user,
       githubToken: token
+      // Explicitly not including: oauthState
     });
   } catch (err) {
     // SvelteKit's redirect() throws a redirect object with status and location
@@ -72,7 +100,11 @@ export const GET: RequestHandler = async (event) => {
     // We need to rethrow both, only catching unexpected errors
     if (err && typeof err === 'object' && 'status' in err) {
       // Check if it's a redirect (has location) or HttpError (has body)
-      if ('location' in err || 'body' in err) {
+      // Both must be non-enumerable properties to be SvelteKit errors
+      const hasLocation = 'location' in err;
+      const hasBody = 'body' in err;
+
+      if (hasLocation || hasBody) {
         throw err;
       }
     }

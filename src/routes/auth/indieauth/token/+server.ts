@@ -4,42 +4,12 @@ import { storeAccessToken } from '$lib/server/token-store';
 import type { RequestHandler } from './$types';
 
 /**
- * Disable CSRF protection for this endpoint
- * IndieAuth token endpoint must accept cross-origin POST requests
- */
-export const config = {
-  csrf: {
-    checkOrigin: false
-  }
-};
-
-/**
- * CORS headers for IndieAuth token endpoint
- * Allows cross-origin requests from Micropub clients
- */
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization',
-  'Access-Control-Max-Age': '86400' // 24 hours
-};
-
-/**
- * OPTIONS /auth/indieauth/token
- * Handle CORS preflight requests
- */
-export const OPTIONS: RequestHandler = async () => {
-  return new Response(null, {
-    status: 204,
-    headers: corsHeaders
-  });
-};
-
-/**
  * IndieAuth Token Endpoint
  *
  * Exchanges an authorization code for an access token.
  * Supports both form-encoded and JSON requests.
+ *
+ * CORS is handled by the server hook in hooks.server.ts
  *
  * Parameters:
  * - grant_type: Must be 'authorization_code'
@@ -115,16 +85,12 @@ export const POST: RequestHandler = async ({ request }) => {
     'create update' // Micropub scopes
   );
 
-  // Return IndieAuth token response with CORS headers
-  return json(
-    {
-      access_token: accessToken,
-      token_type: 'Bearer',
-      scope: 'create update',
-      me: authCode.me
-    },
-    {
-      headers: corsHeaders
-    }
-  );
+  // Return IndieAuth token response
+  // CORS headers are added by the server hook
+  return json({
+    access_token: accessToken,
+    token_type: 'Bearer',
+    scope: 'create update',
+    me: authCode.me
+  });
 };

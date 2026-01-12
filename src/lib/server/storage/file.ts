@@ -1,5 +1,5 @@
 import { writeFile, access, mkdir, readFile, readdir } from 'node:fs/promises';
-import { dirname, join, basename } from 'node:path';
+import { dirname, join } from 'node:path';
 import { cwd } from 'node:process';
 import type { StorageBackend, BlogPostFileInfo } from './types';
 

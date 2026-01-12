@@ -4,10 +4,9 @@
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
   import AuthButton from '$lib/components/AuthButton.svelte';
+  import { PUBLIC_APP_URL } from '$env/static/public';
 
   let { children } = $props();
-
-  const SITE_URL = 'https://martinemde.com';
 
   // Derive the page title from the current page data
   const pageTitle = $derived(
@@ -24,11 +23,11 @@
     // If it's already absolute, return as-is
     if (image.startsWith('http://') || image.startsWith('https://')) return image;
     // Convert relative path to absolute URL
-    return `${SITE_URL}${image}`;
+    return `${PUBLIC_APP_URL}${image}`;
   });
 
   // Get the current page URL
-  const pageUrl = $derived(`${SITE_URL}${page.url.pathname}`);
+  const pageUrl = $derived(`${PUBLIC_APP_URL}${page.url.pathname}`);
 
   // Determine content type - article for blog posts, website otherwise
   const contentType = $derived(
@@ -42,6 +41,17 @@
   {#if pageDescription}
     <meta name="description" content={pageDescription} />
   {/if}
+
+  <!-- Dynamic links using PUBLIC_APP_URL -->
+  <link
+    rel="alternate"
+    href="{PUBLIC_APP_URL}/rss.xml"
+    type="application/rss+xml"
+    title="Martin Emde"
+  />
+  <link rel="authorization_endpoint" href="{PUBLIC_APP_URL}/auth/indieauth/authorize" />
+  <link rel="token_endpoint" href="{PUBLIC_APP_URL}/auth/indieauth/token" />
+  <link rel="micropub" href="{PUBLIC_APP_URL}/micropub" />
 
   <meta property="og:title" content={pageTitle} />
   <meta property="og:url" content={pageUrl} />

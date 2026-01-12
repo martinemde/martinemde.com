@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { GET } from './+server';
+
+vi.mock('$env/static/public', () => ({
+  PUBLIC_APP_URL: 'https://example.com'
+}));
 
 describe('RSS Feed', () => {
   describe('GET handler', () => {
@@ -45,9 +49,9 @@ describe('RSS Feed', () => {
 
       expect(xml).toContain('<title>Martin Emde</title>');
       expect(xml).toContain('<description>Blog posts by Martin Emde</description>');
-      expect(xml).toContain('<link>https://martinemde.com</link>');
+      expect(xml).toContain('<link>https://example.com</link>');
       expect(xml).toContain(
-        '<atom:link href="https://martinemde.com/rss.xml" rel="self" type="application/rss+xml"'
+        '<atom:link href="https://example.com/rss.xml" rel="self" type="application/rss+xml"'
       );
     });
 
@@ -76,8 +80,8 @@ describe('RSS Feed', () => {
         expect(item).toContain('</title>');
         expect(item).toContain('<description>');
         expect(item).toContain('</description>');
-        expect(item).toContain('<link>https://martinemde.com/blog/');
-        expect(item).toContain('<guid isPermaLink="true">https://martinemde.com/blog/');
+        expect(item).toContain('<link>https://example.com/blog/');
+        expect(item).toContain('<guid isPermaLink="true">https://example.com/blog/');
         expect(item).toContain('<pubDate>');
         expect(item).toContain('</pubDate>');
         expect(item).toContain('<content:encoded>');
@@ -192,9 +196,9 @@ describe('RSS Feed', () => {
           expect(linkMatch[1]).toBe(guidMatch[1]);
         }
 
-        // Should follow pattern: https://martinemde.com/blog/{slug}
+        // Should follow pattern: https://example.com/blog/{slug}
         if (linkMatch) {
-          expect(linkMatch[1]).toMatch(/^https:\/\/martinemde\.com\/blog\/[a-z0-9-]+$/);
+          expect(linkMatch[1]).toMatch(/^https:\/\/example\.com\/blog\/[a-z0-9-]+$/);
         }
       }
     });

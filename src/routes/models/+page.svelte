@@ -2,6 +2,7 @@
   import { Progress } from '@skeletonlabs/skeleton-svelte';
   import { authStore } from '$lib/auth/state.svelte';
   import { initiateOAuthLogin } from '$lib/auth/openrouter';
+  import { PUBLIC_APP_URL } from '$env/static/public';
 
   interface TestResult {
     timeToFirstToken: number | null;
@@ -268,7 +269,7 @@ ${contextBeforeCursor}<cursorPosition>`;
         method: 'POST',
         headers: {
           Authorization: `Bearer ${effectiveApiKey}`,
-          'HTTP-Referer': 'https://martinemde.com',
+          'HTTP-Referer': PUBLIC_APP_URL,
           'X-Title': 'OpenRouter Model Tester',
           'Content-Type': 'application/json'
         },

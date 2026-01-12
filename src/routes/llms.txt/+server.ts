@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
 import { getAllPosts } from '$lib/utils/posts';
+import { PUBLIC_APP_URL } from '$env/static/public';
 
 /**
  * GET /llms.txt
@@ -7,7 +8,7 @@ import { getAllPosts } from '$lib/utils/posts';
  */
 export const GET: RequestHandler = async () => {
   const posts = await getAllPosts();
-  const baseUrl = 'https://martinemde.com';
+  const baseUrl = PUBLIC_APP_URL;
 
   // Generate markdown content
   let content = '# Martin Emde\n\n';

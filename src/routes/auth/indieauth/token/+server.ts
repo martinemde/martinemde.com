@@ -4,6 +4,16 @@ import { storeAccessToken } from '$lib/server/token-store';
 import type { RequestHandler } from './$types';
 
 /**
+ * Disable CSRF protection for this endpoint
+ * IndieAuth token endpoint must accept cross-origin POST requests
+ */
+export const config = {
+  csrf: {
+    checkOrigin: false
+  }
+};
+
+/**
  * CORS headers for IndieAuth token endpoint
  * Allows cross-origin requests from Micropub clients
  */

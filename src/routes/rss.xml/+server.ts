@@ -2,8 +2,9 @@ import { getRecentPosts, getRawPostBySlug, type Post } from '$lib/utils/posts';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkHtml from 'remark-html';
+import { PUBLIC_APP_URL } from '$env/static/public';
 
-const siteUrl = 'https://martinemde.com';
+const siteUrl = PUBLIC_APP_URL;
 const siteTitle = 'Martin Emde';
 const siteDescription = 'Blog posts by Martin Emde';
 

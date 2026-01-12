@@ -1,10 +1,10 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-import type { UserConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  plugins: [tailwindcss(), sveltekit()],
+  // Type assertion needed due to Vite version mismatch between vitest and main dependencies
+  plugins: [tailwindcss(), sveltekit()] as any,
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}'],
     environment: 'jsdom',
@@ -15,4 +15,4 @@ export default defineConfig({
     // Always use browser conditions to properly resolve Svelte 5 client-side entry points
     conditions: ['browser']
   }
-} as UserConfig);
+});

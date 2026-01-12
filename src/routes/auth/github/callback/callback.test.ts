@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './+server';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 import * as auth from '$lib/server/auth';
 import * as githubAuth from '$lib/server/github-auth';
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { POST } from './+server';
 import { createAuthCode } from '$lib/server/auth';
 import { getAccessToken } from '$lib/server/token-store';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 // Helper to create a PKCE code challenge
 async function createCodeChallenge(verifier: string): Promise<string> {

@@ -269,7 +269,6 @@
 
     // Check for speech recognition support
     const SpeechRecognition =
-      // @ts-expect-error - webkitSpeechRecognition is not in types
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {

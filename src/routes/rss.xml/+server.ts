@@ -44,11 +44,14 @@ async function createFeedItem(post: Post): Promise<string> {
   const rawMarkdown = getRawPostBySlug(post.slug);
   const pubDate = convertToUtcDate(post.date);
 
-  // Prepend header image if exists
-  const imageHtml = post.image
-    ? `<img src="${escapeXml(post.image)}" alt="${escapeXml(post.title)}" style="max-width: 100%; height: auto; margin-bottom: 1em;" />`
+  // Convert relative image URL to absolute
+  const absoluteImageUrl = post.image ? makeAbsoluteUrl(post.image) : '';
+
+  // Prepend header image if exists (no inline styles for validator compatibility)
+  const imageHtml = absoluteImageUrl
+    ? `<img src="${escapeXml(absoluteImageUrl)}" alt="${escapeXml(post.title)}" />`
     : '';
-  const fullContent = imageHtml + htmlContent;
+  const fullContent = makeUrlsAbsolute(imageHtml + htmlContent);
 
   // Get markdown content without frontmatter for source:markdown
   const markdownContent = rawMarkdown
@@ -62,7 +65,7 @@ async function createFeedItem(post: Post): Promise<string> {
 			<link>${siteUrl}/blog/${post.slug}</link>
 			<guid isPermaLink="true">${siteUrl}/blog/${post.slug}</guid>
 			<pubDate>${pubDate.toUTCString()}</pubDate>
-			${post.image ? `<enclosure url="${escapeXml(post.image)}" type="image/jpeg" length="0"/>` : ''}
+			${absoluteImageUrl ? `<enclosure url="${escapeXml(absoluteImageUrl)}" type="image/jpeg" length="0"/>` : ''}
 			<content:encoded><![CDATA[${fullContent}]]></content:encoded>
 			${markdownContent ? `<source:markdown><![CDATA[${markdownContent}]]></source:markdown>` : ''}
 		</item>`;
@@ -100,4 +103,20 @@ function escapeXml(unsafe: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+function makeAbsoluteUrl(url: string): string {
+  // If already absolute, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If relative, prepend site URL
+  return url.startsWith('/') ? `${siteUrl}${url}` : `${siteUrl}/${url}`;
+}
+
+function makeUrlsAbsolute(html: string): string {
+  // Convert relative URLs in src and href attributes to absolute
+  return html
+    .replace(/src="\/([^"]*)"/g, `src="${siteUrl}/$1"`)
+    .replace(/href="\/([^"]*)"/g, `href="${siteUrl}/$1"`);
 }

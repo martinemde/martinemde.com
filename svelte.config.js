@@ -40,7 +40,9 @@ const config = {
     adapter: adapter({}),
     // CSRF protection is handled via custom implementation in hooks.server.ts
     // This allows us to allowlist specific routes like /auth/indieauth/token
-    trustedOrigins: ['*']
+    csrf: {
+      trustedOrigins: ['*']
+    }
   },
   extensions: ['.svelte', '.md', '.svx']
 };

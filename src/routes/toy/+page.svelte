@@ -268,8 +268,7 @@
     authStore.loadFromStorage();
 
     // Check for speech recognition support
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();

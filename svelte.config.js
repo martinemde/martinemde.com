@@ -38,17 +38,9 @@ const config = {
   kit: {
     // adapter-cloudflare for Cloudflare Workers deployment
     adapter: adapter({}),
-    csrf: {
-      // Allow cross-origin requests to IndieAuth token endpoint
-      checkOrigin: (origin, url) => {
-        // Bypass CSRF for IndieAuth token endpoint
-        if (url.pathname === '/auth/indieauth/token') {
-          return true;
-        }
-        // Default behavior for all other routes
-        return origin === url.origin;
-      }
-    }
+    // CSRF protection is handled via custom implementation in hooks.server.ts
+    // This allows us to allowlist specific routes like /auth/indieauth/token
+    trustedOrigins: ['*']
   },
   extensions: ['.svelte', '.md', '.svx']
 };

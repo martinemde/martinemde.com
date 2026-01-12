@@ -18,19 +18,19 @@
   const toys = [
     {
       name: 'Tab Model Tester',
-      href: '/models',
+      href: '/models' as const,
       description:
         'Test and compare response times across different OpenRouter models for Fill In Middle (FIM) completion, code suggestion, or tab completion',
       icon: TestTube
     },
     {
       name: 'AI Toy',
-      href: '/toy',
+      href: '/toy' as const,
       description:
         'An LLM that can only use preset phrases, and yet is capable of responding appropriately and contextually',
       icon: Sparkles
     }
-  ];
+  ] as const;
 </script>
 
 <div class="container mx-auto max-w-3xl space-y-12">

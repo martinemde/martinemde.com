@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, POST } from './+server';
 import { storeAccessToken } from '$lib/server/token-store';
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from './$types';
 
 // Mock dependencies
 vi.mock('$env/static/public', () => ({
@@ -61,8 +61,7 @@ function createRequestEvent(
     isSubRequest: false,
     platform: undefined,
     route: { id: '/micropub' },
-    setHeaders: vi.fn(),
-    url: requestUrl
+    setHeaders: vi.fn()
   } as unknown as RequestEvent;
 }
 

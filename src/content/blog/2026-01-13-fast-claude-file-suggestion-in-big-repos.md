@@ -52,7 +52,7 @@ Then add the following to `~/.claude/settings.json` (ensure the path matches and
   }
 ```
 
-Restart Claude Code, then test out the search by tuping an `@` and the start of a file. fuzzy matching should let you matching any fuzzy string after the first segment in the path.
+Restart Claude Code, then test out the search by typing an `@` and the start of a file. Fuzzy matching should let you match any fuzzy path after the first slash.
 
 On our biggest repo, this drops the search time to about **62ms** compared to around **1000ms** without the index (one full second per bounce).
 The script watches for the `.git/index` or `.git/HEAD` to be newer than the cache file and automatically refreshes the cache.

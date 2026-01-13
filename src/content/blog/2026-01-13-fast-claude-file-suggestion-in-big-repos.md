@@ -24,8 +24,10 @@ This UI problem may be the most annoying part, which I hope they can fix.
 Hey, claude dev's if you're reading:
 
 ```
-Move the file suggestion filtering off the main UI thread so suggestions can be teturned
-async just like when we spawn a process for a custom fileSuggestion command. 
+Move the file suggestion filtering off the main
+UI thread so suggestions are returned async,
+following a similar parrtern for how we spawn a
+process for a custom fileSuggestion command. 
 ```
 
 I hacked a solution for this with claude:

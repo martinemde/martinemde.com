@@ -30,19 +30,14 @@ following an approach similar to spawning a
 process for a custom fileSuggestion command. 
 ```
 
-I hacked a solution for this with claude:
-[file-suggestion.sh][latest] is a custom file-suggestion command which builds a cache from `git ls-files`, if available and falls back to `fd` or `find` outside of a git repository.
-These results then get filtered with `ripgrep` and `fzf`, allowing fast fuzzy searching.
+I hacked my own solution for this with claude:
+[file-suggestion.sh][latest] is a custom file-suggestion command which builds a cache from `git ls-files`, if available.
+It falls back to `fd` or `find` outside of a git repository.
+These results are filtered with `ripgrep` and `fzf`, allowing fast fuzzy searching.
 
-Luckily, using a separate script also seems to fix the input lag.
-Running a separate script forces the result to be async, which seems to completely remove UI lag on input during a match.
+As a surprise bonus (well bot much of a surprise if you read this article but it was a surprise for me), using a separate script also seems to fix the input lag.
+I assume it forces the scruot to run async, which seems to completely remove UI lag on input during a match.
 This surprise bonus guarantees I will use some sort of suggestion script just for this input fix.
-
-
-There's a small caveat. In order to get this speed and have fuzzy matching, it pre-filters based on the first directory segment using ripgrep.
-This allows you to type `pac/payroll` to find `packs/products/payroll/...` but if you type
-`pks/payroll` or `papay` it may not return any results.
-This is a trade-off for speed, but please do let me know if you find a way around it.
 
 To try it, make sure you have `ripgrep`, `fzf` and optionally `fd` installed.
 
@@ -69,7 +64,14 @@ The script watches for the `.git/index` or `.git/HEAD` to be newer than the cach
 
 The cache is stored in the project's `.claude/` directory, so you'll want to ignore the `.claude/file-suggestions.cache` in your global gitignore file.
 
-If you have any trouble, let me know.
+In order to attain speed and retain fuzzy matching, it pre-filters based on the first directory segment using ripgrep to cut down on results.
+This allows you to type `pac/payroll` to find `packs/products/payroll/...` but if you type
+`pks/payroll` or `papay` it may not return any results.
+This is a trade-off for speed, but please do let me know if you find a way around it or if you have any trouble.
+This caveat it first made me thinn the fuzzy find wasn't working since I was expecting nvim level fuzziness.
+I may experiment with dropping this pre-filter and accepting the slower results.
+
+Let me know what you figure out.
 
 [gusto]: https://gusto.com 'Gusto - #1 Rated HR Platform - (also where I work)'
 [file-suggestion]: https://code.claude.com/docs/en/settings#file-suggestion-settings 'Anthropic Help: Claude Code File Suggestion settings'

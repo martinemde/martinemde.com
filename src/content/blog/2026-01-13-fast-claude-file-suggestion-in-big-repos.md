@@ -9,7 +9,7 @@ slug: fast-claude-file-suggestion-in-big-repos
 
 At [Gusto][gusto] we have some _big_ repositories.
 Many tools struggle with large codebases and Claude Code, while better than most, is still no exception.
-In particular, Claude's built-in file suggestion can become choppy and slow when it's trying to filter 110,000 files.
+In particular, Claude's built-in file suggestion (when you type `@rea` and it suggests `@README.md`) can become choppy and slow when it's trying to filter 110,000 files.
 
 Anthropic [anticipated][file-suggestion] this, and provided the `fileSuggestion` setting to allow customization for big repositories.
 

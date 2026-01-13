@@ -34,9 +34,9 @@ following an approach similar to spawning a
 process for a custom fileSuggestion command. 
 ```
 
-if you want to try my, make sure you have `ripgrep`, `fzf` and optionally `fd` installed.
+If you want to try my script, make sure you have `ripgrep`, `fzf` and optionally `fd` installed.
 
-Grab the script below or just point your own claude at it and ask for a version that works for you. (You can also view the [latest version][latest] if I didn't already break the link by the time you get here):
+Grab the script below (or point your own claude at it and ask for a version that works for you). You can also view the [latest version][latest] if I didn't already break the link by the time you get here.
 
 ```bash
 curl -o ~/.claude/file-suggestion.sh https://raw.githubusercontent.com/martinemde/dotfiles/edad489e7be462e3469ebb15a5486ddd76bd5834/home/dot_claude/executable_file_suggestion.sh
@@ -52,9 +52,9 @@ Then add the following to `~/.claude/settings.json` (ensure the path matches and
   }
 ```
 
-Restart Claude Code, then test out the search.
+Restart Claude Code, then test out the search by tuping an `@` and the start of a file. fuzzy matching should let you matching any fuzzy string after the first segment in the path.
 
-On our core repo, this drops the search time to about **62ms** compared to around **1000ms** (one full second per bounce) without the index.
+On our biggest repo, this drops the search time to about **62ms** compared to around **1000ms** without the index (one full second per bounce).
 The script watches for the `.git/index` or `.git/HEAD` to be newer than the cache file and automatically refreshes the cache.
 
 The cache is stored in the project's `.claude/` directory, so you'll want to ignore the `.claude/file-suggestions.cache` in your global gitignore file.

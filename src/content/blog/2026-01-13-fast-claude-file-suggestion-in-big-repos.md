@@ -21,7 +21,7 @@ In a repo like [Gusto][gusto]'s core product, this can lag input considerably ca
 Deleting characters is especially slow as the search area expands.
 This UI problem may be the most annoying part, which I hope they can fix.
 
-Hey, claude dev's if you're reading:
+Hey, claude code devs, if you're reading:
 
 ```
 Move the file suggestion filtering off the main

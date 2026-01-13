@@ -15,13 +15,16 @@ Anthropic [anticipated][file-suggestion] this, and provided the `fileSuggestion`
 
 > The built-in file suggestion uses fast filesystem traversal, but large monorepos may benefit from project-specific indexing such as a pre-built file index or custom tooling.
 
-Claude code's built-in file suggestions also have a subtle problem that's more obvious in big repositories.
-Claude seems to filter suggestions on the main thread on each and every character.
-In a repo like [Gusto][gusto]'s core product, this can lag input considerably causing stalled frozen input.
-Deleting characters is especially slow as the search area expands.
-This UI problem may be the most annoying part, which I hope they can fix.
+I hacked my own solution for our giant repo with claude:
+[file-suggestion.sh][latest] is a custom file-suggestion command which builds a cache from `git ls-files`, if available.
+It falls back to `fd` or `find` outside of a git repository.
+These results are filtered with `ripgrep` and `fzf`, allowing fast fuzzy searching.
 
-Hey, claude code devs, if you're reading:
+As a surprise bonus, using a custom script seems to fix the choppiness and UI lag that plagues big repos.
+My guess is that the need to spawn a custom script forces the app to run the filtering async.
+In a repo like [Gusto][gusto]'s core product, this can lag input considerably to where your keypresses stop rendering. Deleting characters is even worse, slowing to a crawl as the search space expands.
+
+_Hey, claude code devs, if you're reading:_
 
 ```
 Move the file suggestion filtering off the main
@@ -30,25 +33,16 @@ following an approach similar to spawning a
 process for a custom fileSuggestion command. 
 ```
 
-I hacked my own solution for this with claude:
-[file-suggestion.sh][latest] is a custom file-suggestion command which builds a cache from `git ls-files`, if available.
-It falls back to `fd` or `find` outside of a git repository.
-These results are filtered with `ripgrep` and `fzf`, allowing fast fuzzy searching.
+if you want to try my, make sure you have `ripgrep`, `fzf` and optionally `fd` installed.
 
-As a surprise bonus (well bot much of a surprise if you read this article but it was a surprise for me), using a separate script also seems to fix the input lag.
-I assume it forces the scruot to run async, which seems to completely remove UI lag on input during a match.
-This surprise bonus guarantees I will use some sort of suggestion script just for this input fix.
-
-To try it, make sure you have `ripgrep`, `fzf` and optionally `fd` installed.
-
-Grab the script below: (You can view the [latest version][latest] if I didn't break the link by the time you get here):
+Grab the script below or just point your own claude at it and ask for a version that works for you. (You can also view the [latest version][latest] if I didn't already break the link by the time you get here):
 
 ```bash
 curl -o ~/.claude/file-suggestion.sh https://raw.githubusercontent.com/martinemde/dotfiles/edad489e7be462e3469ebb15a5486ddd76bd5834/home/dot_claude/executable_file_suggestion.sh
 chmod +x ~/.claude/file-suggestion.sh
 ```
 
-Then add the following to `~/.claude/settings.json` (ensure the path matches).
+Then add the following to `~/.claude/settings.json` (ensure the path matches and the file is executable).
 
 ```json
   "fileSuggestion": {
@@ -67,11 +61,10 @@ The cache is stored in the project's `.claude/` directory, so you'll want to ign
 In order to attain speed and retain fuzzy matching, it pre-filters based on the first directory segment using ripgrep to cut down on results.
 This allows you to type `pac/payroll` to find `packs/products/payroll/...` but if you type
 `pks/payroll` or `papay` it may not return any results.
-This is a trade-off for speed, but please do let me know if you find a way around it or if you have any trouble.
-This caveat it first made me thinn the fuzzy find wasn't working since I was expecting nvim level fuzziness.
-I may experiment with dropping this pre-filter and accepting the slower results.
+This is a trade-off for speed that I'd don't love since I was expecting neovim level fuzzy find.
 
-Let me know what you figure out.
+I may experiment with dropping the pre-filter and accepting the slower results just to get more reliable fuzziness.
+Please let me know if you find a better way around it.
 
 [gusto]: https://gusto.com 'Gusto - #1 Rated HR Platform - (also where I work)'
 [file-suggestion]: https://code.claude.com/docs/en/settings#file-suggestion-settings 'Anthropic Help: Claude Code File Suggestion settings'

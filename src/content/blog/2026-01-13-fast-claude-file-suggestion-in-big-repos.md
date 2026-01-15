@@ -31,7 +31,7 @@ _Hey, claude code devs, if you're reading:_
 Move the file suggestion filtering off the main
 UI thread so suggestions are returned async,
 following an approach similar to spawning a
-process for a custom fileSuggestion command. 
+process for a custom fileSuggestion command.
 ```
 
 If you want to try my script, make sure you have `ripgrep`, `fzf` and optionally `fd` installed.
@@ -39,7 +39,7 @@ If you want to try my script, make sure you have `ripgrep`, `fzf` and optionally
 Grab the script below (or point your own claude at it and ask for a version that works for you). You can also view the [latest version][latest] if I didn't already break the link by the time you get here.
 
 ```bash
-curl -o ~/.claude/file-suggestion.sh https://raw.githubusercontent.com/martinemde/dotfiles/edad489e7be462e3469ebb15a5486ddd76bd5834/home/dot_claude/executable_file_suggestion.sh
+curl -o ~/.claude/file-suggestion.sh https://raw.githubusercontent.com/martinemde/dotfiles/36f670bda583065f634f1e83c4a195b9ac39c17b/home/dot_claude/executable_file-suggestion.sh
 chmod +x ~/.claude/file-suggestion.sh
 ```
 
@@ -69,4 +69,4 @@ Please let me know if you find a better way around it.
 
 [gusto]: https://gusto.com 'Gusto - #1 Rated HR Platform - (also where I work)'
 [file-suggestion]: https://code.claude.com/docs/en/settings#file-suggestion-settings 'Anthropic Help: Claude Code File Suggestion settings'
-[latest]: https://raw.githubusercontent.com/martinemde/dotfiles/main/home/dot_claude/executable_file_suggestion.sh 'Link to current version'
+[latest]: https://raw.githubusercontent.com/martinemde/dotfiles/main/home/dot_claude/executable_file-suggestion.sh 'Link to current version'

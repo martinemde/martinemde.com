@@ -1,8 +1,23 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { POST } from './+server';
 import { createAuthCode } from '$lib/server/auth';
 import { getAccessToken } from '$lib/server/token-store';
-import type { RequestEvent } from './$types';
+import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
+
+// Type for SvelteKit's thrown errors
+interface SvelteKitThrowable {
+  status: number;
+  body: { message?: string };
+}
+
+// Token request body type
+interface TokenRequestBody {
+  grant_type?: string;
+  code?: string;
+  client_id?: string;
+  redirect_uri?: string;
+  code_verifier?: string;
+}
 
 // Helper to create a PKCE code challenge
 async function createCodeChallenge(verifier: string): Promise<string> {
@@ -16,11 +31,14 @@ async function createCodeChallenge(verifier: string): Promise<string> {
 }
 
 // Helper to create mock request event
-function createRequestEvent(body: any, contentType: string = 'application/json'): RequestEvent {
+function createRequestEvent(
+  body: TokenRequestBody,
+  contentType: string = 'application/json'
+): RequestEvent {
   const url = new URL('https://example.com/auth/indieauth/token');
 
   let requestBody: BodyInit;
-  let headers: Record<string, string> = {
+  const headers: Record<string, string> = {
     'Content-Type': contentType
   };
 
@@ -45,7 +63,7 @@ function createRequestEvent(body: any, contentType: string = 'application/json')
     url,
     params: {},
     locals: {} as App.Locals,
-    cookies: {} as any,
+    cookies: {} as unknown as FullRequestEvent['cookies'],
     fetch: globalThis.fetch,
     getClientAddress: () => '127.0.0.1',
     isDataRequest: false,
@@ -415,9 +433,10 @@ describe('IndieAuth Token Endpoint', () => {
       try {
         await POST(event2);
         expect.fail('Should have thrown an error for reused code');
-      } catch (e: any) {
-        expect(e.status).toBe(400);
-        expect(e.body.message).toContain('Invalid or expired authorization code');
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
+        expect(err.status).toBe(400);
+        expect(err.body.message).toContain('Invalid or expired authorization code');
       }
     });
 
@@ -447,9 +466,10 @@ describe('IndieAuth Token Endpoint', () => {
       try {
         await POST(event2);
         expect.fail('Should have thrown an error for reused code');
-      } catch (e: any) {
-        expect(e.status).toBe(400);
-        expect(e.body.message).toContain('Invalid or expired authorization code');
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
+        expect(err.status).toBe(400);
+        expect(err.body.message).toContain('Invalid or expired authorization code');
       }
     });
   });
@@ -485,7 +505,7 @@ describe('IndieAuth Token Endpoint', () => {
       });
       try {
         await POST(event2);
-      } catch (e) {
+      } catch {
         // Expected to fail
       }
       const time2 = Date.now() - start2;

@@ -50,7 +50,6 @@ describe('Token Store', () => {
 
     it('should return null for expired token', () => {
       // Mock Date.now to create an expired token
-      const originalNow = Date.now;
       const startTime = Date.now();
 
       // Store token
@@ -87,7 +86,6 @@ describe('Token Store', () => {
 
   describe('cleanupExpiredTokens', () => {
     it('should remove expired tokens', () => {
-      const originalNow = Date.now;
       const startTime = Date.now();
 
       // Store two tokens

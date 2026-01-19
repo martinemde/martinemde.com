@@ -10,7 +10,7 @@ export class TestStorageBackend implements StorageBackend {
   private files = new Map<string, string>();
   private images = new Map<string, Buffer>();
 
-  async createOrUpdateFile(path: string, content: string, message: string): Promise<void> {
+  async createOrUpdateFile(path: string, content: string, _message: string): Promise<void> {
     this.files.set(path, content);
   }
 
@@ -18,7 +18,7 @@ export class TestStorageBackend implements StorageBackend {
     return this.files.has(path);
   }
 
-  async uploadImage(filename: string, buffer: Buffer, mimeType: string): Promise<string> {
+  async uploadImage(filename: string, buffer: Buffer, _mimeType: string): Promise<string> {
     this.images.set(filename, buffer);
     // Return fake URL for testing
     return `/test-images/${filename}`;

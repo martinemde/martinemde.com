@@ -35,7 +35,7 @@ function createRequestEvent(
   url: string,
   options: {
     headers?: Record<string, string>;
-    body?: any;
+    body?: BodyInit;
     locals?: Partial<App.Locals>;
   } = {}
 ): RequestEvent {
@@ -54,7 +54,7 @@ function createRequestEvent(
     locals: {
       githubToken: options.locals?.githubToken
     } as App.Locals,
-    cookies: {} as any,
+    cookies: {} as unknown as RequestEvent['cookies'],
     fetch: globalThis.fetch,
     getClientAddress: () => '127.0.0.1',
     isDataRequest: false,

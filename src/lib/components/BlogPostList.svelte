@@ -100,7 +100,7 @@
     {:else if posts.length === 0}
       <div class="py-8 text-center text-sm text-surface-600-400">No blog posts found</div>
     {:else}
-      {#each posts as post}
+      {#each posts as post (post.path)}
         <button
           onclick={() => onSelectPost(post.path, false)}
           class="flex w-full items-start gap-3 rounded-lg border border-surface-200-800 bg-surface-50-950 p-3 text-left transition-colors hover:bg-surface-100-900 {currentPath ===

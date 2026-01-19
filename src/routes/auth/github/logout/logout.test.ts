@@ -1,8 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './+server';
-import type { RequestEvent } from './$types';
+import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
 import * as auth from '$lib/server/auth';
 import { storeAccessToken, getAccessToken } from '$lib/server/token-store';
+
+// Type for SvelteKit's thrown errors and redirects
+interface SvelteKitThrowable {
+  status: number;
+  location?: string;
+  body?: { message?: string };
+}
 
 // Mock the auth module
 vi.mock('$lib/server/auth', async () => {
@@ -34,7 +41,7 @@ function createRequestEvent(): RequestEvent {
       get: vi.fn(),
       set: vi.fn(),
       delete: vi.fn()
-    } as any,
+    } as unknown as FullRequestEvent['cookies'],
     fetch: globalThis.fetch,
     getClientAddress: () => '127.0.0.1',
     isDataRequest: false,
@@ -57,9 +64,10 @@ describe('Logout Security', () => {
 
       try {
         await GET(event);
-      } catch (e: any) {
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
         // Redirect is expected
-        expect(e.status).toBe(302);
+        expect(err.status).toBe(302);
       }
 
       expect(clearSessionSpy).toHaveBeenCalledWith(event);
@@ -70,9 +78,10 @@ describe('Logout Security', () => {
 
       try {
         await GET(event);
-      } catch (e: any) {
-        expect(e.status).toBe(302);
-        expect(e.location).toBe('/editor');
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
+        expect(err.status).toBe(302);
+        expect(err.location).toBe('/editor');
       }
     });
   });
@@ -92,9 +101,10 @@ describe('Logout Security', () => {
 
       try {
         await GET(event);
-      } catch (e: any) {
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
         // Redirect is expected
-        expect(e.status).toBe(302);
+        expect(err.status).toBe(302);
       }
 
       // Tokens should be revoked after logout
@@ -116,8 +126,9 @@ describe('Logout Security', () => {
 
       try {
         await GET(event);
-      } catch (e: any) {
-        expect(e.status).toBe(302);
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
+        expect(err.status).toBe(302);
       }
 
       // Token should be revoked and cannot be used to access Micropub
@@ -134,9 +145,10 @@ describe('Logout Security', () => {
 
       try {
         await GET(event);
-      } catch (e: any) {
-        expect(e.status).toBe(302);
-        expect(e.location).toBe('/editor');
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
+        expect(err.status).toBe(302);
+        expect(err.location).toBe('/editor');
       }
 
       // Should not throw error
@@ -149,8 +161,9 @@ describe('Logout Security', () => {
 
       try {
         await GET(event);
-      } catch (e: any) {
-        expect(e.status).toBe(302);
+      } catch (e) {
+        const err = e as SvelteKitThrowable;
+        expect(err.status).toBe(302);
       }
 
       // Should succeed without errors

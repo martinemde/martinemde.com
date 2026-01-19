@@ -46,9 +46,10 @@ export class GitHubStorageBackend implements StorageBackend {
         if ('sha' in data) {
           sha = data.sha;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // 404 means file doesn't exist, which is fine for creation
-        if (error.status !== 404) {
+        const httpError = error as { status?: number };
+        if (httpError.status !== 404) {
           throw error;
         }
       }
@@ -62,10 +63,12 @@ export class GitHubStorageBackend implements StorageBackend {
         content: Buffer.from(content, 'utf-8').toString('base64'),
         sha // Include SHA if updating, omit if creating
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Enhance error message with context
-      const action = error.status === 404 ? 'create' : 'update';
-      throw new Error(`Failed to ${action} file in GitHub: ${error.message || 'Unknown error'}`, {
+      const httpError = error as { status?: number };
+      const action = httpError.status === 404 ? 'create' : 'update';
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to ${action} file in GitHub: ${message}`, {
         cause: error
       });
     }
@@ -79,18 +82,20 @@ export class GitHubStorageBackend implements StorageBackend {
         path
       });
       return true;
-    } catch (error: any) {
-      if (error.status === 404) {
+    } catch (error: unknown) {
+      const httpError = error as { status?: number };
+      if (httpError.status === 404) {
         return false;
       }
       // For other errors, rethrow
-      throw new Error(`Failed to check if file exists in GitHub: ${error.message}`, {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to check if file exists in GitHub: ${message}`, {
         cause: error
       });
     }
   }
 
-  async uploadImage(filename: string, buffer: Buffer, mimeType: string): Promise<string> {
+  async uploadImage(filename: string, buffer: Buffer, _mimeType: string): Promise<string> {
     const path = `static/images/blog/${filename}`;
 
     try {
@@ -107,9 +112,10 @@ export class GitHubStorageBackend implements StorageBackend {
         if ('sha' in data) {
           sha = data.sha;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // 404 is expected for new files
-        if (error.status !== 404) {
+        const httpError = error as { status?: number };
+        if (httpError.status !== 404) {
           throw error;
         }
       }
@@ -129,8 +135,9 @@ export class GitHubStorageBackend implements StorageBackend {
       const publicUrl = `${baseUrl}/images/blog/${filename}`;
 
       return publicUrl;
-    } catch (error: any) {
-      throw new Error(`Failed to upload image to GitHub: ${error.message}`, {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to upload image to GitHub: ${message}`, {
         cause: error
       });
     }
@@ -150,8 +157,9 @@ export class GitHubStorageBackend implements StorageBackend {
       }
 
       throw new Error('File content not available');
-    } catch (error: any) {
-      throw new Error(`Failed to read file from GitHub: ${error.message}`, {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to read file from GitHub: ${message}`, {
         cause: error
       });
     }
@@ -193,12 +201,14 @@ export class GitHubStorageBackend implements StorageBackend {
       posts.sort((a, b) => b.date.localeCompare(a.date));
 
       return posts;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If directory doesn't exist, return empty array
-      if (error.status === 404) {
+      const httpError = error as { status?: number };
+      if (httpError.status === 404) {
         return [];
       }
-      throw new Error(`Failed to list blog posts from GitHub: ${error.message}`, {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to list blog posts from GitHub: ${message}`, {
         cause: error
       });
     }

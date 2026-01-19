@@ -1,10 +1,11 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
+import type { PluginOption } from 'vite';
 
 export default defineConfig({
   // Type assertion needed due to Vite version mismatch between vitest and main dependencies
-  plugins: [tailwindcss(), sveltekit()] as any,
+  plugins: [tailwindcss(), sveltekit()] as PluginOption[],
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}'],
     environment: 'jsdom',

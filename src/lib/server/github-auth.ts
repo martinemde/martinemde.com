@@ -58,9 +58,10 @@ export async function verifyRepoOwnership(token: string, username: string): Prom
 
     // Allow if user has write, maintain, or admin permission
     return ['write', 'maintain', 'admin'].includes(permission.permission);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If repository not found or no access, return false
-    if (error.status === 404 || error.status === 403) {
+    const httpError = error as { status?: number };
+    if (httpError.status === 404 || httpError.status === 403) {
       return false;
     }
     throw error;

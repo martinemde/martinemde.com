@@ -89,8 +89,9 @@ export class FileStorageBackend implements StorageBackend {
     try {
       const content = await readFile(absolutePath, 'utf-8');
       return content;
-    } catch (error: any) {
-      throw new Error(`Failed to read file: ${error.message}`, {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to read file: ${message}`, {
         cause: error
       });
     }
@@ -127,12 +128,14 @@ export class FileStorageBackend implements StorageBackend {
       posts.sort((a, b) => b.date.localeCompare(a.date));
 
       return posts;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If directory doesn't exist, return empty array
-      if (error.code === 'ENOENT') {
+      const fsError = error as { code?: string };
+      if (fsError.code === 'ENOENT') {
         return [];
       }
-      throw new Error(`Failed to list blog posts: ${error.message}`, {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to list blog posts: ${message}`, {
         cause: error
       });
     }

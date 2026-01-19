@@ -55,9 +55,7 @@ async function createFeedItem(post: Post): Promise<string> {
   const fullContent = makeUrlsAbsolute(imageHtml + htmlContent);
 
   // Get markdown content without frontmatter for source:markdown
-  const markdownContent = rawMarkdown
-    ? rawMarkdown.replace(/^---[\s\S]*?---\n/, '').trim()
-    : '';
+  const markdownContent = rawMarkdown ? rawMarkdown.replace(/^---[\s\S]*?---\n/, '').trim() : '';
 
   return `
 		<item>

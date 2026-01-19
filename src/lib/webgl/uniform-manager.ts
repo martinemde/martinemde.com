@@ -39,7 +39,12 @@ export class UniformManager {
   /**
    * Set uniform value for a specific program (silently skip if uniform doesn't exist)
    */
-  setUniform(gl: WebGL2RenderingContext, prog: WebGLProgram, name: string, ...values: any[]): void {
+  setUniform(
+    gl: WebGL2RenderingContext,
+    prog: WebGLProgram,
+    name: string,
+    ...values: (number | number[] | WebGLTexture)[]
+  ): void {
     const loc = gl.getUniformLocation(prog, name);
     // Silently return if uniform doesn't exist in this shader
     if (loc === null) return;

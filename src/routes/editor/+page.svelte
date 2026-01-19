@@ -365,7 +365,7 @@
       // Render markdown directly in the browser
       const result = await unified().use(remarkParse).use(remarkHtml).process(content);
       previewHtml = String(result);
-    } catch (err) {
+    } catch {
       previewHtml = '<p class="text-error-500">Error rendering preview</p>';
     } finally {
       previewLoading = false;

@@ -85,7 +85,7 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
   try {
     // Parse request body first to check for access_token
     const contentType = request.headers.get('content-type') || '';
-    let micropubRequest: any;
+    let micropubRequest: Record<string, unknown>;
     let bodyToken: string | null = null;
 
     if (contentType.includes('application/json')) {

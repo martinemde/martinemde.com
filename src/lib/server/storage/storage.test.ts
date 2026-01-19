@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TestStorageBackend } from './test';
 import { FileStorageBackend } from './file';
-import { createStorageBackend } from './factory';
 import { rmSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+
+// Note: env mocks are in vitest-setup.ts
+// For the factory tests that need dynamic env values, we import the factory dynamically
 
 describe('TestStorageBackend', () => {
   let backend: TestStorageBackend;
@@ -211,48 +213,46 @@ describe('FileStorageBackend', () => {
 });
 
 describe('createStorageBackend (factory)', () => {
-  describe('environment variable override', () => {
-    it('should create test backend when MICROPUB_BACKEND=test', () => {
-      const originalEnv = process.env.MICROPUB_BACKEND;
-      process.env.MICROPUB_BACKEND = 'test';
+  // Note: These tests verify the factory's behavior using the global env mock
+  // which is set to MICROPUB_BACKEND=test in vitest-setup.ts
 
+  describe('environment variable override', () => {
+    it('should create test backend when MICROPUB_BACKEND=test', async () => {
+      // The global mock sets MICROPUB_BACKEND=test
+      const { createStorageBackend } = await import('./factory');
       const backend = createStorageBackend();
 
       expect(backend).toBeInstanceOf(TestStorageBackend);
-
-      process.env.MICROPUB_BACKEND = originalEnv;
     });
 
-    it('should create file backend when MICROPUB_BACKEND=file', () => {
-      const originalEnv = process.env.MICROPUB_BACKEND;
-      process.env.MICROPUB_BACKEND = 'file';
+    it('should create file backend when MICROPUB_BACKEND=file', async () => {
+      // Mock with file backend for this test
+      vi.doMock('$env/dynamic/private', () => ({
+        env: { MICROPUB_BACKEND: 'file' }
+      }));
+      vi.resetModules();
 
+      const { createStorageBackend } = await import('./factory');
       const backend = createStorageBackend();
 
       expect(backend).toBeInstanceOf(FileStorageBackend);
 
-      process.env.MICROPUB_BACKEND = originalEnv;
+      // Restore the original mock
+      vi.doUnmock('$env/dynamic/private');
     });
 
-    it('should throw error for github backend without token', () => {
-      const originalEnv = process.env.MICROPUB_BACKEND;
-      process.env.MICROPUB_BACKEND = 'github';
+    it('should throw error for github backend without token', async () => {
+      // Mock with github backend for this test
+      vi.doMock('$env/dynamic/private', () => ({
+        env: { MICROPUB_BACKEND: 'github' }
+      }));
+      vi.resetModules();
 
+      const { createStorageBackend } = await import('./factory');
       expect(() => createStorageBackend()).toThrow('GitHub backend requires authentication token');
 
-      process.env.MICROPUB_BACKEND = originalEnv;
-    });
-  });
-
-  describe('error handling', () => {
-    it('should throw error for production without token', () => {
-      const originalEnv = process.env.MICROPUB_BACKEND;
-      delete process.env.MICROPUB_BACKEND;
-
-      // Note: In actual production (dev=false), this would throw
-      // We can't easily test that here since dev is set by SvelteKit build
-
-      process.env.MICROPUB_BACKEND = originalEnv;
+      // Restore the original mock
+      vi.doUnmock('$env/dynamic/private');
     });
   });
 });

@@ -113,6 +113,13 @@ export function cleanupExpiredTokens(): number {
   return cleaned;
 }
 
+/**
+ * Clear all tokens (for testing only)
+ */
+export function clearAllTokens(): void {
+  tokenStore.clear();
+}
+
 // Run cleanup every hour
 if (typeof setInterval !== 'undefined') {
   setInterval(cleanupExpiredTokens, 60 * 60 * 1000);

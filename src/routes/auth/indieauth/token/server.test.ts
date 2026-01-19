@@ -4,10 +4,26 @@ import { createAuthCode } from '$lib/server/auth';
 import { getAccessToken } from '$lib/server/token-store';
 import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
 
-// Type for SvelteKit's thrown errors
+// Type for SvelteKit's thrown errors (env mocks are in vitest-setup.ts)
 interface SvelteKitThrowable {
   status: number;
   body: { message?: string };
+}
+
+// Helper to assert that a promise rejects with a SvelteKit HttpError containing a message
+async function expectHttpError(
+  promise: Promise<unknown>,
+  status: number,
+  messageContains: string
+): Promise<void> {
+  try {
+    await promise;
+    expect.fail('Expected an error to be thrown');
+  } catch (e) {
+    const err = e as SvelteKitThrowable;
+    expect(err.status).toBe(status);
+    expect(err.body?.message).toContain(messageContains);
+  }
 }
 
 // Token request body type
@@ -44,12 +60,18 @@ function createRequestEvent(
 
   if (contentType.includes('application/json')) {
     requestBody = JSON.stringify(body);
-  } else {
-    const formData = new FormData();
+  } else if (contentType.includes('application/x-www-form-urlencoded')) {
+    // Use URLSearchParams for form-urlencoded (FormData sets multipart/form-data)
+    const params = new URLSearchParams();
     for (const [key, value] of Object.entries(body)) {
-      formData.append(key, value as string);
+      if (value !== undefined) {
+        params.append(key, value);
+      }
     }
-    requestBody = formData;
+    requestBody = params.toString();
+  } else {
+    // For other content types (like text/plain), use empty string
+    requestBody = '';
   }
 
   const request = new Request(url, {
@@ -123,7 +145,7 @@ describe('IndieAuth Token Endpoint', () => {
     it('should reject unsupported content types', async () => {
       const event = createRequestEvent({}, 'text/plain');
 
-      await expect(POST(event)).rejects.toThrow('Content-Type must be');
+      await expectHttpError(POST(event), 415, 'Content-Type must be');
     });
   });
 
@@ -142,7 +164,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(POST(event), 400, 'Missing required parameters');
     });
 
     it('should reject requests missing code', async () => {
@@ -152,7 +174,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(POST(event), 400, 'Missing required parameters');
     });
 
     it('should reject requests missing client_id', async () => {
@@ -169,7 +191,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(POST(event), 400, 'Missing required parameters');
     });
 
     it('should reject requests missing redirect_uri', async () => {
@@ -186,7 +208,7 @@ describe('IndieAuth Token Endpoint', () => {
         client_id: 'https://client.example.com/'
       });
 
-      await expect(POST(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(POST(event), 400, 'Missing required parameters');
     });
 
     it('should reject invalid grant_type', async () => {
@@ -204,7 +226,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('grant_type must be authorization_code');
+      await expectHttpError(POST(event), 400, 'grant_type must be authorization_code');
     });
   });
 
@@ -217,7 +239,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('Invalid or expired authorization code');
+      await expectHttpError(POST(event), 400, 'Invalid or expired authorization code');
     });
 
     it('should reject mismatched client_id', async () => {
@@ -235,7 +257,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('client_id does not match');
+      await expectHttpError(POST(event), 400, 'client_id does not match');
     });
 
     it('should reject mismatched redirect_uri', async () => {
@@ -253,7 +275,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/different-callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('redirect_uri does not match');
+      await expectHttpError(POST(event), 400, 'redirect_uri does not match');
     });
   });
 
@@ -327,7 +349,7 @@ describe('IndieAuth Token Endpoint', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(POST(event)).rejects.toThrow('code_verifier is required');
+      await expectHttpError(POST(event), 400, 'code_verifier is required');
     });
 
     it('should reject invalid code_verifier', async () => {
@@ -351,7 +373,7 @@ describe('IndieAuth Token Endpoint', () => {
         code_verifier: 'wrong_verifier'
       });
 
-      await expect(POST(event)).rejects.toThrow('Invalid code_verifier');
+      await expectHttpError(POST(event), 400, 'Invalid code_verifier');
     });
   });
 

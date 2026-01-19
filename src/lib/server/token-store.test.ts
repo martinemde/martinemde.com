@@ -3,13 +3,14 @@ import {
   storeAccessToken,
   getAccessToken,
   revokeAccessToken,
-  cleanupExpiredTokens
+  cleanupExpiredTokens,
+  clearAllTokens
 } from './token-store';
 
 describe('Token Store', () => {
   beforeEach(() => {
-    // Clean up any existing tokens before each test
-    cleanupExpiredTokens();
+    // Clear all tokens before each test for proper isolation
+    clearAllTokens();
   });
 
   describe('storeAccessToken', () => {

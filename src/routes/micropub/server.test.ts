@@ -3,11 +3,29 @@ import { GET, POST } from './+server';
 import { storeAccessToken } from '$lib/server/token-store';
 import type { RequestEvent } from './$types';
 
-// Mock dependencies
-vi.mock('$env/static/public', () => ({
-  PUBLIC_APP_URL: 'https://example.com'
-}));
+// Type for SvelteKit's thrown errors
+interface SvelteKitThrowable {
+  status: number;
+  body?: { message?: string };
+}
 
+// Helper to assert that a promise rejects with a SvelteKit HttpError containing a message
+async function expectHttpError(
+  promise: Promise<unknown>,
+  status: number,
+  messageContains: string
+): Promise<void> {
+  try {
+    await promise;
+    expect.fail('Expected an error to be thrown');
+  } catch (e) {
+    const err = e as SvelteKitThrowable;
+    expect(err.status).toBe(status);
+    expect(err.body?.message).toContain(messageContains);
+  }
+}
+
+// Mock dependencies (env mocks are in vitest-setup.ts)
 vi.mock('$lib/server/storage/factory', () => ({
   createStorageBackend: vi.fn(() => ({
     createOrUpdateFile: vi.fn().mockResolvedValue(undefined),
@@ -121,7 +139,7 @@ describe('Micropub GET Endpoint', () => {
         }
       });
 
-      await expect(GET(event)).rejects.toThrow('Unauthorized');
+      await expectHttpError(GET(event), 401, 'Unauthorized');
     });
   });
 
@@ -151,7 +169,7 @@ describe('Micropub GET Endpoint', () => {
         }
       });
 
-      await expect(GET(event)).rejects.toThrow('Invalid query parameter');
+      await expectHttpError(GET(event), 400, 'Invalid query parameter');
     });
 
     it('should reject unsupported query types', async () => {
@@ -161,7 +179,7 @@ describe('Micropub GET Endpoint', () => {
         }
       });
 
-      await expect(GET(event)).rejects.toThrow('Invalid query parameter');
+      await expectHttpError(GET(event), 400, 'Invalid query parameter');
     });
   });
 });
@@ -244,7 +262,7 @@ describe('Micropub POST Endpoint', () => {
         })
       });
 
-      await expect(POST(event)).rejects.toThrow('Unauthorized');
+      await expectHttpError(POST(event), 401, 'Unauthorized');
     });
   });
 
@@ -296,7 +314,7 @@ describe('Micropub POST Endpoint', () => {
         body: 'Plain text'
       });
 
-      await expect(POST(event)).rejects.toThrow('Unsupported content type');
+      await expectHttpError(POST(event), 415, 'Unsupported content type');
     });
   });
 

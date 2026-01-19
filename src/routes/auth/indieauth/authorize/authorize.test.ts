@@ -10,7 +10,23 @@ interface SvelteKitThrowable {
   body?: { message?: string };
 }
 
-// Mock the auth module
+// Helper to assert that a promise rejects with a SvelteKit HttpError containing a message
+async function expectHttpError(
+  promise: Promise<unknown>,
+  status: number,
+  messageContains: string
+): Promise<void> {
+  try {
+    await promise;
+    expect.fail('Expected an error to be thrown');
+  } catch (e) {
+    const err = e as SvelteKitThrowable;
+    expect(err.status).toBe(status);
+    expect(err.body?.message).toContain(messageContains);
+  }
+}
+
+// Mock the auth module (env mocks are in vitest-setup.ts)
 vi.mock('$lib/server/auth', async () => {
   const actual = await vi.importActual('$lib/server/auth');
   return {
@@ -57,7 +73,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         state: 'client_state'
       });
 
-      await expect(GET(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(GET(event), 400, 'Missing required parameters');
     });
 
     it('should reject requests missing client_id parameter', async () => {
@@ -67,7 +83,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         state: 'client_state'
       });
 
-      await expect(GET(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(GET(event), 400, 'Missing required parameters');
     });
 
     it('should reject requests missing redirect_uri parameter', async () => {
@@ -77,7 +93,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         state: 'client_state'
       });
 
-      await expect(GET(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(GET(event), 400, 'Missing required parameters');
     });
 
     it('should reject requests missing state parameter', async () => {
@@ -87,7 +103,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         redirect_uri: 'https://client.example.com/callback'
       });
 
-      await expect(GET(event)).rejects.toThrow('Missing required parameters');
+      await expectHttpError(GET(event), 400, 'Missing required parameters');
     });
 
     it('should reject invalid response_type', async () => {
@@ -99,7 +115,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         response_type: 'token'
       });
 
-      await expect(GET(event)).rejects.toThrow('Only response_type=code is supported');
+      await expectHttpError(GET(event), 400, 'Only response_type=code is supported');
     });
   });
 
@@ -114,7 +130,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         code_challenge_method: 'MD5'
       });
 
-      await expect(GET(event)).rejects.toThrow('code_challenge_method must be S256 or plain');
+      await expectHttpError(GET(event), 400, 'code_challenge_method must be S256 or plain');
     });
 
     it('should accept S256 code_challenge_method', async () => {
@@ -171,7 +187,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
         state: 'client_state'
       });
 
-      await expect(GET(event)).rejects.toThrow("The 'me' parameter must match your site URL");
+      await expectHttpError(GET(event), 400, "The 'me' parameter must match your site URL");
     });
 
     it('should accept me parameter from same origin', async () => {
@@ -209,7 +225,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
       // Should only allow https:// URIs (except localhost for dev)
-      await expect(GET(event)).rejects.toThrow('redirect_uri must use https');
+      await expectHttpError(GET(event), 400, 'redirect_uri must use https');
     });
 
     it('should reject javascript: URI scheme', async () => {

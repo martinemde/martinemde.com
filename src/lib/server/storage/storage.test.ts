@@ -226,33 +226,47 @@ describe('createStorageBackend (factory)', () => {
     });
 
     it('should create file backend when MICROPUB_BACKEND=file', async () => {
-      // Mock with file backend for this test
+      // Reset modules first, then set up new mock, then import
+      vi.resetModules();
       vi.doMock('$env/dynamic/private', () => ({
         env: { MICROPUB_BACKEND: 'file' }
       }));
-      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        dev: true,
+        browser: false,
+        building: false,
+        version: 'test'
+      }));
 
       const { createStorageBackend } = await import('./factory');
       const backend = createStorageBackend();
 
       expect(backend).toBeInstanceOf(FileStorageBackend);
 
-      // Restore the original mock
+      // Restore the original mocks
       vi.doUnmock('$env/dynamic/private');
+      vi.doUnmock('$app/environment');
     });
 
     it('should throw error for github backend without token', async () => {
-      // Mock with github backend for this test
+      // Reset modules first, then set up new mock, then import
+      vi.resetModules();
       vi.doMock('$env/dynamic/private', () => ({
         env: { MICROPUB_BACKEND: 'github' }
       }));
-      vi.resetModules();
+      vi.doMock('$app/environment', () => ({
+        dev: true,
+        browser: false,
+        building: false,
+        version: 'test'
+      }));
 
       const { createStorageBackend } = await import('./factory');
       expect(() => createStorageBackend()).toThrow('GitHub backend requires authentication token');
 
-      // Restore the original mock
+      // Restore the original mocks
       vi.doUnmock('$env/dynamic/private');
+      vi.doUnmock('$app/environment');
     });
   });
 });

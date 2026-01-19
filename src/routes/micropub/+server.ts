@@ -144,6 +144,10 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
       }
     });
   } catch (err) {
+    // Re-throw SvelteKit HttpErrors (auth failures, content type errors, etc.)
+    if (err && typeof err === 'object' && 'status' in err) {
+      throw err;
+    }
     console.error('Micropub POST error:', err);
     error(500, 'Failed to create post');
   }

@@ -232,9 +232,10 @@ describe('IndieAuth Token Endpoint', () => {
 
   describe('Authorization Code Validation', () => {
     it('should reject invalid authorization code', async () => {
+      // Use a clearly invalid code (not a valid iron-session sealed token)
       const event = createRequestEvent({
         grant_type: 'authorization_code',
-        code: 'invalid_code',
+        code: 'this_is_definitely_not_a_valid_iron_session_sealed_token_12345',
         client_id: 'https://client.example.com/',
         redirect_uri: 'https://client.example.com/callback'
       });

@@ -183,6 +183,11 @@ export async function verifyAuthCode(code: string): Promise<AuthCode | null> {
       ttl: 600
     });
 
+    // Validate required fields exist (unsealData may return empty object for invalid tokens)
+    if (!data.githubToken || !data.me || !data.clientId || !data.redirectUri || !data.issuedAt) {
+      return null;
+    }
+
     // Check if code is expired (10 minutes)
     if (Date.now() - data.issuedAt > 600000) {
       return null;

@@ -231,17 +231,18 @@ describe('Micropub POST Endpoint', () => {
     });
 
     it('should accept access_token in form body', async () => {
-      const formData = new FormData();
-      formData.append('access_token', validToken);
-      formData.append('h', 'entry');
-      formData.append('name', 'Test Post');
-      formData.append('content', 'Test content');
+      // Use URLSearchParams for application/x-www-form-urlencoded (FormData sends multipart/form-data)
+      const params = new URLSearchParams();
+      params.append('access_token', validToken);
+      params.append('h', 'entry');
+      params.append('name', 'Test Post');
+      params.append('content', 'Test content');
 
       const event = createRequestEvent('POST', 'https://example.com/micropub', {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: formData
+        body: params.toString()
       });
 
       const response = await POST(event);

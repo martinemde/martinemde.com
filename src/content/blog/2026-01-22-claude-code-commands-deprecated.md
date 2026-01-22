@@ -20,7 +20,7 @@ Sure enough, if you read the big blue box at the top of the docs, it says:
 
 They merged some of the command-only features into skills too.
 You can now use `hooks` in a skill, and they added support for injecting bash into the context,
-like this example from the docs:
+like this example from the docs (note the `!` preceding the inline commands):
 
 ```md
 ---

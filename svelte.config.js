@@ -6,7 +6,7 @@ import { createHighlighter } from 'shiki';
 // Create a highlighter instance for mdsvex
 const highlighter = await createHighlighter({
   themes: ['catppuccin-latte', 'catppuccin-macchiato'],
-  langs: ['ruby', 'javascript', 'typescript', 'html', 'css', 'bash', 'json']
+  langs: ['ruby', 'javascript', 'typescript', 'html', 'css', 'bash', 'json', 'md']
 });
 
 /** @type {import('@sveltejs/kit').Config} */

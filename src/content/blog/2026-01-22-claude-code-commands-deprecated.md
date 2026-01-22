@@ -19,7 +19,7 @@ I had been looking closely at Claude Code's Skills and Commands lately as I buil
 They merged some of the command-only features into skills.
 You can now use `hooks` in skills which were previously command only, and
 they added support for injecting command output into the prompt.
-Check out this example from the docs (note the `!` preceding the inline commands). They :
+Check out this example from the docs (note the `!` preceding the inline commands).
 
 ```md
 ---
@@ -41,18 +41,15 @@ allowed-tools: Bash(gh:*)
 Summarize this pull request...!`gh pr diff`
 ```
 
-One thing that is still missing is the nupport for numbered arguments, like `$1`, `$2` etc.
-I think these may have been a rather complicated and under-utilized feature.
-I chose to skip it myself when I went to implement command support, both because it only worked in
-commands and because it's complicated to implement.
-You have to bring in shell quoting to do it properly.
-For [skillet][skillet] this meant two layers of shell quoting, so I lazily ignored it. (lucky me!)
+The inline commands will be processed and interpolated before evaluating the skill.
 
-I'm excited to see this merger. It seemed inevitable. Commands and skills were so similar.
+One thing that is still missing is support for numbered arguments, like `$1` and `$2`.
+These were complicated, and may have been under-utilized.
+I chose to skip it myself when I went to implement command support.
 
-Skillet will keep command support for now, commands still exist, but I suggest migrating all
-your commands now to take advantage of the combined set of features.
-I'm not aware of any downside to converting now.
+I'm excited to see this merger. It seemed inevitable and their timing, at least for me, is impeccable.
+Skillet will keep command support for now, as commands still exist, but I suggest
+migrating all your commands now to take advantage of the newly combined set of features.
 
 [skillet]: https://github.com/martinemde/skillet 'Run claude skills as beautiful shell scripts'
 [slash-commands]: https://code.claude.com/docs/en/slash-commands 'The old link to slash command documentation'

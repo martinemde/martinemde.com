@@ -7,20 +7,19 @@ published: true
 slug: claude-code-commands-deprecated
 ---
 
-I've been looking closely at Claude Code's Skills and Commands lately as I build [skillet][skillet].
-
 Today, I noticed I could no longer find the [Slash commands][slash-commands] documentation that I was using.
 The link is still named Slash commands, but it renders the [Skills](https://code.claude.com/docs/en/skills) docs.
 
-Sure enough, if you read the big blue box at the top of the docs, it says:
+I had been looking closely at Claude Code's Skills and Commands lately as I build [skillet][skillet], and all today I kept trying to remind myself what was different between them. Sure enough, if you read the big blue box at the top of the docs, it says:
 
 > [!NOTE] For built-in commands like /help and /compact, see [interactive mode](https://code.claude.com/docs/en/interactive-mode#built-in-commands).
 >
 > Custom slash commands have been merged into skills. A file at .claude/commands/review.md and a skill at .claude/skills/review/SKILL.md both create /review and work the same way. Your existing .claude/commands/ files keep working. Skills add optional features: a directory for supporting files, frontmatter to [control whether you or Claude invokes them](https://code.claude.com/docs/en/skills#control-who-invokes-a-skill), and the ability for Claude to load them automatically when relevant.
 
-They merged some of the command-only features into skills too.
-You can now use `hooks` in a skill, and they added support for injecting bash into the context,
-like this example from the docs (note the `!` preceding the inline commands):
+They merged some of the command-only features into skills.
+You can now use `hooks` in skills which were previously command only, and
+they added support for injecting command output into the prompt.
+Check out this example from the docs (note the `!` preceding the inline commands). They :
 
 ```md
 ---

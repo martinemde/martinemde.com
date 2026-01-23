@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { TestStorageBackend } from './test';
 import { FileStorageBackend } from './file';
 import { rmSync, mkdirSync } from 'node:fs';

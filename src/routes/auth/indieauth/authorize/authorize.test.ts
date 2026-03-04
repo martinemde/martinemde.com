@@ -1,30 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { isRedirect } from '@sveltejs/kit';
 import { GET } from './+server';
 import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
 import * as auth from '$lib/server/auth';
-
-// Type for SvelteKit's thrown errors and redirects
-interface SvelteKitThrowable {
-  status: number;
-  location?: string;
-  body?: { message?: string };
-}
-
-// Helper to assert that a promise rejects with a SvelteKit HttpError containing a message
-async function expectHttpError(
-  promise: Promise<unknown>,
-  status: number,
-  messageContains: string
-): Promise<void> {
-  try {
-    await promise;
-    expect.fail('Expected an error to be thrown');
-  } catch (e) {
-    const err = e as SvelteKitThrowable;
-    expect(err.status).toBe(status);
-    expect(err.body?.message).toContain(messageContains);
-  }
-}
+import { expectHttpError, expectRedirect } from '$lib/test-helpers';
 
 // Mock the auth module (env mocks are in vitest-setup.ts)
 vi.mock('$lib/server/auth', async () => {
@@ -146,13 +125,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
       vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
-      }
+      await expectRedirect(GET(event));
     });
 
     it('should accept plain code_challenge_method', async () => {
@@ -168,13 +141,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
       vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
-      }
+      await expectRedirect(GET(event));
     });
   });
 
@@ -201,13 +168,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
       vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
-      }
+      await expectRedirect(GET(event));
     });
   });
 
@@ -270,13 +231,7 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
       vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      try {
-        await GET(event);
-        // Should succeed - localhost is OK
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
-      }
+      await expectRedirect(GET(event));
     });
   });
 
@@ -295,9 +250,8 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       // Verify session includes OAuth state
@@ -321,9 +275,8 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       // Verify both states are stored
@@ -350,8 +303,8 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       const sessionData = setSessionSpy.mock.calls[0][1];
@@ -376,14 +329,9 @@ describe('IndieAuth Authorization Endpoint Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
       vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
-        expect(err.location).toContain('github.com/login/oauth/authorize');
-        expect(err.location).toContain('state=mock_oauth_state');
-      }
+      const location = await expectRedirect(GET(event));
+      expect(location).toContain('github.com/login/oauth/authorize');
+      expect(location).toContain('state=mock_oauth_state');
     });
   });
 });

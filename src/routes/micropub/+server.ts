@@ -90,11 +90,13 @@ export const POST: RequestHandler = async ({ request, locals, url }) => {
 
     if (contentType.includes('application/json')) {
       micropubRequest = await request.json();
-      bodyToken = micropubRequest.access_token || null;
+      const jsonToken = micropubRequest.access_token;
+      bodyToken = typeof jsonToken === 'string' ? jsonToken : null;
     } else if (contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await request.formData();
       micropubRequest = Object.fromEntries(formData);
-      bodyToken = formData.get('access_token') as string | null;
+      const formToken = formData.get('access_token');
+      bodyToken = typeof formToken === 'string' ? formToken : null;
     } else {
       error(
         415,

@@ -3,28 +3,7 @@ import { POST } from './+server';
 import { createAuthCode } from '$lib/server/auth';
 import { getAccessToken } from '$lib/server/token-store';
 import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
-
-// Type for SvelteKit's thrown errors (env mocks are in vitest-setup.ts)
-interface SvelteKitThrowable {
-  status: number;
-  body: { message?: string };
-}
-
-// Helper to assert that a promise rejects with a SvelteKit HttpError containing a message
-async function expectHttpError(
-  promise: Promise<unknown>,
-  status: number,
-  messageContains: string
-): Promise<void> {
-  try {
-    await promise;
-    expect.fail('Expected an error to be thrown');
-  } catch (e) {
-    const err = e as SvelteKitThrowable;
-    expect(err.status).toBe(status);
-    expect(err.body?.message).toContain(messageContains);
-  }
-}
+import { expectHttpError } from '$lib/test-helpers';
 
 // Token request body type
 interface TokenRequestBody {
@@ -453,14 +432,7 @@ describe('IndieAuth Token Endpoint', () => {
 
       // Second use of the same code should fail
       const event2 = createRequestEvent(requestParams);
-      try {
-        await POST(event2);
-        expect.fail('Should have thrown an error for reused code');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(400);
-        expect(err.body.message).toContain('Invalid or expired authorization code');
-      }
+      await expectHttpError(POST(event2), 400, 'Invalid or expired authorization code');
     });
 
     it('should invalidate code after first successful use', async () => {
@@ -486,14 +458,7 @@ describe('IndieAuth Token Endpoint', () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       const event2 = createRequestEvent(requestParams);
-      try {
-        await POST(event2);
-        expect.fail('Should have thrown an error for reused code');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(400);
-        expect(err.body.message).toContain('Invalid or expired authorization code');
-      }
+      await expectHttpError(POST(event2), 400, 'Invalid or expired authorization code');
     });
   });
 

@@ -1,7 +1,7 @@
 import { Octokit } from '@octokit/rest';
 import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
-import type { StorageBackend, BlogPostFileInfo } from './types';
+import { hasHttpStatus, type StorageBackend, type BlogPostFileInfo } from './types';
 
 /**
  * GitHub-based storage backend for production
@@ -48,8 +48,7 @@ export class GitHubStorageBackend implements StorageBackend {
         }
       } catch (error: unknown) {
         // 404 means file doesn't exist, which is fine for creation
-        const httpError = error as { status?: number };
-        if (httpError.status !== 404) {
+        if (!hasHttpStatus(error) || error.status !== 404) {
           throw error;
         }
       }
@@ -65,8 +64,7 @@ export class GitHubStorageBackend implements StorageBackend {
       });
     } catch (error: unknown) {
       // Enhance error message with context
-      const httpError = error as { status?: number };
-      const action = httpError.status === 404 ? 'create' : 'update';
+      const action = hasHttpStatus(error) && error.status === 404 ? 'create' : 'update';
       const message = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to ${action} file in GitHub: ${message}`, {
         cause: error
@@ -83,8 +81,7 @@ export class GitHubStorageBackend implements StorageBackend {
       });
       return true;
     } catch (error: unknown) {
-      const httpError = error as { status?: number };
-      if (httpError.status === 404) {
+      if (hasHttpStatus(error) && error.status === 404) {
         return false;
       }
       // For other errors, rethrow
@@ -114,8 +111,7 @@ export class GitHubStorageBackend implements StorageBackend {
         }
       } catch (error: unknown) {
         // 404 is expected for new files
-        const httpError = error as { status?: number };
-        if (httpError.status !== 404) {
+        if (!hasHttpStatus(error) || error.status !== 404) {
           throw error;
         }
       }
@@ -203,8 +199,7 @@ export class GitHubStorageBackend implements StorageBackend {
       return posts;
     } catch (error: unknown) {
       // If directory doesn't exist, return empty array
-      const httpError = error as { status?: number };
-      if (httpError.status === 404) {
+      if (hasHttpStatus(error) && error.status === 404) {
         return [];
       }
       const message = error instanceof Error ? error.message : 'Unknown error';

@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest';
 import { env } from '$env/dynamic/private';
+import { hasHttpStatus } from './storage/types';
 
 /**
  * Get authenticated user information from GitHub
@@ -60,8 +61,7 @@ export async function verifyRepoOwnership(token: string, username: string): Prom
     return ['write', 'maintain', 'admin'].includes(permission.permission);
   } catch (error: unknown) {
     // If repository not found or no access, return false
-    const httpError = error as { status?: number };
-    if (httpError.status === 404 || httpError.status === 403) {
+    if (hasHttpStatus(error) && (error.status === 404 || error.status === 403)) {
       return false;
     }
     throw error;

@@ -1,3 +1,13 @@
+/** Narrow an unknown error to one with an HTTP status (e.g. Octokit RequestError) */
+export function hasHttpStatus(error: unknown): error is { status: number } {
+  return typeof error === 'object' && error !== null && 'status' in error && typeof (error as { status: unknown }).status === 'number';
+}
+
+/** Narrow an unknown error to a Node filesystem error with a code string */
+export function hasErrorCode(error: unknown): error is { code: string } {
+  return typeof error === 'object' && error !== null && 'code' in error && typeof (error as { code: unknown }).code === 'string';
+}
+
 /**
  * Metadata about a blog post file
  */

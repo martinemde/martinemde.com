@@ -2,28 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GET, POST } from './+server';
 import { storeAccessToken } from '$lib/server/token-store';
 import type { RequestEvent } from './$types';
-
-// Type for SvelteKit's thrown errors
-interface SvelteKitThrowable {
-  status: number;
-  body?: { message?: string };
-}
-
-// Helper to assert that a promise rejects with a SvelteKit HttpError containing a message
-async function expectHttpError(
-  promise: Promise<unknown>,
-  status: number,
-  messageContains: string
-): Promise<void> {
-  try {
-    await promise;
-    expect.fail('Expected an error to be thrown');
-  } catch (e) {
-    const err = e as SvelteKitThrowable;
-    expect(err.status).toBe(status);
-    expect(err.body?.message).toContain(messageContains);
-  }
-}
+import { expectHttpError } from '$lib/test-helpers';
 
 // Mock dependencies (env mocks are in vitest-setup.ts)
 vi.mock('$lib/server/storage/factory', () => ({

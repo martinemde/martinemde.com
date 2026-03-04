@@ -14,8 +14,8 @@
   ];
 
   let shaders = $state<ShaderInfo[]>([]);
-  let cursorColor = $state([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach
-  let prevCursorColor = $state([0.71, 0.733, 0.98, 1.0]); // Catppuccin Lavender
+  let cursorColor = $state<[number, number, number, number]>([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach
+  let prevCursorColor = $state<[number, number, number, number]>([0.71, 0.733, 0.98, 1.0]); // Catppuccin Lavender
 
   // Load shader from file
   async function loadShader(filename: string): Promise<string | null> {

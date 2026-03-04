@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { isHttpError, isRedirect } from '@sveltejs/kit';
 import { GET } from './+server';
 import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
 import * as auth from '$lib/server/auth';
 import * as githubAuth from '$lib/server/github-auth';
-
-// Type for SvelteKit's thrown errors and redirects
-interface SvelteKitThrowable {
-  status: number;
-  location?: string;
-  body?: { message?: string };
-}
+import { expectHttpError, expectRedirect } from '$lib/test-helpers';
 
 // Session data type for OAuth flows
 interface MockSessionData {
@@ -95,28 +90,14 @@ describe('GitHub OAuth Callback Security', () => {
       const event = createRequestEvent('', 'valid_state', { oauthState: 'valid_state' });
       event.url.searchParams.delete('code');
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(400);
-        expect(err.body?.message).toBe('Missing code or state parameter');
-      }
+      await expectHttpError(GET(event), 400, 'Missing code or state parameter');
     });
 
     it('should reject requests missing state parameter', async () => {
       const event = createRequestEvent('valid_code', '', { oauthState: 'valid_state' });
       event.url.searchParams.delete('state');
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(400);
-        expect(err.body?.message).toBe('Missing code or state parameter');
-      }
+      await expectHttpError(GET(event), 400, 'Missing code or state parameter');
     });
   });
 
@@ -129,14 +110,7 @@ describe('GitHub OAuth Callback Security', () => {
       // Mock getSession to return the session with oauthState
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'correct_state' });
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(400);
-        expect(err.body?.message).toBe('Invalid state parameter');
-      }
+      await expectHttpError(GET(event), 400, 'Invalid state parameter');
     });
 
     it('should reject requests with missing session state', async () => {
@@ -145,14 +119,7 @@ describe('GitHub OAuth Callback Security', () => {
       // Mock getSession to return empty session
       vi.spyOn(auth, 'getSession').mockResolvedValue({});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(400);
-        expect(err.body?.message).toBe('Invalid state parameter');
-      }
+      await expectHttpError(GET(event), 400, 'Invalid state parameter');
     });
 
     it('should clear state after successful validation', async () => {
@@ -167,11 +134,7 @@ describe('GitHub OAuth Callback Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        if (!err.status || err.status !== 302) {
-          throw e;
-        }
+        if (!isRedirect(e)) throw e;
       }
 
       // Verify setSession was called
@@ -207,10 +170,7 @@ describe('GitHub OAuth Callback Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        if (!err.status || err.status !== 302) {
-          throw e;
-        }
+        if (!isRedirect(e)) throw e;
       }
 
       // New user should replace old user in session
@@ -234,14 +194,7 @@ describe('GitHub OAuth Callback Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
       vi.mocked(githubAuth.verifyRepoOwnership).mockResolvedValue(false);
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(403);
-        expect(err.body?.message).toContain('You do not have access to this repository');
-      }
+      await expectHttpError(GET(event), 403, 'You do not have access to this repository');
     });
 
     it('should allow repository owners', async () => {
@@ -250,14 +203,8 @@ describe('GitHub OAuth Callback Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
       vi.mocked(githubAuth.verifyRepoOwnership).mockResolvedValue(true);
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(e.status).toBe(302);
-        expect(err.location).toBe('/editor');
-      }
+      const location = await expectRedirect(GET(event));
+      expect(location).toBe('/editor');
     });
   });
 
@@ -286,18 +233,12 @@ describe('GitHub OAuth Callback Security', () => {
       vi.mocked(auth.createAuthCode).mockResolvedValue('sealed_auth_code');
       const setSessionSpy = vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(e.status).toBe(302);
+      const location = await expectRedirect(GET(event));
 
-        // Should redirect to client's callback
-        expect(err.location).toContain('https://client.example.com/callback');
-        expect(err.location).toContain('code=sealed_auth_code');
-        expect(err.location).toContain('state=client_state');
-      }
+      // Should redirect to client's callback
+      expect(location).toContain('https://client.example.com/callback');
+      expect(location).toContain('code=sealed_auth_code');
+      expect(location).toContain('state=client_state');
 
       // IndieAuth request should be cleared from session
       const finalSessionCall = setSessionSpy.mock.calls[setSessionSpy.mock.calls.length - 1];
@@ -330,15 +271,7 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Should return 500 error (caught as unexpected error)
-        expect(e.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-      }
+      await expectHttpError(GET(event), 500, 'Authentication failed');
 
       // Should have logged the validation error
       expect(consoleErrorSpy).toHaveBeenCalled();
@@ -372,14 +305,7 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-      }
+      await expectHttpError(GET(event), 500, 'Authentication failed');
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('https');
@@ -414,18 +340,9 @@ describe('GitHub OAuth Callback Security', () => {
 
       vi.mocked(auth.createAuthCode).mockResolvedValue('sealed_auth_code');
 
-      let redirectError: SvelteKitThrowable;
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        redirectError = err;
-      }
-
       // Should successfully redirect to localhost
-      expect(redirectError).toBeDefined();
-      expect(redirectError.status).toBe(302);
-      expect(redirectError.location).toContain('http://localhost:3000/callback');
+      const location = await expectRedirect(GET(event));
+      expect(location).toContain('http://localhost:3000/callback');
     });
   });
 
@@ -444,11 +361,11 @@ describe('GitHub OAuth Callback Security', () => {
         await GET(event);
         expect.fail('Should have thrown an error');
       } catch (e) {
-        const err = e as SvelteKitThrowable;
+        if (!isHttpError(e)) throw e;
         // Should return generic error message, not the detailed internal error
         expect(e.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-        expect(err.body?.message).not.toContain('SECRET_KEY');
+        expect(e.body.message).toBe('Authentication failed');
+        expect(e.body.message).not.toContain('SECRET_KEY');
       }
 
       // Verify sensitive data was logged but not exposed to user
@@ -467,18 +384,10 @@ describe('GitHub OAuth Callback Security', () => {
       vi.spyOn(auth, 'getSession').mockResolvedValue({ oauthState: 'valid_state' });
       const setSessionSpy = vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      let redirectError: SvelteKitThrowable;
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        redirectError = err;
-      }
+      const location = await expectRedirect(GET(event));
 
       // Should throw redirect exception (SvelteKit's redirect mechanism)
-      expect(redirectError).toBeDefined();
-      expect(redirectError.status).toBe(302);
-      expect(redirectError.location).toBe('/editor');
+      expect(location).toBe('/editor');
 
       // Should have saved user and token to session
       expect(setSessionSpy).toHaveBeenCalledWith(event, {
@@ -520,20 +429,12 @@ describe('GitHub OAuth Callback Security', () => {
       vi.mocked(auth.createAuthCode).mockResolvedValue('sealed_auth_code_xyz');
       const setSessionSpy = vi.spyOn(auth, 'setSession').mockResolvedValue(undefined);
 
-      let redirectError: SvelteKitThrowable;
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        redirectError = err;
-      }
+      const location = await expectRedirect(GET(event));
 
       // Should throw redirect exception, NOT a 500 error
-      expect(redirectError).toBeDefined();
-      expect(redirectError.status).toBe(302);
-      expect(redirectError.location).toContain('https://client.example.com/callback');
-      expect(redirectError.location).toContain('code=sealed_auth_code_xyz');
-      expect(redirectError.location).toContain('state=client_state_123');
+      expect(location).toContain('https://client.example.com/callback');
+      expect(location).toContain('code=sealed_auth_code_xyz');
+      expect(location).toContain('state=client_state_123');
 
       // Should have cleared IndieAuth request from session
       expect(setSessionSpy).toHaveBeenCalledWith(event, {
@@ -555,14 +456,7 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-      }
+      await expectHttpError(GET(event), 500, 'Authentication failed');
 
       // Should log the actual error
       expect(consoleErrorSpy).toHaveBeenCalled();
@@ -581,14 +475,7 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-      }
+      await expectHttpError(GET(event), 500, 'Authentication failed');
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Invalid authorization code');
@@ -604,14 +491,7 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-      }
+      await expectHttpError(GET(event), 500, 'Authentication failed');
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       expect(String(consoleErrorSpy.mock.calls[0][1])).toContain('Failed to obtain access token');
@@ -632,14 +512,7 @@ describe('GitHub OAuth Callback Security', () => {
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      try {
-        await GET(event);
-        expect.fail('Should have thrown an error');
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(500);
-        expect(err.body?.message).toBe('Authentication failed');
-      }
+      await expectHttpError(GET(event), 500, 'Authentication failed');
 
       expect(consoleErrorSpy).toHaveBeenCalled();
       expect(String(consoleErrorSpy.mock.calls[0][1])).toContain(

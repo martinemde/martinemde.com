@@ -43,7 +43,8 @@ export class UniformManager {
     gl: WebGL2RenderingContext,
     prog: WebGLProgram,
     name: string,
-    ...values: (number | number[] | WebGLTexture)[]
+    first: number | number[] | WebGLTexture,
+    ...rest: number[]
   ): void {
     const loc = gl.getUniformLocation(prog, name);
     // Silently return if uniform doesn't exist in this shader
@@ -53,9 +54,9 @@ export class UniformManager {
     if (!info) return;
 
     // Handle textures specially
-    if (values[0] instanceof WebGLTexture) {
+    if (first instanceof WebGLTexture) {
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, values[0]);
+      gl.bindTexture(gl.TEXTURE_2D, first);
       gl.uniform1i(loc, 0);
       return;
     }
@@ -63,42 +64,42 @@ export class UniformManager {
     // Use the correct uniform function based on the shader's declared type
     switch (info.type) {
       case gl.FLOAT:
-        gl.uniform1f(loc, values[0]);
+        if (typeof first === 'number') gl.uniform1f(loc, first);
         break;
       case gl.FLOAT_VEC2:
-        if (Array.isArray(values[0])) {
-          gl.uniform2fv(loc, values[0]);
+        if (Array.isArray(first)) {
+          gl.uniform2fv(loc, first);
         } else {
-          gl.uniform2f(loc, values[0], values[1]);
+          gl.uniform2f(loc, first, rest[0]);
         }
         break;
       case gl.FLOAT_VEC3:
-        if (Array.isArray(values[0])) {
-          gl.uniform3fv(loc, values[0]);
+        if (Array.isArray(first)) {
+          gl.uniform3fv(loc, first);
         } else {
-          gl.uniform3f(loc, values[0], values[1], values[2]);
+          gl.uniform3f(loc, first, rest[0], rest[1]);
         }
         break;
       case gl.FLOAT_VEC4:
-        if (Array.isArray(values[0])) {
-          gl.uniform4fv(loc, values[0]);
+        if (Array.isArray(first)) {
+          gl.uniform4fv(loc, first);
         } else {
-          gl.uniform4f(loc, values[0], values[1], values[2], values[3]);
+          gl.uniform4f(loc, first, rest[0], rest[1], rest[2]);
         }
         break;
       case gl.INT:
       case gl.BOOL:
       case gl.SAMPLER_2D:
-        gl.uniform1i(loc, values[0]);
+        if (typeof first === 'number') gl.uniform1i(loc, first);
         break;
       case gl.INT_VEC2:
-        gl.uniform2iv(loc, values);
+        gl.uniform2iv(loc, Array.isArray(first) ? first : [first, ...rest]);
         break;
       case gl.INT_VEC3:
-        gl.uniform3iv(loc, values);
+        gl.uniform3iv(loc, Array.isArray(first) ? first : [first, ...rest]);
         break;
       case gl.INT_VEC4:
-        gl.uniform4iv(loc, values);
+        gl.uniform4iv(loc, Array.isArray(first) ? first : [first, ...rest]);
         break;
       default:
         console.warn(`Unsupported uniform type: ${info.type} for ${name}`);

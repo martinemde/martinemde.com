@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { isRedirect } from '@sveltejs/kit';
 import { GET } from './+server';
 import type { RequestEvent, RequestEvent as FullRequestEvent } from './$types';
 import * as auth from '$lib/server/auth';
 import { storeAccessToken, getAccessToken } from '$lib/server/token-store';
-
-// Type for SvelteKit's thrown errors and redirects
-interface SvelteKitThrowable {
-  status: number;
-  location?: string;
-  body?: { message?: string };
-}
+import { expectRedirect } from '$lib/test-helpers';
 
 // Mock the auth module
 vi.mock('$lib/server/auth', async () => {
@@ -65,9 +60,8 @@ describe('Logout Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       expect(clearSessionSpy).toHaveBeenCalledWith(event);
@@ -76,13 +70,8 @@ describe('Logout Security', () => {
     it('should redirect to editor after logout', async () => {
       const event = createRequestEvent();
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
-        expect(err.location).toBe('/editor');
-      }
+      const location = await expectRedirect(GET(event));
+      expect(location).toBe('/editor');
     });
   });
 
@@ -102,9 +91,8 @@ describe('Logout Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        // Redirect is expected
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       // Tokens should be revoked after logout
@@ -127,8 +115,8 @@ describe('Logout Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       // Token should be revoked and cannot be used to access Micropub
@@ -143,13 +131,8 @@ describe('Logout Security', () => {
       event.locals.user = undefined;
       event.locals.githubToken = undefined;
 
-      try {
-        await GET(event);
-      } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
-        expect(err.location).toBe('/editor');
-      }
+      const location = await expectRedirect(GET(event));
+      expect(location).toBe('/editor');
 
       // Should not throw error
       expect(auth.clearSession).toHaveBeenCalled();
@@ -162,8 +145,8 @@ describe('Logout Security', () => {
       try {
         await GET(event);
       } catch (e) {
-        const err = e as SvelteKitThrowable;
-        expect(err.status).toBe(302);
+        if (!isRedirect(e)) throw e;
+        expect(e.status).toBe(302);
       }
 
       // Should succeed without errors

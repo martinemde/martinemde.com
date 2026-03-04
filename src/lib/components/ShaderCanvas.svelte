@@ -26,8 +26,8 @@
     imageUrl?: string | null;
     width?: number;
     height?: number;
-    cursorColor?: number[];
-    prevCursorColor?: number[];
+    cursorColor?: [number, number, number, number];
+    prevCursorColor?: [number, number, number, number];
     swapColorsOnClick?: boolean;
     className?: string;
   } = $props();
@@ -402,7 +402,7 @@
 
     // Swap colors if enabled
     if (swapColorsOnClick) {
-      const temp = [...cursorColor];
+      const temp: [number, number, number, number] = [...cursorColor];
       cursorColor = [...prevCursorColor];
       prevCursorColor = temp;
     }

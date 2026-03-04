@@ -1,7 +1,7 @@
 import { writeFile, access, mkdir, readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { cwd } from 'node:process';
-import type { StorageBackend, BlogPostFileInfo } from './types';
+import { hasErrorCode, type StorageBackend, type BlogPostFileInfo } from './types';
 
 /**
  * File-based storage backend for local development
@@ -130,8 +130,7 @@ export class FileStorageBackend implements StorageBackend {
       return posts;
     } catch (error: unknown) {
       // If directory doesn't exist, return empty array
-      const fsError = error as { code?: string };
-      if (fsError.code === 'ENOENT') {
+      if (hasErrorCode(error) && error.code === 'ENOENT') {
         return [];
       }
       const message = error instanceof Error ? error.message : 'Unknown error';

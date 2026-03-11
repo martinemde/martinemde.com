@@ -5,6 +5,7 @@
 import { resolve } from '$app/paths';
 import {
   Armchair,
+  Calculator,
   Cat,
   Code,
   Gem,
@@ -79,6 +80,13 @@ export const projects: Project[] = [
       'The Outer Worlds 2: Pitchball & Tossball Card checklist. A little checklist made with Svelte.',
     url: resolve('/tossball'),
     icon: Volleyball
+  },
+  {
+    name: 'Loan Calculator',
+    description:
+      'Compare loans side by side. Calculate monthly payments, total interest, and grand totals.',
+    url: resolve('/loans'),
+    icon: Calculator
   },
   {
     name: 'RubyGems & Bundler',

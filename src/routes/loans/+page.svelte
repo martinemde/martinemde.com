@@ -1,6 +1,8 @@
 <script lang="ts">
   import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 
+  const STORAGE_KEY = 'loan-calculator';
+
   interface Loan {
     name: string;
     totalPrice: number | null;
@@ -9,6 +11,11 @@
     termMonths: number | null;
     taxRate: number | null;
     deliveryFees: number | null;
+  }
+
+  interface SavedState {
+    loans: Loan[];
+    discountRate: number | null;
   }
 
   function createLoan(name: string = ''): Loan {
@@ -23,11 +30,30 @@
     };
   }
 
+  function loadState(): SavedState | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as SavedState;
+    } catch {
+      return null;
+    }
+  }
+
   function num(v: number | null): number {
     return v ?? 0;
   }
 
-  let loans = $state<Loan[]>([createLoan('Loan A'), createLoan('Loan B')]);
+  const saved = loadState();
+  let loans = $state<Loan[]>(saved?.loans ?? [createLoan('Loan A'), createLoan('Loan B')]);
+  let discountRate = $state<number | null>(saved?.discountRate ?? 7);
+
+  $effect(() => {
+    // Access all reactive state to track changes
+    const state: SavedState = { loans: $state.snapshot(loans), discountRate };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  });
 
   function addLoan() {
     const letter = String.fromCharCode(65 + loans.length);
@@ -75,6 +101,30 @@
     );
   }
 
+  function npv(loan: Loan): number {
+    const mp = monthlyPayment(loan);
+    const n = num(loan.termMonths);
+    const r = num(discountRate) / 100 / 12;
+    let pvPayments = 0;
+    for (let m = 1; m <= n; m++) {
+      pvPayments += r === 0 ? mp : mp / Math.pow(1 + r, m);
+    }
+    return upfrontCost(loan) + pvPayments;
+  }
+
+  function lowestNpvIndex(): number {
+    let minIdx = -1;
+    let minVal = Infinity;
+    for (let i = 0; i < loans.length; i++) {
+      const v = npv(loans[i]);
+      if (v > 0 && v < minVal) {
+        minVal = v;
+        minIdx = i;
+      }
+    }
+    return minIdx;
+  }
+
   function fmt(n: number): string {
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   }
@@ -109,7 +159,7 @@
     </p>
   </header>
 
-  <div class="flex gap-2">
+  <div class="flex flex-wrap items-end gap-4">
     <button
       type="button"
       onclick={addLoan}
@@ -117,6 +167,25 @@
     >
       + Add Loan
     </button>
+
+    <label class="space-y-1">
+      <span class="text-sm font-medium text-surface-950-50">Discount Rate</span>
+      <div class="relative">
+        <input
+          type="number"
+          bind:value={discountRate}
+          min="0"
+          step="0.5"
+          placeholder="7"
+          class="input w-28 rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-8 pl-3 text-right text-sm text-surface-950-50 tabular-nums"
+        />
+        <span
+          class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-600-400"
+          >%</span
+        >
+      </div>
+      <span class="text-xs text-surface-600-400">Expected return on unspent cash</span>
+    </label>
   </div>
 </div>
 
@@ -242,11 +311,33 @@
         {/each}
       </tr>
 
-      <tr class="bg-tertiary-100-800/30">
+      <tr class="bg-tertiary-100-800/30 border-b border-surface-200-800">
         <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Grand Total</td>
         {#each loans as loan, i (i)}
           <td class="px-4 py-3 text-right text-sm font-bold text-tertiary-600-400 tabular-nums">
             {fmt(grandTotal(loan))}
+          </td>
+        {/each}
+      </tr>
+
+      <tr class="bg-secondary-100-800/30">
+        <td class="px-4 py-3 text-sm font-bold text-surface-950-50">
+          NPV
+          <span class="block text-xs font-normal text-surface-600-400"
+            >at {num(discountRate)}% discount</span
+          >
+        </td>
+        {#each loans as loan, i (i)}
+          {@const best = lowestNpvIndex()}
+          <td
+            class="px-4 py-3 text-right text-sm font-bold tabular-nums {i === best
+              ? 'text-success-600-400'
+              : 'text-secondary-600-400'}"
+          >
+            {fmt(npv(loan))}
+            {#if i === best && loans.length > 1}
+              <span class="block text-xs font-normal text-success-600-400">Lowest cost</span>
+            {/if}
           </td>
         {/each}
       </tr>
@@ -259,5 +350,10 @@
     Monthly payment uses the standard amortization formula. Principal = Total Price &minus; Down
     Payment. Upfront Cost = Down Payment + Tax + Delivery Fees. Grand Total = Principal + Total
     Interest + Upfront Cost.
+  </p>
+  <p class="mt-2 text-sm text-surface-600-400">
+    <strong class="text-surface-950-50">NPV</strong> (Net Present Value) discounts each future monthly
+    payment back to today&rsquo;s dollars at the given rate, then adds the upfront cost. The loan with
+    the lowest NPV costs the least when accounting for the opportunity cost of your money.
   </p>
 </div>

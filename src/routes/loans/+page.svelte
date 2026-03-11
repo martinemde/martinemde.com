@@ -1,6 +1,8 @@
 <script lang="ts">
   import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
 
+  const STORAGE_KEY = 'loan-calculator';
+
   interface Loan {
     name: string;
     totalPrice: number | null;
@@ -9,6 +11,11 @@
     termMonths: number | null;
     taxRate: number | null;
     deliveryFees: number | null;
+  }
+
+  interface SavedState {
+    loans: Loan[];
+    discountRate: number | null;
   }
 
   function createLoan(name: string = ''): Loan {
@@ -23,12 +30,30 @@
     };
   }
 
+  function loadState(): SavedState | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw) as SavedState;
+    } catch {
+      return null;
+    }
+  }
+
   function num(v: number | null): number {
     return v ?? 0;
   }
 
-  let loans = $state<Loan[]>([createLoan('Loan A'), createLoan('Loan B')]);
-  let discountRate = $state<number | null>(7);
+  const saved = loadState();
+  let loans = $state<Loan[]>(saved?.loans ?? [createLoan('Loan A'), createLoan('Loan B')]);
+  let discountRate = $state<number | null>(saved?.discountRate ?? 7);
+
+  $effect(() => {
+    // Access all reactive state to track changes
+    const state: SavedState = { loans: $state.snapshot(loans), discountRate };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  });
 
   function addLoan() {
     const letter = String.fromCharCode(65 + loans.length);

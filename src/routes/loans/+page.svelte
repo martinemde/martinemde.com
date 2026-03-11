@@ -102,7 +102,7 @@
   />
 </svelte:head>
 
-<div class="container mx-auto max-w-7xl space-y-8 p-4">
+<div class="space-y-4 p-4">
   <Breadcrumbs crumbs={[{ label: 'Projects', href: '/projects' }, { label: 'Loan Calculator' }]} />
 
   <header class="space-y-4">
@@ -122,151 +122,143 @@
       + Add Loan
     </button>
   </div>
+</div>
 
-  <div class="overflow-x-auto">
-    <table class="w-full table-auto">
-      <thead>
-        <tr class="border-b border-surface-300-700">
-          <th class="min-w-40 px-4 py-3 text-left text-sm font-semibold text-surface-900-100"></th>
+<div class="overflow-x-auto px-4 py-6">
+  <table class="w-full table-auto">
+    <thead>
+      <tr class="border-b border-surface-300-700">
+        <th class="min-w-40 px-4 py-3 text-left text-sm font-semibold text-surface-900-100"></th>
+        {#each loans as loan, i (i)}
+          <th class="min-w-48 px-4 py-3 text-center">
+            <div class="flex items-center justify-center gap-2">
+              <input
+                type="text"
+                bind:value={loan.name}
+                class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 px-2 py-1 text-center text-sm font-semibold text-surface-950-50"
+              />
+              {#if loans.length > 1}
+                <button
+                  type="button"
+                  onclick={() => removeLoan(i)}
+                  class="text-xs font-bold text-error-500 hover:text-error-400"
+                  aria-label="Remove {loan.name}"
+                >
+                  &times;
+                </button>
+              {/if}
+            </div>
+          </th>
+        {/each}
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Input rows -->
+      {#each inputRows as row (row.key)}
+        <tr class="border-b border-surface-200-800">
+          <td class="px-4 py-3 text-sm font-medium text-surface-950-50">{row.label}</td>
           {#each loans as loan, i (i)}
-            <th class="min-w-48 px-4 py-3 text-center">
-              <div class="flex items-center justify-center gap-2">
-                <input
-                  type="text"
-                  bind:value={loan.name}
-                  class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 px-2 py-1 text-center text-sm font-semibold text-surface-950-50"
-                />
-                {#if loans.length > 1}
-                  <button
-                    type="button"
-                    onclick={() => removeLoan(i)}
-                    class="text-xs font-bold text-error-500 hover:text-error-400"
-                    aria-label="Remove {loan.name}"
+            <td class="px-4 py-3">
+              <div class="relative">
+                {#if row.type === 'currency'}
+                  <span
+                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-surface-600-400"
+                    >$</span
                   >
-                    &times;
-                  </button>
+                  <input
+                    type="number"
+                    bind:value={loan[row.key]}
+                    min="0"
+                    step="100"
+                    placeholder="0"
+                    class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-3 pl-7 text-right text-sm text-surface-950-50 tabular-nums"
+                  />
+                {:else if row.type === 'percent'}
+                  <input
+                    type="number"
+                    bind:value={loan[row.key]}
+                    min="0"
+                    step="0.1"
+                    placeholder="0"
+                    class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-8 pl-3 text-right text-sm text-surface-950-50 tabular-nums"
+                  />
+                  <span
+                    class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-600-400"
+                    >%</span
+                  >
+                {:else}
+                  <input
+                    type="number"
+                    bind:value={loan[row.key]}
+                    min="1"
+                    step="1"
+                    placeholder="0"
+                    class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 px-3 py-2 text-right text-sm text-surface-950-50 tabular-nums"
+                  />
                 {/if}
               </div>
-            </th>
+            </td>
           {/each}
         </tr>
-      </thead>
-      <tbody>
-        <!-- Input rows -->
-        {#each inputRows as row (row.key)}
-          <tr class="border-b border-surface-200-800">
-            <td class="px-4 py-3 text-sm font-medium text-surface-950-50">{row.label}</td>
-            {#each loans as loan, i (i)}
-              <td class="px-4 py-3">
-                <div class="relative">
-                  {#if row.type === 'currency'}
-                    <span
-                      class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-surface-600-400"
-                      >$</span
-                    >
-                    <input
-                      type="number"
-                      bind:value={loan[row.key]}
-                      min="0"
-                      step="100"
-                      placeholder="0"
-                      class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-3 pl-7 text-right text-sm text-surface-950-50 tabular-nums"
-                    />
-                  {:else if row.type === 'percent'}
-                    <input
-                      type="number"
-                      bind:value={loan[row.key]}
-                      min="0"
-                      step="0.1"
-                      placeholder="0"
-                      class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-8 pl-3 text-right text-sm text-surface-950-50 tabular-nums"
-                    />
-                    <span
-                      class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-600-400"
-                      >%</span
-                    >
-                  {:else}
-                    <input
-                      type="number"
-                      bind:value={loan[row.key]}
-                      min="1"
-                      step="1"
-                      placeholder="0"
-                      class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 px-3 py-2 text-right text-sm text-surface-950-50 tabular-nums"
-                    />
-                  {/if}
-                </div>
-              </td>
-            {/each}
-          </tr>
-        {/each}
+      {/each}
 
-        <!-- Separator -->
-        <tr>
-          <td colspan={loans.length + 1} class="py-2">
-            <hr class="border-surface-300-700" />
+      <!-- Separator -->
+      <tr>
+        <td colspan={loans.length + 1} class="py-2">
+          <hr class="border-surface-300-700" />
+        </td>
+      </tr>
+
+      <!-- Calculated rows -->
+      <tr class="border-b border-surface-200-800">
+        <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Principal</td>
+        {#each loans as loan, i (i)}
+          <td class="px-4 py-3 text-right text-sm font-medium text-surface-950-50 tabular-nums">
+            {fmt(principal(loan))}
           </td>
-        </tr>
+        {/each}
+      </tr>
 
-        <!-- Calculated rows -->
-        <tr class="border-b border-surface-200-800">
-          <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Principal</td>
-          {#each loans as loan, i (i)}
-            <td class="px-4 py-3 text-right text-sm font-medium text-surface-950-50 tabular-nums">
-              {fmt(principal(loan))}
-            </td>
-          {/each}
-        </tr>
+      <tr class="bg-primary-100-800/30 border-b border-surface-200-800">
+        <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Monthly Payment</td>
+        {#each loans as loan, i (i)}
+          <td class="px-4 py-3 text-right text-sm font-bold text-primary-600-400 tabular-nums">
+            {fmt(monthlyPayment(loan))}
+          </td>
+        {/each}
+      </tr>
 
-        <tr class="bg-primary-100-800/30 border-b border-surface-200-800">
-          <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Monthly Payment</td>
-          {#each loans as loan, i (i)}
-            <td class="px-4 py-3 text-right text-sm font-bold text-primary-600-400 tabular-nums">
-              {fmt(monthlyPayment(loan))}
-            </td>
-          {/each}
-        </tr>
+      <tr class="border-b border-surface-200-800">
+        <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Upfront Cost</td>
+        {#each loans as loan, i (i)}
+          <td class="px-4 py-3 text-right text-sm text-surface-950-50 tabular-nums">
+            {fmt(upfrontCost(loan))}
+          </td>
+        {/each}
+      </tr>
 
-        <tr class="border-b border-surface-200-800">
-          <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Tax Amount</td>
-          {#each loans as loan, i (i)}
-            <td class="px-4 py-3 text-right text-sm text-surface-950-50 tabular-nums">
-              {fmt(taxAmount(loan))}
-              <span class="text-xs text-surface-600-400">({fmtPct(num(loan.taxRate))})</span>
-            </td>
-          {/each}
-        </tr>
+      <tr class="border-b border-surface-200-800">
+        <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Total Interest</td>
+        {#each loans as loan, i (i)}
+          <td class="px-4 py-3 text-right text-sm text-surface-950-50 tabular-nums">
+            {fmt(totalInterest(loan))}
+          </td>
+        {/each}
+      </tr>
 
-        <tr class="border-b border-surface-200-800">
-          <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Upfront Cost</td>
-          {#each loans as loan, i (i)}
-            <td class="px-4 py-3 text-right text-sm text-surface-950-50 tabular-nums">
-              {fmt(upfrontCost(loan))}
-            </td>
-          {/each}
-        </tr>
+      <tr class="bg-tertiary-100-800/30">
+        <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Grand Total</td>
+        {#each loans as loan, i (i)}
+          <td class="px-4 py-3 text-right text-sm font-bold text-tertiary-600-400 tabular-nums">
+            {fmt(grandTotal(loan))}
+          </td>
+        {/each}
+      </tr>
+    </tbody>
+  </table>
+</div>
 
-        <tr class="border-b border-surface-200-800">
-          <td class="px-4 py-3 text-sm font-medium text-surface-950-50">Total Interest</td>
-          {#each loans as loan, i (i)}
-            <td class="px-4 py-3 text-right text-sm text-surface-950-50 tabular-nums">
-              {fmt(totalInterest(loan))}
-            </td>
-          {/each}
-        </tr>
-
-        <tr class="bg-tertiary-100-800/30">
-          <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Grand Total</td>
-          {#each loans as loan, i (i)}
-            <td class="px-4 py-3 text-right text-sm font-bold text-tertiary-600-400 tabular-nums">
-              {fmt(grandTotal(loan))}
-            </td>
-          {/each}
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
+<div class="p-4">
   <p class="text-sm text-surface-600-400">
     Monthly payment uses the standard amortization formula. Principal = Total Price &minus; Down
     Payment. Upfront Cost = Down Payment + Tax + Delivery Fees. Grand Total = Principal + Total

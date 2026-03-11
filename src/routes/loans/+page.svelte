@@ -298,11 +298,17 @@
       <tr class="bg-secondary-100-800/30">
         <td class="px-4 py-3 text-sm font-bold text-surface-950-50">
           NPV
-          <span class="block text-xs font-normal text-surface-600-400">at {num(discountRate)}% discount</span>
+          <span class="block text-xs font-normal text-surface-600-400"
+            >at {num(discountRate)}% discount</span
+          >
         </td>
         {#each loans as loan, i (i)}
           {@const best = lowestNpvIndex()}
-          <td class="px-4 py-3 text-right text-sm font-bold tabular-nums {i === best ? 'text-success-600-400' : 'text-secondary-600-400'}">
+          <td
+            class="px-4 py-3 text-right text-sm font-bold tabular-nums {i === best
+              ? 'text-success-600-400'
+              : 'text-secondary-600-400'}"
+          >
             {fmt(npv(loan))}
             {#if i === best && loans.length > 1}
               <span class="block text-xs font-normal text-success-600-400">Lowest cost</span>
@@ -321,8 +327,8 @@
     Interest + Upfront Cost.
   </p>
   <p class="mt-2 text-sm text-surface-600-400">
-    <strong class="text-surface-950-50">NPV</strong> (Net Present Value) discounts each future
-    monthly payment back to today&rsquo;s dollars at the given rate, then adds the upfront cost. The
-    loan with the lowest NPV costs the least when accounting for the opportunity cost of your money.
+    <strong class="text-surface-950-50">NPV</strong> (Net Present Value) discounts each future monthly
+    payment back to today&rsquo;s dollars at the given rate, then adds the upfront cost. The loan with
+    the lowest NPV costs the least when accounting for the opportunity cost of your money.
   </p>
 </div>

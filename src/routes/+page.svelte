@@ -15,7 +15,7 @@
   <!-- Hero/About Section -->
   <section class="mb-12">
     <p class="text-lg text-surface-700-300">
-      Developer Productivity (Modularity) at
+      AI Developer Tools Engineer at
       <a href="https://gusto.com" rel="external" class="anchor">Gusto</a>. Founding member of
       <a href="https://gem.coop" rel="external" class="anchor">gem.coop</a>. See also:
       <a href="https://github.com/martinemde" rel="external" class="anchor">GitHub</a>.

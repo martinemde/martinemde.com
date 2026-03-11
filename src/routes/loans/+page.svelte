@@ -79,10 +79,6 @@
     return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
   }
 
-  function fmtPct(n: number): string {
-    return n.toFixed(2) + '%';
-  }
-
   // Row definitions for the comparison grid
   const inputRows = [
     { label: 'Total Price', key: 'totalPrice' as const, type: 'currency' },

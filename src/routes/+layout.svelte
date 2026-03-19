@@ -3,7 +3,6 @@
   import '../app.css';
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
-  import AuthButton from '$lib/components/AuthButton.svelte';
   import { PUBLIC_APP_URL } from '$env/static/public';
 
   let { children } = $props();
@@ -85,7 +84,6 @@
             <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
             <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
           </div>
-          <AuthButton />
         </nav>
       </div>
     </div>

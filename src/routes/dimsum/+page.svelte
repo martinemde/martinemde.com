@@ -58,7 +58,7 @@
 
   type DimSumId = (typeof dimSumItems)[number]['id'];
 
-  let playerCount = $state(3);
+  let playerCount = $state(2);
   let players: Player[] = $state(
     Array.from({ length: MAX_PLAYERS }, (_, i) => ({
       name: defaultNames[i],

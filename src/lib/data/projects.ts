@@ -12,6 +12,7 @@ import {
   Ghost,
   FolderOpenDot,
   Shrimp,
+  UtensilsCrossed,
   Volleyball,
   type Icon as IconType
 } from 'lucide-svelte';
@@ -80,6 +81,13 @@ export const projects: Project[] = [
       'The Outer Worlds 2: Pitchball & Tossball Card checklist. A little checklist made with Svelte.',
     url: resolve('/tossball'),
     icon: Volleyball
+  },
+  {
+    name: 'Dim Sum Scorer',
+    description:
+      'Score tracker for Sushi Go! Spin Some for Dim Sum. Supports 2-6 players with automatic scoring for all dim sum cards.',
+    url: resolve('/dimsum'),
+    icon: UtensilsCrossed
   },
   {
     name: 'Loan Calculator',

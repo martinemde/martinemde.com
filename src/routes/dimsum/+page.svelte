@@ -50,7 +50,7 @@
     {
       id: 'special_plate',
       name: 'Special Plate',
-      rule: '5 pts if you have all 4',
+      rule: '5 pts each',
       color: '#E91E63'
     },
     { id: 'chopsticks', name: 'Chopsticks', rule: '1 pt per 2 tokens', color: '#D32F2F' }
@@ -118,7 +118,7 @@
   }
 
   function scoreSpecialPlate(count: number): number {
-    return count >= 4 ? 5 : 0;
+    return count * 5;
   }
 
   function scoreChopsticks(count: number): number {

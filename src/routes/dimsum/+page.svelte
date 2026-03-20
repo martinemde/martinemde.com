@@ -285,7 +285,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each dimSumItems as item}
+        {#each dimSumItems as item (item.id)}
           <tr class="border-t border-surface-200-800">
             <!-- Item label column -->
             <td

@@ -8,8 +8,8 @@
   --base-font-weight: normal;
   --base-font-style: normal;
   --base-letter-spacing: 0em;
-  --heading-font-color: var(--color-primary-600);
-  --heading-font-color-dark: var(--color-primary-400);
+  --heading-font-color: oklch(20% 0.005 260);
+  --heading-font-color-dark: oklch(88% 0.01 85);
   --heading-font-family: 'DM Sans Variable', 'Helvetica Neue', 'Arial', sans-serif;
   --heading-font-weight: 700;
   --heading-font-style: normal;
@@ -22,8 +22,8 @@
   --anchor-font-weight: normal;
   --anchor-font-style: normal;
   --anchor-letter-spacing: inherit;
-  --anchor-text-decoration: underline;
-  --anchor-text-decoration-hover: none;
+  --anchor-text-decoration: none;
+  --anchor-text-decoration-hover: underline;
   --anchor-text-decoration-active: none;
   --anchor-text-decoration-focus: none;
   --spacing: 0.25rem;
@@ -33,7 +33,7 @@
   --default-divide-width: 1px;
   --default-ring-width: 1px;
   --body-background-color: oklch(98% 0.005 85);
-  --body-background-color-dark: oklch(18% 0.005 260);
+  --body-background-color-dark: oklch(16% 0.008 70);
   /* Primary: Dusty rose accent */
   --color-primary-50: oklch(95% 0.03 15);
   --color-primary-100: oklch(90% 0.05 15);
@@ -191,8 +191,8 @@
   --color-surface-600: oklch(45% 0.005 260);
   --color-surface-700: oklch(35% 0.005 260);
   --color-surface-800: oklch(25% 0.005 260);
-  --color-surface-900: oklch(20% 0.005 260);
-  --color-surface-950: oklch(18% 0.005 260);
+  --color-surface-900: oklch(20% 0.008 70);
+  --color-surface-950: oklch(16% 0.008 70);
   --color-surface-contrast-dark: var(--color-surface-950);
   --color-surface-contrast-light: var(--color-surface-50);
   --color-surface-contrast-50: var(--color-surface-contrast-dark);

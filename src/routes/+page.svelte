@@ -24,15 +24,18 @@
 
   <!-- Latest Posts Section -->
   <section>
-    <h2 class="preset-typo-headline mb-10">Latest</h2>
+    <h2 class="mb-10 font-serif text-2xl font-bold lg:text-4xl">Latest</h2>
     <div class="space-y-10">
       {#each data.recentPosts as post (post.slug)}
         <article>
           <div class="meta-editorial mb-1 text-surface-500">
             {formatPostDate(post.date)}
           </div>
-          <h3 class="mb-2 text-xl font-bold">
-            <a href={resolve(`/blog/${post.slug}`)} class="anchor">
+          <h3 class="mb-2 font-serif text-xl font-bold">
+            <a
+              href={resolve(`/blog/${post.slug}`)}
+              class="text-surface-950-50 transition-colors hover:text-primary-500"
+            >
               {post.title}
             </a>
           </h3>

@@ -14,7 +14,7 @@
 
   <header class="mt-4 mb-12">
     {#if data.metadata.title}
-      <h1 class="mb-6 text-3xl leading-tight font-extrabold tracking-tight lg:text-5xl">
+      <h1 class="mb-6 font-serif text-3xl leading-tight font-extrabold tracking-tight lg:text-5xl">
         {data.metadata.title}
       </h1>
     {/if}

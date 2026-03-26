@@ -199,13 +199,24 @@ hr {
 /* Drop cap on first paragraph of blog post content */
 .prose > p:first-of-type::first-letter {
   float: left;
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 3.5em;
-  line-height: 0.8;
-  padding-right: 0.08em;
-  padding-top: 0.07em;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 3.4em;
+  line-height: 1;
+  margin-top: -0.05em;
+  margin-right: 0.06em;
   color: var(--color-primary-500);
+}
+
+/* Underline links only inside prose body text */
+.prose a {
+  text-decoration: underline;
+  text-decoration-color: var(--color-primary-300);
+  text-underline-offset: 0.15em;
+  text-decoration-thickness: 1px;
+}
+.prose a:hover {
+  text-decoration-color: var(--color-primary-500);
 }
 
 /* Editorial blockquote: indented, italic, no border */

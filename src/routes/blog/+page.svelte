@@ -15,7 +15,7 @@
 <div>
   <Breadcrumbs crumbs={[{ label: 'Home', href: '/' }, { label: 'Blog' }]} />
 
-  <h1 class="preset-typo-headline mb-12">Blog</h1>
+  <h1 class="mb-12 font-serif text-2xl font-bold lg:text-4xl">Blog</h1>
 
   <div class="space-y-10">
     {#each data.posts as post (post.slug)}
@@ -23,8 +23,11 @@
         <div class="meta-editorial mb-1 text-surface-500">
           {formatPostDate(post.date)}
         </div>
-        <h2 class="mb-2 text-xl font-bold">
-          <a href={resolve(`/blog/${post.slug}`)} class="anchor">
+        <h2 class="mb-2 font-serif text-xl font-bold">
+          <a
+            href={resolve(`/blog/${post.slug}`)}
+            class="text-surface-950-50 transition-colors hover:text-primary-500"
+          >
             {post.title}
           </a>
         </h2>

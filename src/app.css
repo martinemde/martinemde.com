@@ -65,10 +65,9 @@ body::after {
 :not(pre) > code {
   font-family: var(--font-mono) !important;
   font-size: 0.88em;
-  padding: 0.1em 0.35em;
-  border-radius: 0.2rem;
-  background-color: light-dark(oklch(93% 0.005 250), oklch(20% 0.01 250));
-  color: light-dark(oklch(40% 0.02 250), oklch(85% 0.01 90));
+  padding: 0;
+  background: none;
+  color: light-dark(oklch(45% 0.02 250), oklch(82% 0.01 90));
 }
 
 /* Terminal-style blockquotes */

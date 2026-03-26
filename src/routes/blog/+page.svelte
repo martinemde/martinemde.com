@@ -25,7 +25,7 @@
             {post.title}
           </a>
         </h2>
-        <div class="mb-4 text-sm text-surface-600-400">
+        <div class="shell-prompt mb-4 text-surface-600-400">
           {formatPostDate(post.date)}
         </div>
         {#if post.description}

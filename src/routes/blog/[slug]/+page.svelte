@@ -16,12 +16,11 @@
     {#if data.metadata.title}
       <h1 class="preset-typo-title mb-4">{data.metadata.title}</h1>
     {/if}
-    <div class="text-sm text-surface-600-400">
+    <div class="text-surface-600-400">
       <div class="flex items-center justify-between gap-4">
-        {#if data.metadata.date}
-          <span>Last Updated {formatPostDate(data.metadata.date)}</span>
-        {/if}
-        <span>{readingTime}</span>
+        <span class="shell-prompt"
+          >posted {formatPostDate(data.metadata.date)} &middot; {readingTime}</span
+        >
       </div>
     </div>
   </header>
@@ -38,12 +37,20 @@
     <data.content />
   </div>
 
-  <footer class="mt-12 flex items-center gap-4 pt-6">
-    <span class="text-sm text-surface-600-400">Share this article:</span>
-    <ShareButtons
-      slug={data.metadata.slug}
-      title={data.metadata.title}
-      description={data.metadata.description}
-    />
-  </footer>
+  <div class="mt-12 border-t border-surface-200-800 pt-6">
+    <div class="flex items-center justify-between">
+      <span
+        class="cursor-blink text-surface-500"
+        style="font-family: var(--font-mono); font-size: 0.9rem;">:wq</span
+      >
+      <div class="flex items-center gap-4">
+        <span class="text-sm text-surface-600-400">Share this article:</span>
+        <ShareButtons
+          slug={data.metadata.slug}
+          title={data.metadata.title}
+          description={data.metadata.description}
+        />
+      </div>
+    </div>
+  </div>
 </article>

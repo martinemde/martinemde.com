@@ -4,7 +4,9 @@
   "devDependencies": {
     "@eslint/compat": "^2.0.3",
     "@eslint/js": "^9.39.2",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@fontsource/fira-mono": "^5.2.7",
+    "@fontsource/source-sans-3": "^5.2.9",
     "@neoconfetti/svelte": "^2.2.2",
     "@skeletonlabs/skeleton": "4.12.1",
     "@skeletonlabs/skeleton-svelte": "^4.13.0",

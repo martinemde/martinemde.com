@@ -75,15 +75,21 @@
   <header class="border-b border-surface-200-800">
     <div class="container mx-auto max-w-4xl px-4">
       <div class="flex items-center justify-between py-6">
-        <h1 class="preset-typo-title">
+        <h1
+          style="font-family: var(--font-mono); font-weight: 600; letter-spacing: -0.02em;"
+          class="text-xl lg:text-2xl"
+        >
           <a href={resolve('/')} class="anchor text-primary-500">Martin Emde</a>
         </h1>
-        <nav class="flex items-center gap-4">
-          <div class="space-x-2">
-            <a href={resolve('/blog')} class="preset-typo-menu anchor">Blog</a>
-            <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
-            <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
-          </div>
+        <nav
+          class="flex items-center gap-1"
+          style="font-family: var(--font-mono); font-size: 0.9rem;"
+        >
+          <a href={resolve('/blog')} class="px-2 py-1 anchor font-semibold">blog</a>
+          <span class="text-surface-400 select-none">/</span>
+          <a href={resolve('/projects')} class="px-2 py-1 anchor font-semibold">projects</a>
+          <span class="text-surface-400 select-none">/</span>
+          <a href={resolve('/about')} class="px-2 py-1 anchor font-semibold">about</a>
         </nav>
       </div>
     </div>
@@ -94,8 +100,11 @@
   </main>
   <!-- Footer -->
   <footer class="border-t border-surface-200-800 py-8">
-    <div class="container mx-auto max-w-4xl px-4 text-center text-sm text-surface-600-400">
-      <p>© 2025 Martin Emde. All rights reserved.</p>
+    <div
+      class="container mx-auto max-w-4xl px-4 text-center text-sm text-surface-600-400"
+      style="font-family: var(--font-mono);"
+    >
+      <p>&copy; 2025 Martin Emde</p>
     </div>
   </footer>
 </div>

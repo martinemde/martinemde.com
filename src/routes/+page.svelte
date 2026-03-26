@@ -24,7 +24,7 @@
 
   <!-- Latest Posts Section -->
   <section>
-    <h2 class="preset-typo-display-1 mb-8">Latest Blog Posts</h2>
+    <h2 class="preset-typo-display-1 mb-8">Latest Posts</h2>
     <div class="space-y-8">
       {#each data.recentPosts as post (post.slug)}
         <article class="border-b border-surface-200-800 pb-8">
@@ -33,7 +33,7 @@
               {post.title}
             </a>
           </h3>
-          <div class="mb-4 text-sm text-surface-600-400">
+          <div class="shell-prompt mb-4 text-surface-600-400">
             {formatPostDate(post.date)}
           </div>
           {#if post.description}

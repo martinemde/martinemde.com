@@ -12,7 +12,7 @@
 <article>
   <Breadcrumbs crumbs={[{ label: 'Blog', href: '/blog' }, { label: data.metadata.title }]} />
 
-  <header class="mb-8 border-b border-surface-200-800 pb-8">
+  <header class="mb-8 pb-8">
     {#if data.metadata.title}
       <h1 class="preset-typo-title mb-4">{data.metadata.title}</h1>
     {/if}
@@ -24,6 +24,7 @@
         <span>{readingTime}</span>
       </div>
     </div>
+    <hr class="divider-gradient mt-6" />
   </header>
 
   {#if data.metadata.image}

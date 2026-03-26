@@ -76,13 +76,13 @@
     <div class="container mx-auto max-w-4xl px-4">
       <div class="flex items-center justify-between py-6">
         <h1 class="preset-typo-title">
-          <a href={resolve('/')} class="anchor text-primary-500">Martin Emde</a>
+          <a href={resolve('/')} class="!no-underline text-primary-500">Martin Emde</a>
         </h1>
         <nav class="flex items-center gap-4">
-          <div class="space-x-2">
-            <a href={resolve('/blog')} class="preset-typo-menu anchor">Blog</a>
-            <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
-            <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
+          <div class="flex gap-4">
+            <a href={resolve('/blog')} class="preset-typo-menu nav-link">Blog</a>
+            <a href={resolve('/projects')} class="preset-typo-menu nav-link">Projects</a>
+            <a href={resolve('/about')} class="preset-typo-menu nav-link">About</a>
           </div>
         </nav>
       </div>

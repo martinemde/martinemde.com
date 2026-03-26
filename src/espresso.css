@@ -1,51 +1,52 @@
 [data-theme='espresso'] {
   --text-scaling: 1.067;
-  --base-font-color: var(--color-surface-700);
-  --base-font-color-dark: var(--color-surface-50);
-  --base-font-family: system-ui, sans-serif;
+  --base-font-color: oklch(22% 0.01 55);
+  --base-font-color-dark: oklch(90% 0.015 80);
+  --base-font-family: 'Nunito Sans Variable', system-ui, sans-serif;
   --base-font-size: inherit;
   --base-line-height: inherit;
   --base-font-weight: normal;
   --base-font-style: normal;
   --base-letter-spacing: 0em;
-  --heading-font-color: var(--color-tertiary-500);
-  --heading-font-color-dark: var(--color-secondary-200);
-  --heading-font-family:
-    Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
-  --heading-font-weight: bolder;
+  --heading-font-color: var(--color-primary-600);
+  --heading-font-color-dark: var(--color-primary-400);
+  --heading-font-family: 'Urbanist Variable', system-ui, sans-serif;
+  --heading-font-weight: 700;
   --heading-font-style: normal;
-  --heading-letter-spacing: inherit;
+  --heading-letter-spacing: -0.01em;
   --anchor-font-color: var(--color-primary-600);
-  --anchor-font-color-dark: var(--color-tertiary-400);
+  --anchor-font-color-dark: var(--color-primary-400);
   --anchor-font-family: inherit;
   --anchor-font-size: inherit;
   --anchor-line-height: inherit;
   --anchor-font-weight: normal;
   --anchor-font-style: normal;
   --anchor-letter-spacing: inherit;
-  --anchor-text-decoration: none;
+  --anchor-text-decoration: underline;
   --anchor-text-decoration-hover: underline;
   --anchor-text-decoration-active: none;
-  --anchor-text-decoration-focus: none;
+  --anchor-text-decoration-focus: underline;
   --spacing: 0.25rem;
-  --radius-base: 0.375rem;
+  --radius-base: 0.5rem;
   --radius-container: 0.75rem;
   --default-border-width: 1px;
   --default-divide-width: 1px;
   --default-ring-width: 1px;
-  --body-background-color: oklch(1 0 0 / 1);
-  --body-background-color-dark: var(--color-surface-950);
-  --color-primary-50: oklch(99.55% 0.01 196.76deg);
-  --color-primary-100: oklch(92.85% 0.03 269.34deg);
-  --color-primary-200: oklch(86.1% 0.07 273.73deg);
-  --color-primary-300: oklch(79.42% 0.1 274.67deg);
-  --color-primary-400: oklch(72.78% 0.14 274.26deg);
-  --color-primary-500: oklch(66.37% 0.18 273.14deg);
-  --color-primary-600: oklch(59.31% 0.17 271.57deg);
-  --color-primary-700: oklch(52.32% 0.17 269.51deg);
-  --color-primary-800: oklch(45.1% 0.17 267.87deg);
-  --color-primary-900: oklch(38.01% 0.17 265.59deg);
-  --color-primary-950: oklch(30.85% 0.16 263.43deg);
+  --body-background-color: oklch(96% 0.01 80);
+  --body-background-color-dark: oklch(18% 0.01 55);
+
+  /* Primary: Copper / Burnt Orange */
+  --color-primary-50: oklch(96% 0.03 55);
+  --color-primary-100: oklch(91% 0.05 52);
+  --color-primary-200: oklch(84% 0.08 51);
+  --color-primary-300: oklch(76% 0.11 50);
+  --color-primary-400: oklch(69% 0.13 50);
+  --color-primary-500: oklch(62% 0.14 50);
+  --color-primary-600: oklch(55% 0.13 49);
+  --color-primary-700: oklch(48% 0.11 48);
+  --color-primary-800: oklch(40% 0.09 47);
+  --color-primary-900: oklch(33% 0.07 46);
+  --color-primary-950: oklch(25% 0.05 45);
   --color-primary-contrast-dark: var(--color-primary-950);
   --color-primary-contrast-light: var(--color-primary-50);
   --color-primary-contrast-50: var(--color-primary-contrast-dark);
@@ -53,23 +54,25 @@
   --color-primary-contrast-200: var(--color-primary-contrast-dark);
   --color-primary-contrast-300: var(--color-primary-contrast-dark);
   --color-primary-contrast-400: var(--color-primary-contrast-dark);
-  --color-primary-contrast-500: var(--color-primary-contrast-dark);
+  --color-primary-contrast-500: var(--color-primary-contrast-light);
   --color-primary-contrast-600: var(--color-primary-contrast-light);
   --color-primary-contrast-700: var(--color-primary-contrast-light);
   --color-primary-contrast-800: var(--color-primary-contrast-light);
   --color-primary-contrast-900: var(--color-primary-contrast-light);
   --color-primary-contrast-950: var(--color-primary-contrast-light);
-  --color-secondary-50: oklch(89.63% 0.1 326.37deg);
-  --color-secondary-100: oklch(83.26% 0.11 329.61deg);
-  --color-secondary-200: oklch(76.77% 0.13 331.94deg);
-  --color-secondary-300: oklch(70.62% 0.14 334.04deg);
-  --color-secondary-400: oklch(64.23% 0.15 336.05deg);
-  --color-secondary-500: oklch(58.13% 0.17 338.45deg);
-  --color-secondary-600: oklch(51.82% 0.16 338.83deg);
-  --color-secondary-700: oklch(45.2% 0.14 338.88deg);
-  --color-secondary-800: oklch(38.54% 0.13 339.5deg);
-  --color-secondary-900: oklch(31.53% 0.12 339.85deg);
-  --color-secondary-950: oklch(24.24% 0.1 341.1deg);
+
+  /* Secondary: Muted Sage Green */
+  --color-secondary-50: oklch(95% 0.02 155);
+  --color-secondary-100: oklch(90% 0.03 155);
+  --color-secondary-200: oklch(82% 0.04 155);
+  --color-secondary-300: oklch(74% 0.05 155);
+  --color-secondary-400: oklch(65% 0.06 155);
+  --color-secondary-500: oklch(55% 0.06 155);
+  --color-secondary-600: oklch(48% 0.05 155);
+  --color-secondary-700: oklch(41% 0.05 155);
+  --color-secondary-800: oklch(34% 0.04 155);
+  --color-secondary-900: oklch(27% 0.03 155);
+  --color-secondary-950: oklch(20% 0.02 155);
   --color-secondary-contrast-dark: var(--color-secondary-950);
   --color-secondary-contrast-light: var(--color-secondary-50);
   --color-secondary-contrast-50: var(--color-secondary-contrast-dark);
@@ -83,17 +86,19 @@
   --color-secondary-contrast-800: var(--color-secondary-contrast-light);
   --color-secondary-contrast-900: var(--color-secondary-contrast-light);
   --color-secondary-contrast-950: var(--color-secondary-contrast-light);
-  --color-tertiary-50: oklch(95.13% 0.07 195.96deg);
-  --color-tertiary-100: oklch(89% 0.08 199.52deg);
-  --color-tertiary-200: oklch(82.93% 0.09 202.55deg);
-  --color-tertiary-300: oklch(76.65% 0.1 206.97deg);
-  --color-tertiary-400: oklch(70.67% 0.1 209.72deg);
-  --color-tertiary-500: oklch(64.77% 0.11 212.88deg);
-  --color-tertiary-600: oklch(58.17% 0.1 214.43deg);
-  --color-tertiary-700: oklch(51.36% 0.09 216.39deg);
-  --color-tertiary-800: oklch(44.12% 0.08 221.58deg);
-  --color-tertiary-900: oklch(36.77% 0.07 225.7deg);
-  --color-tertiary-950: oklch(29% 0.06 231.13deg);
+
+  /* Tertiary: Warm amber (complementary accent) */
+  --color-tertiary-50: oklch(97% 0.04 80);
+  --color-tertiary-100: oklch(92% 0.06 75);
+  --color-tertiary-200: oklch(86% 0.08 70);
+  --color-tertiary-300: oklch(79% 0.10 65);
+  --color-tertiary-400: oklch(72% 0.11 60);
+  --color-tertiary-500: oklch(65% 0.12 58);
+  --color-tertiary-600: oklch(57% 0.11 56);
+  --color-tertiary-700: oklch(49% 0.09 54);
+  --color-tertiary-800: oklch(41% 0.08 52);
+  --color-tertiary-900: oklch(33% 0.06 50);
+  --color-tertiary-950: oklch(25% 0.04 48);
   --color-tertiary-contrast-dark: var(--color-tertiary-950);
   --color-tertiary-contrast-light: var(--color-tertiary-50);
   --color-tertiary-contrast-50: var(--color-tertiary-contrast-dark);
@@ -107,6 +112,8 @@
   --color-tertiary-contrast-800: var(--color-tertiary-contrast-light);
   --color-tertiary-contrast-900: var(--color-tertiary-contrast-light);
   --color-tertiary-contrast-950: var(--color-tertiary-contrast-light);
+
+  /* Success: Green (kept functional) */
   --color-success-50: oklch(93.73% 0.13 135.56deg);
   --color-success-100: oklch(87.53% 0.14 136.83deg);
   --color-success-200: oklch(81.28% 0.15 137.92deg);
@@ -131,17 +138,19 @@
   --color-success-contrast-800: var(--color-success-contrast-light);
   --color-success-contrast-900: var(--color-success-contrast-light);
   --color-success-contrast-950: var(--color-success-contrast-light);
-  --color-warning-50: oklch(97.87% 0.12 108.45deg);
-  --color-warning-100: oklch(92.37% 0.12 100.01deg);
-  --color-warning-200: oklch(87.03% 0.13 92.6deg);
-  --color-warning-300: oklch(81.65% 0.14 84.21deg);
-  --color-warning-400: oklch(76.48% 0.14 76.7deg);
-  --color-warning-500: oklch(71.4% 0.15 67.77deg);
-  --color-warning-600: oklch(64.17% 0.14 64.59deg);
-  --color-warning-700: oklch(56.76% 0.13 60.67deg);
-  --color-warning-800: oklch(49.33% 0.11 56.4deg);
-  --color-warning-900: oklch(41.49% 0.11 50.43deg);
-  --color-warning-950: oklch(33.42% 0.1 44.18deg);
+
+  /* Warning: Warm yellow-orange */
+  --color-warning-50: oklch(97% 0.10 90);
+  --color-warning-100: oklch(92% 0.11 85);
+  --color-warning-200: oklch(87% 0.12 80);
+  --color-warning-300: oklch(81% 0.13 75);
+  --color-warning-400: oklch(76% 0.13 70);
+  --color-warning-500: oklch(71% 0.14 65);
+  --color-warning-600: oklch(64% 0.13 62);
+  --color-warning-700: oklch(57% 0.12 58);
+  --color-warning-800: oklch(49% 0.10 55);
+  --color-warning-900: oklch(41% 0.09 50);
+  --color-warning-950: oklch(33% 0.07 45);
   --color-warning-contrast-dark: var(--color-warning-950);
   --color-warning-contrast-light: var(--color-warning-50);
   --color-warning-contrast-50: var(--color-warning-contrast-dark);
@@ -155,6 +164,8 @@
   --color-warning-contrast-800: var(--color-warning-contrast-light);
   --color-warning-contrast-900: var(--color-warning-contrast-light);
   --color-warning-contrast-950: var(--color-warning-contrast-light);
+
+  /* Error: Red (kept functional) */
   --color-error-50: oklch(81.18% 0.11 17.52deg);
   --color-error-100: oklch(74.73% 0.14 14.61deg);
   --color-error-200: oklch(68.66% 0.16 13.61deg);
@@ -179,17 +190,19 @@
   --color-error-contrast-800: var(--color-error-contrast-light);
   --color-error-contrast-900: var(--color-error-contrast-light);
   --color-error-contrast-950: var(--color-error-contrast-light);
-  --color-surface-50: oklch(90.64% 0.01 267.4deg);
-  --color-surface-100: oklch(85.79% 0.01 271.31deg);
-  --color-surface-200: oklch(80.91% 0.02 274.81deg);
-  --color-surface-300: oklch(75.63% 0.02 276.88deg);
-  --color-surface-400: oklch(70.59% 0.03 278.21deg);
-  --color-surface-500: oklch(65.43% 0.03 278.8deg);
-  --color-surface-600: oklch(56.96% 0.03 278.01deg);
-  --color-surface-700: oklch(48.24% 0.03 279.78deg);
-  --color-surface-800: oklch(38.74% 0.02 282.02deg);
-  --color-surface-900: oklch(29.02% 0.02 284.98deg);
-  --color-surface-950: oklch(18.28% 0.02 284.22deg);
+
+  /* Surface: Warm grays tinted toward brown/amber */
+  --color-surface-50: oklch(96% 0.008 70);
+  --color-surface-100: oklch(91% 0.010 65);
+  --color-surface-200: oklch(84% 0.012 60);
+  --color-surface-300: oklch(75% 0.012 58);
+  --color-surface-400: oklch(65% 0.012 56);
+  --color-surface-500: oklch(55% 0.012 55);
+  --color-surface-600: oklch(46% 0.010 55);
+  --color-surface-700: oklch(38% 0.010 55);
+  --color-surface-800: oklch(28% 0.010 55);
+  --color-surface-900: oklch(22% 0.010 55);
+  --color-surface-950: oklch(18% 0.010 55);
   --color-surface-contrast-dark: var(--color-surface-950);
   --color-surface-contrast-light: var(--color-surface-50);
   --color-surface-contrast-50: var(--color-surface-contrast-dark);

@@ -72,30 +72,37 @@
 </svelte:head>
 <div class="min-h-screen bg-surface-50-950 text-surface-950-50">
   <!-- Header -->
-  <header class="border-b border-surface-200-800">
-    <div class="container mx-auto max-w-4xl px-4">
-      <div class="flex items-center justify-between py-6">
-        <h1 class="preset-typo-title">
-          <a href={resolve('/')} class="anchor text-primary-500">Martin Emde</a>
-        </h1>
-        <nav class="flex items-center gap-4">
-          <div class="space-x-2">
-            <a href={resolve('/blog')} class="preset-typo-menu anchor">Blog</a>
-            <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
-            <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
-          </div>
+  <header class="py-8">
+    <div class="mx-auto max-w-2xl px-6">
+      <div class="flex items-baseline justify-between">
+        <a href={resolve('/')} class="font-serif text-xl font-bold tracking-tight text-primary-500"
+          >Martin Emde</a
+        >
+        <nav class="nav-editorial flex items-center gap-6">
+          <a
+            href={resolve('/blog')}
+            class="text-surface-600-400 transition-colors hover:text-primary-500">Blog</a
+          >
+          <a
+            href={resolve('/projects')}
+            class="text-surface-600-400 transition-colors hover:text-primary-500">Projects</a
+          >
+          <a
+            href={resolve('/about')}
+            class="text-surface-600-400 transition-colors hover:text-primary-500">About</a
+          >
         </nav>
       </div>
     </div>
   </header>
   <!-- Main Content -->
-  <main class="container mx-auto max-w-4xl px-4 py-12">
+  <main class="mx-auto max-w-2xl px-6 py-12">
     {@render children()}
   </main>
   <!-- Footer -->
-  <footer class="border-t border-surface-200-800 py-8">
-    <div class="container mx-auto max-w-4xl px-4 text-center text-sm text-surface-600-400">
-      <p>© 2025 Martin Emde. All rights reserved.</p>
+  <footer class="py-12">
+    <div class="meta-editorial mx-auto max-w-2xl px-6 text-center text-surface-500">
+      <p>&copy; 2025 Martin Emde</p>
     </div>
   </footer>
 </div>

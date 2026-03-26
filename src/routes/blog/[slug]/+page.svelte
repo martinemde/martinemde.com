@@ -12,23 +12,22 @@
 <article>
   <Breadcrumbs crumbs={[{ label: 'Blog', href: '/blog' }, { label: data.metadata.title }]} />
 
-  <header class="mb-8 border-b border-surface-200-800 pb-8">
+  <header class="mt-4 mb-12">
     {#if data.metadata.title}
-      <h1 class="preset-typo-title mb-4">{data.metadata.title}</h1>
+      <h1 class="mb-6 text-3xl leading-tight font-extrabold tracking-tight lg:text-5xl">
+        {data.metadata.title}
+      </h1>
     {/if}
-    <div class="text-sm text-surface-600-400">
-      <div class="flex items-center justify-between gap-4">
-        {#if data.metadata.date}
-          <span>Last Updated {formatPostDate(data.metadata.date)}</span>
-        {/if}
-        <span>{readingTime}</span>
-      </div>
+    <div class="meta-editorial text-surface-500">
+      <span>{formatPostDate(data.metadata.date)}</span>
+      <span class="mx-2">&middot;</span>
+      <span>{readingTime}</span>
     </div>
   </header>
 
   {#if data.metadata.image}
     <img
-      class="mb-8 max-h-96 w-full rounded-container bg-surface-500 object-cover"
+      class="mb-12 max-h-96 w-full rounded object-cover"
       src={data.metadata.image}
       alt={data.metadata.title}
     />
@@ -38,8 +37,8 @@
     <data.content />
   </div>
 
-  <footer class="mt-12 flex items-center gap-4 pt-6">
-    <span class="text-sm text-surface-600-400">Share this article:</span>
+  <footer class="mt-16 flex items-center gap-4 border-t border-surface-200-800 pt-6">
+    <span class="meta-editorial text-surface-500">Share</span>
     <ShareButtons
       slug={data.metadata.slug}
       title={data.metadata.title}

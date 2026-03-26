@@ -3,22 +3,24 @@
 @import '@skeletonlabs/skeleton-svelte';
 @import '@skeletonlabs/skeleton/themes/catppuccin';
 @import './espresso.css'; /* Custom Themes */
+@import '@fontsource-variable/lora';
+@import '@fontsource-variable/dm-sans';
 @import '@fontsource/fira-mono';
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
 :root {
-  --font-body:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-    'Helvetica Neue', sans-serif;
+  --font-body: 'Lora Variable', 'Georgia', 'Times New Roman', serif;
+  --font-heading: 'DM Sans Variable', 'Helvetica Neue', 'Arial', sans-serif;
   --font-mono: 'Fira Mono', monospace;
   color-scheme: light dark;
 }
 
 body {
   font-family: var(--font-body);
-  line-height: 1.6;
+  font-size: 18px;
+  line-height: 1.7;
 }
 
 /* Shiki dual-theme support using CSS light-dark() function */
@@ -37,9 +39,10 @@ body {
 /* Style code blocks */
 .shiki {
   padding: 1rem;
-  border-radius: 0.5rem;
+  border-radius: 0.25rem;
   overflow-x: auto;
   margin: 1.5rem 0;
+  font-size: 0.9em;
 }
 
 .shiki code {
@@ -189,4 +192,77 @@ mark {
 }
 hr {
   @apply hr;
+}
+
+/* --- Editorial Minimalist Styles --- */
+
+/* Drop cap on first paragraph of blog post content */
+.prose > p:first-of-type::first-letter {
+  float: left;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 3.5em;
+  line-height: 0.8;
+  padding-right: 0.08em;
+  padding-top: 0.07em;
+  color: var(--color-primary-500);
+}
+
+/* Editorial blockquote: indented, italic, no border */
+.prose blockquote {
+  border-left: none;
+  padding-left: 2rem;
+  padding-right: 2rem;
+  font-style: italic;
+  color: var(--color-surface-600);
+  @variant dark {
+    color: var(--color-surface-400);
+  }
+}
+
+/* :wq sign-off: quiet monospace italic, right-aligned */
+.prose > p:last-of-type:has(code) {
+  text-align: right;
+}
+
+.prose p code:only-child {
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-size: 0.85em;
+  background: none;
+  padding: 0;
+  color: var(--color-surface-500);
+}
+
+/* Nav metadata style: small caps, light sans */
+.nav-editorial {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Metadata labels */
+.meta-editorial {
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Prose typography overrides for editorial feel */
+.prose {
+  font-family: var(--font-body);
+  line-height: 1.8;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.01em;
 }

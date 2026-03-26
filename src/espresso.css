@@ -34,8 +34,8 @@
   --default-ring-width: 1px;
   /* Light mode: warm paper-white */
   --body-background-color: oklch(97% 0.005 80);
-  /* Dark mode: rich near-black */
-  --body-background-color-dark: oklch(15% 0.01 250);
+  /* Dark mode: rich near-black #11111b */
+  --body-background-color-dark: oklch(13.7% 0.014 285);
 
   /* Primary: muted terminal green */
   --color-primary-50: oklch(95% 0.05 155);
@@ -204,7 +204,7 @@
   --color-surface-700: oklch(35% 0.01 250);
   --color-surface-800: oklch(25% 0.01 250);
   --color-surface-900: oklch(18% 0.01 250);
-  --color-surface-950: oklch(15% 0.01 250);
+  --color-surface-950: oklch(13.7% 0.014 285);
   --color-surface-contrast-dark: var(--color-surface-950);
   --color-surface-contrast-light: var(--color-surface-50);
   --color-surface-contrast-50: var(--color-surface-contrast-dark);

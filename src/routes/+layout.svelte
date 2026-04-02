@@ -75,9 +75,7 @@
   <header class="relative z-10">
     <div class="mx-auto max-w-3xl px-6">
       <div class="flex items-center justify-between py-8">
-        <a href={resolve('/')} class="nav-link text-xl font-bold" style="color: oklch(40% 0.1 155);"
-          >Martin Emde</a
-        >
+        <a href={resolve('/')} class="site-name nav-link text-xl font-bold">Martin Emde</a>
         <nav class="font-mono-ui flex items-center gap-1 text-sm text-surface-600-400">
           <a href={resolve('/blog')} class="nav-link px-2 py-1 lowercase">blog</a>
           <span class="opacity-40 select-none">&middot;</span>

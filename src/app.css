@@ -41,15 +41,6 @@ a:hover {
   text-decoration-color: oklch(62% 0.08 155 / 0.8);
 }
 
-@variant dark {
-  a {
-    text-decoration-color: oklch(62% 0.08 155 / 0.3);
-  }
-  a:hover {
-    text-decoration-color: oklch(62% 0.08 155 / 0.8);
-  }
-}
-
 /* Nav links: no underline by default */
 .nav-link {
   text-decoration: none;
@@ -57,12 +48,12 @@ a:hover {
 }
 .nav-link:hover {
   text-decoration: none;
-  color: oklch(40% 0.1 155);
+  color: light-dark(oklch(40% 0.1 155), oklch(62% 0.08 155));
 }
-@variant dark {
-  .nav-link:hover {
-    color: oklch(62% 0.08 155);
-  }
+
+/* Site name color: sage, adapts to mode */
+.site-name {
+  color: light-dark(oklch(40% 0.1 155), oklch(62% 0.08 155));
 }
 
 /* --- Shiki dual-theme support --- */
@@ -236,12 +227,10 @@ code {
 
 /* Inline code tinted with sage */
 :not(pre) > code {
-  background-color: color-mix(in oklab, oklch(58% 0.08 155) 8%, oklch(97% 0.01 140));
-}
-@variant dark {
-  :not(pre) > code {
-    background-color: color-mix(in oklab, oklch(58% 0.08 155) 8%, oklch(14% 0.015 160));
-  }
+  background-color: light-dark(
+    color-mix(in oklab, oklch(58% 0.08 155) 8%, oklch(97% 0.01 140)),
+    color-mix(in oklab, oklch(58% 0.08 155) 8%, oklch(14% 0.015 160))
+  );
 }
 
 /* --- Blockquotes: a memory surfacing --- */
@@ -262,19 +251,14 @@ blockquote {
   line-height: 0.8;
   padding-right: 0.12em;
   padding-top: 0.08em;
-  color: oklch(40% 0.1 155);
-}
-@variant dark {
-  .prose > p:first-of-type::first-letter {
-    color: oklch(62% 0.08 155);
-  }
+  color: light-dark(oklch(40% 0.1 155), oklch(62% 0.08 155));
 }
 
 /* --- The :wq signoff --- */
 .signoff {
   font-family: var(--font-mono);
   font-size: 0.875rem;
-  color: oklch(45% 0.01 80);
+  color: light-dark(oklch(45% 0.01 80), oklch(55% 0.015 80));
   text-align: right;
   text-decoration: none;
 }
@@ -283,11 +267,6 @@ blockquote {
   animation: blink 1.2s step-end infinite;
   opacity: 0.4;
   margin-left: 0.15em;
-}
-@variant dark {
-  .signoff {
-    color: oklch(55% 0.015 80);
-  }
 }
 
 @keyframes blink {
@@ -302,24 +281,14 @@ blockquote {
 
 /* --- Prose overrides for the editorial feel --- */
 .prose {
-  --tw-prose-body: oklch(20% 0.01 160);
-  --tw-prose-headings: oklch(15% 0.015 160);
-  --tw-prose-links: oklch(40% 0.1 155);
-  --tw-prose-bold: oklch(15% 0.015 160);
-  --tw-prose-quotes: oklch(30% 0.01 160);
+  --tw-prose-body: light-dark(oklch(20% 0.01 160), oklch(90% 0.02 80));
+  --tw-prose-headings: light-dark(oklch(15% 0.015 160), oklch(93% 0.015 80));
+  --tw-prose-links: light-dark(oklch(40% 0.1 155), oklch(62% 0.08 155));
+  --tw-prose-bold: light-dark(oklch(15% 0.015 160), oklch(93% 0.015 80));
+  --tw-prose-quotes: light-dark(oklch(30% 0.01 160), oklch(80% 0.015 80));
   --tw-prose-quote-borders: oklch(62% 0.08 155 / 0.4);
-  --tw-prose-code: oklch(30% 0.01 160);
-  --tw-prose-hr: oklch(87% 0.012 155);
-}
-.prose.dark\:prose-invert:where([data-mode='dark'], .dark *) {
-  --tw-prose-body: oklch(90% 0.02 80);
-  --tw-prose-headings: oklch(93% 0.015 80);
-  --tw-prose-links: oklch(62% 0.08 155);
-  --tw-prose-bold: oklch(93% 0.015 80);
-  --tw-prose-quotes: oklch(80% 0.015 80);
-  --tw-prose-quote-borders: oklch(62% 0.08 155 / 0.4);
-  --tw-prose-code: oklch(85% 0.015 80);
-  --tw-prose-hr: oklch(26% 0.012 160);
+  --tw-prose-code: light-dark(oklch(30% 0.01 160), oklch(85% 0.015 80));
+  --tw-prose-hr: light-dark(oklch(87% 0.012 155), oklch(26% 0.012 160));
 }
 
 /* --- Subtle top glow --- */

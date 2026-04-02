@@ -2,26 +2,70 @@
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
 @import '@skeletonlabs/skeleton/themes/catppuccin';
-@import './espresso.css'; /* Custom Themes */
-@import '@fontsource/fira-mono';
+@import './espresso.css'; /* Custom Theme */
+@import '@fontsource-variable/literata';
+@import '@fontsource-variable/jetbrains-mono';
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
 :root {
-  --font-body:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-    'Helvetica Neue', sans-serif;
-  --font-mono: 'Fira Mono', monospace;
+  --font-serif: 'Literata Variable', 'Literata', Georgia, 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', 'Fira Mono', monospace;
   color-scheme: light dark;
 }
 
 body {
-  font-family: var(--font-body);
-  line-height: 1.6;
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.7;
 }
 
-/* Shiki dual-theme support using CSS light-dark() function */
+/* --- Monospace utility class for nav, metadata, infrastructure --- */
+.font-mono-ui {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+
+/* --- Link behavior: underline reveals on hover --- */
+a {
+  @apply anchor;
+  text-decoration: underline;
+  text-decoration-color: oklch(62% 0.08 155 / 0.3);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s ease;
+}
+
+a:hover {
+  text-decoration-color: oklch(62% 0.08 155 / 0.8);
+}
+
+@variant dark {
+  a {
+    text-decoration-color: oklch(62% 0.08 155 / 0.3);
+  }
+  a:hover {
+    text-decoration-color: oklch(62% 0.08 155 / 0.8);
+  }
+}
+
+/* Nav links: no underline by default */
+.nav-link {
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+.nav-link:hover {
+  text-decoration: none;
+  color: oklch(40% 0.1 155);
+}
+@variant dark {
+  .nav-link:hover {
+    color: oklch(62% 0.08 155);
+  }
+}
+
+/* --- Shiki dual-theme support --- */
 .shiki,
 .shiki span {
   color: light-dark(var(--shiki-light), var(--shiki-dark));
@@ -34,7 +78,6 @@ body {
   );
 }
 
-/* Style code blocks */
 .shiki {
   padding: 1rem;
   border-radius: 0.5rem;
@@ -46,9 +89,8 @@ body {
   font-family: var(--font-mono);
 }
 
-/* Skeleton preset-typo: Semantic Typography System */
+/* --- Skeleton preset-typo: Semantic Typography System --- */
 
-/* Headings */
 .preset-typo-display-4,
 .preset-typo-display-3,
 .preset-typo-display-2,
@@ -67,7 +109,6 @@ body {
   }
 }
 
-/* Body */
 .preset-typo-body-1,
 .preset-typo-body-2,
 .preset-typo-caption,
@@ -79,7 +120,6 @@ body {
   }
 }
 
-/* Unique Properties */
 .preset-typo-display-4 {
   font-size: var(--text-7xl);
   @variant lg {
@@ -147,7 +187,7 @@ body {
   font-weight: bold;
 }
 
-/* Default Skeleton styles */
+/* Default Skeleton element styles */
 h1 {
   @apply h1;
 }
@@ -166,14 +206,8 @@ h5 {
 h6 {
   @apply h6;
 }
-a {
-  @apply anchor;
-}
 blockquote {
   @apply blockquote;
-}
-code {
-  @apply code;
 }
 kbd {
   @apply kbd;
@@ -189,4 +223,118 @@ mark {
 }
 hr {
   @apply hr;
+}
+
+/* --- Inline code: pebble in the stream --- */
+code {
+  @apply code;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  border-radius: 0.25rem;
+  padding: 0.15em 0.4em;
+}
+
+/* Inline code tinted with sage */
+:not(pre) > code {
+  background-color: color-mix(in oklab, oklch(58% 0.08 155) 8%, oklch(97% 0.01 140));
+}
+@variant dark {
+  :not(pre) > code {
+    background-color: color-mix(in oklab, oklch(58% 0.08 155) 8%, oklch(14% 0.015 160));
+  }
+}
+
+/* --- Blockquotes: a memory surfacing --- */
+blockquote {
+  margin-left: 1.5rem;
+  margin-right: 1.5rem;
+  padding-left: 1.25rem;
+  border-left-width: 3px;
+  border-left-color: oklch(62% 0.08 155 / 0.4);
+  font-style: italic;
+}
+
+/* --- Drop cap: a breath mark --- */
+.prose > p:first-of-type::first-letter {
+  float: left;
+  font-family: var(--font-serif);
+  font-size: 3.2em;
+  line-height: 0.8;
+  padding-right: 0.12em;
+  padding-top: 0.08em;
+  color: oklch(40% 0.1 155);
+}
+@variant dark {
+  .prose > p:first-of-type::first-letter {
+    color: oklch(62% 0.08 155);
+  }
+}
+
+/* --- The :wq signoff --- */
+.signoff {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: oklch(45% 0.01 80);
+  text-align: right;
+  text-decoration: none;
+}
+.signoff::after {
+  content: '\2588';
+  animation: blink 1.2s step-end infinite;
+  opacity: 0.4;
+  margin-left: 0.15em;
+}
+@variant dark {
+  .signoff {
+    color: oklch(55% 0.015 80);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* --- Prose overrides for the editorial feel --- */
+.prose {
+  --tw-prose-body: oklch(20% 0.01 160);
+  --tw-prose-headings: oklch(15% 0.015 160);
+  --tw-prose-links: oklch(40% 0.1 155);
+  --tw-prose-bold: oklch(15% 0.015 160);
+  --tw-prose-quotes: oklch(30% 0.01 160);
+  --tw-prose-quote-borders: oklch(62% 0.08 155 / 0.4);
+  --tw-prose-code: oklch(30% 0.01 160);
+  --tw-prose-hr: oklch(87% 0.012 155);
+}
+.prose.dark\:prose-invert:where([data-mode='dark'], .dark *) {
+  --tw-prose-body: oklch(90% 0.02 80);
+  --tw-prose-headings: oklch(93% 0.015 80);
+  --tw-prose-links: oklch(62% 0.08 155);
+  --tw-prose-bold: oklch(93% 0.015 80);
+  --tw-prose-quotes: oklch(80% 0.015 80);
+  --tw-prose-quote-borders: oklch(62% 0.08 155 / 0.4);
+  --tw-prose-code: oklch(85% 0.015 80);
+  --tw-prose-hr: oklch(26% 0.012 160);
+}
+
+/* --- Subtle top glow --- */
+.top-glow::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40vh;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 0%,
+    color-mix(in oklab, oklch(58% 0.08 155) 3%, transparent),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 0;
 }

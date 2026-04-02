@@ -12,17 +12,18 @@
 <article>
   <Breadcrumbs crumbs={[{ label: 'Blog', href: '/blog' }, { label: data.metadata.title }]} />
 
-  <header class="mb-8 border-b border-surface-200-800 pb-8">
+  <header class="mb-12">
     {#if data.metadata.title}
       <h1 class="preset-typo-title mb-4">{data.metadata.title}</h1>
     {/if}
-    <div class="text-sm text-surface-600-400">
-      <div class="flex items-center justify-between gap-4">
-        {#if data.metadata.date}
-          <span>Last Updated {formatPostDate(data.metadata.date)}</span>
-        {/if}
+    <div class="font-mono-ui text-sm text-surface-600-400">
+      {#if data.metadata.date}
+        <span>{formatPostDate(data.metadata.date)}</span>
+      {/if}
+      {#if readingTime}
+        <span class="opacity-40 select-none"> &middot; </span>
         <span>{readingTime}</span>
-      </div>
+      {/if}
     </div>
   </header>
 
@@ -38,8 +39,8 @@
     <data.content />
   </div>
 
-  <footer class="mt-12 flex items-center gap-4 pt-6">
-    <span class="text-sm text-surface-600-400">Share this article:</span>
+  <footer class="mt-16 flex items-center gap-4 pt-6">
+    <span class="font-mono-ui text-sm text-surface-600-400">Share this article:</span>
     <ShareButtons
       slug={data.metadata.slug}
       title={data.metadata.title}

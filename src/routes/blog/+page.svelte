@@ -15,17 +15,17 @@
 <div>
   <Breadcrumbs crumbs={[{ label: 'Home', href: '/' }, { label: 'Blog' }]} />
 
-  <h1 class="preset-typo-display-1 mb-12">Blog Posts</h1>
+  <h1 class="preset-typo-headline mb-12">Blog Posts</h1>
 
   <div class="space-y-12">
     {#each data.posts as post (post.slug)}
-      <article class="border-b border-surface-200-800 pb-12">
+      <article class="pb-12">
         <h2 class="preset-typo-title mb-2">
-          <a href={resolve(`/blog/${post.slug}`)} class="anchor">
+          <a href={resolve(`/blog/${post.slug}`)}>
             {post.title}
           </a>
         </h2>
-        <div class="mb-4 text-sm text-surface-600-400">
+        <div class="font-mono-ui mb-3 text-sm text-surface-600-400">
           {formatPostDate(post.date)}
         </div>
         {#if post.description}

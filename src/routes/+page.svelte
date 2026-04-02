@@ -12,28 +12,28 @@
 </svelte:head>
 
 <div>
-  <!-- Hero/About Section -->
-  <section class="mb-12">
+  <!-- About Section -->
+  <section class="mb-16">
     <p class="text-lg text-surface-700-300">
       AI Developer Tools Engineer at
-      <a href="https://gusto.com" rel="external" class="anchor">Gusto</a>. Founding member of
-      <a href="https://gem.coop" rel="external" class="anchor">gem.coop</a>. See also:
-      <a href="https://github.com/martinemde" rel="external" class="anchor">GitHub</a>.
+      <a href="https://gusto.com" rel="external">Gusto</a>. Founding member of
+      <a href="https://gem.coop" rel="external">gem.coop</a>. See also:
+      <a href="https://github.com/martinemde" rel="external">GitHub</a>.
     </p>
   </section>
 
   <!-- Latest Posts Section -->
   <section>
-    <h2 class="preset-typo-display-1 mb-8">Latest Blog Posts</h2>
-    <div class="space-y-8">
+    <h2 class="preset-typo-headline mb-10">Latest Posts</h2>
+    <div class="space-y-10">
       {#each data.recentPosts as post (post.slug)}
-        <article class="border-b border-surface-200-800 pb-8">
+        <article class="pb-10">
           <h3 class="preset-typo-title mb-2">
-            <a href={resolve(`/blog/${post.slug}`)} class="anchor">
+            <a href={resolve(`/blog/${post.slug}`)}>
               {post.title}
             </a>
           </h3>
-          <div class="mb-4 text-sm text-surface-600-400">
+          <div class="font-mono-ui mb-3 text-sm text-surface-600-400">
             {formatPostDate(post.date)}
           </div>
           {#if post.description}

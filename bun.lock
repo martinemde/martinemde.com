@@ -18,7 +18,7 @@
         "@eslint/js": "^9.39.2",
         "@fontsource/fira-mono": "^5.2.7",
         "@neoconfetti/svelte": "^2.2.2",
-        "@skeletonlabs/skeleton": "4.13.0",
+        "@skeletonlabs/skeleton": "4.15.2",
         "@skeletonlabs/skeleton-svelte": "^4.15.1",
         "@sveltejs/adapter-auto": "^7.0.0",
         "@sveltejs/adapter-cloudflare": "^7.2.8",
@@ -373,7 +373,7 @@
 
     "@sindresorhus/is": ["@sindresorhus/is@7.1.1", "", {}, "sha512-rO92VvpgMc3kfiTjGT52LEtJ8Yc5kCWhZjLQ3LwlA4pSgPpQO7bVpYXParOD8Jwf+cVQECJo3yP/4I8aZtUQTQ=="],
 
-    "@skeletonlabs/skeleton": ["@skeletonlabs/skeleton@4.13.0", "", { "peerDependencies": { "tailwindcss": "^4.0.0" } }, "sha512-X/h1MJsHx5FLjWmprLD5umo6NxX0JOeHwjgwdsf0t9H9cdEWpYu4Z/gre2Efzn0nl5rezZYvdEsk+OVXpM4mPg=="],
+    "@skeletonlabs/skeleton": ["@skeletonlabs/skeleton@4.15.2", "", { "peerDependencies": { "tailwindcss": "^4.0.0" } }, "sha512-5O23Py76nw56aoieV2b2T7MJ6xS0DwDjUULpwLnCXxXOnmzADEoWoQxb/ABbqg04IMOygtRzK3HO22I1+kFsog=="],
 
     "@skeletonlabs/skeleton-common": ["@skeletonlabs/skeleton-common@4.15.1", "", {}, "sha512-Pmw5VA95OYyAW8/oPJcWJke81Y6f5mHEgvUdaY623coY1FpyV7yDWze8FX0YnSFDC78kiQpbWMiD6lp83OFEUA=="],
 

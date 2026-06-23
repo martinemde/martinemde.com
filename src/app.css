@@ -3,21 +3,22 @@
 @import '@skeletonlabs/skeleton-svelte';
 @import '@skeletonlabs/skeleton/themes/catppuccin';
 @import './espresso.css'; /* Custom Themes */
-@import '@fontsource/fira-mono';
+@import './fonts.css'; /* MonoLisa webfonts (@font-face) */
 
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
 :root {
   --font-body:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-    'Helvetica Neue', sans-serif;
-  --font-mono: 'Fira Mono', monospace;
+    'MonoLisaText', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Helvetica Neue', sans-serif;
+  --font-mono: 'MonoLisaCode', ui-monospace, monospace;
   color-scheme: light dark;
 }
 
 body {
   font-family: var(--font-body);
+  font-weight: 200; /* MonoLisaText extra-light — default weight is too heavy for prose */
   line-height: 1.6;
 }
 

@@ -11,8 +11,9 @@
   --heading-font-color: var(--color-tertiary-500);
   --heading-font-color-dark: var(--color-secondary-200);
   --heading-font-family:
-    Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
-  --heading-font-weight: bolder;
+    'MonoLisaText', Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro,
+    sans-serif;
+  --heading-font-weight: 700;
   --heading-font-style: normal;
   --heading-letter-spacing: inherit;
   --anchor-font-color: var(--color-primary-600);

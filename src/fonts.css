@@ -1,0 +1,186 @@
+/*
+ * MonoLisa 3.000 webfonts — subject to EULA: https://www.monolisa.dev/license
+ * © 2026 FaceType Foundry. All Rights Reserved.
+ * MonoLisaText = proportional (body/headings); MonoLisaCode = monospace (code).
+ * Generated from the vendor monolisa.css files; do not edit by hand.
+ */
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/0-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+0020-007F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/1-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+0020-007F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/2-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+0080-00FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/3-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+0080-00FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/4-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+2000-206F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/5-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+2000-206F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/6-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+2150-218F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/7-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+2150-218F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/8-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+2070-209F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/9-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+2070-209F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/10-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+2600-26FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/11-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+2600-26FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/12-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+2300-23FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/13-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+2300-23FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/14-MonoLisaText-normal.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+E000-F8FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/15-MonoLisaText-italic.woff2) format('woff2');
+  font-family: MonoLisaText;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+E000-F8FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/0-MonoLisaCode-normal.woff2) format('woff2');
+  font-family: MonoLisaCode;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+0020-007F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/1-MonoLisaCode-italic.woff2) format('woff2');
+  font-family: MonoLisaCode;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+0020-007F;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/2-MonoLisaCode-normal.woff2) format('woff2');
+  font-family: MonoLisaCode;
+  font-weight: 1 900;
+  font-style: normal;
+  unicode-range: U+0080-00FF;
+}
+
+@font-face {
+  font-display: swap;
+  src: url(/fonts/3-MonoLisaCode-italic.woff2) format('woff2');
+  font-family: MonoLisaCode;
+  font-weight: 1 900;
+  font-style: italic;
+  unicode-range: U+0080-00FF;
+}

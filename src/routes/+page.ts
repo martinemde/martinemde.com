@@ -5,8 +5,8 @@ import { getRecentPosts } from '$lib/utils/posts';
 export const prerender = true;
 
 export const load: PageLoad = async () => {
-  // Load the 2 most recent blog posts for the homepage
-  const recentPosts = await getRecentPosts(5);
+  // Load the 3 most recent blog posts for the homepage "Writing" section
+  const recentPosts = await getRecentPosts(3);
 
   return {
     recentPosts

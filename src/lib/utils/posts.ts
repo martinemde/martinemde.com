@@ -13,6 +13,7 @@ export interface PostMetadata {
   published?: boolean;
   slug: string;
   image?: string; // Optional header image URL
+  tags?: string[]; // Optional list of tags; rendered only when present
 }
 
 export interface Post extends PostMetadata {
@@ -133,7 +134,10 @@ function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
     author: typeof meta.author === 'string' ? meta.author : 'Martin Emde',
     description: typeof meta.description === 'string' ? meta.description : `Draft: ${basename}`,
     published: isComplete ? meta.published !== false : false,
-    image: typeof meta.image === 'string' ? meta.image : undefined
+    image: typeof meta.image === 'string' ? meta.image : undefined,
+    tags: Array.isArray(meta.tags)
+      ? meta.tags.filter((t): t is string => typeof t === 'string')
+      : undefined
   };
 }
 
@@ -276,6 +280,17 @@ export function formatPostDate(date: Date): string {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
+    day: 'numeric'
+  });
+}
+
+/**
+ * Format a post date compactly, e.g. "Jan 22, 2026" (for list/meta rows).
+ */
+export function formatPostDateShort(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
     day: 'numeric'
   });
 }

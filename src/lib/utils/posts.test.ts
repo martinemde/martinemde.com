@@ -5,6 +5,7 @@ import {
   getPostBySlug,
   validatePostDate,
   formatPostDate,
+  formatPostDateShort,
   getRawPostBySlug,
   DuplicateSlugError
 } from './posts';
@@ -171,6 +172,18 @@ describe('Blog Post Utilities', () => {
       const date2 = new Date(2025, 9, 5, 12, 0, 0);
 
       expect(formatPostDate(date1)).toBe(formatPostDate(date2));
+    });
+  });
+
+  describe('formatPostDateShort', () => {
+    it('formats a date as short month, day, year', () => {
+      const date = new Date(2026, 0, 22, 12, 0, 0); // January 22, 2026
+      expect(formatPostDateShort(date)).toBe('Jan 22, 2026');
+    });
+
+    it('formats a two-digit day without leading zero', () => {
+      const date = new Date(2025, 10, 30, 12, 0, 0); // November 30, 2025
+      expect(formatPostDateShort(date)).toBe('Nov 30, 2025');
     });
   });
 

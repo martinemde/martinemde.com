@@ -32,6 +32,13 @@
   const contentType = $derived(
     page.url.pathname.startsWith('/blog/') && page.data.metadata?.slug ? 'article' : 'website'
   );
+
+  // Active-section + status-line path for the redesigned chrome
+  const path = $derived(page.url.pathname);
+  const isBlog = $derived(path === '/blog' || path.startsWith('/blog/'));
+  const isProjects = $derived(path.startsWith('/projects'));
+  const isAbout = $derived(path.startsWith('/about'));
+  const pathDisplay = $derived('martinemde.com' + (path === '/' ? '' : path));
 </script>
 
 <svelte:head>
@@ -70,32 +77,211 @@
     <meta name="twitter:card" content="summary" />
   {/if}
 </svelte:head>
-<div class="min-h-screen bg-surface-50-950 text-surface-950-50">
-  <!-- Header -->
-  <header class="border-b border-surface-200-800">
-    <div class="container mx-auto max-w-4xl px-4">
-      <div class="flex items-center justify-between py-6">
-        <h1 class="preset-typo-title">
-          <a href={resolve('/')} class="anchor text-primary-500">Martin Emde</a>
-        </h1>
-        <nav class="flex items-center gap-4">
-          <div class="space-x-2">
-            <a href={resolve('/blog')} class="preset-typo-menu anchor">Blog</a>
-            <a href={resolve('/projects')} class="preset-typo-menu anchor">Projects</a>
-            <a href={resolve('/about')} class="preset-typo-menu anchor">About</a>
-          </div>
-        </nav>
-      </div>
+<div class="site">
+  <header class="site-header">
+    <div class="bar">
+      <a class="brand" href={resolve('/')}>
+        <span class="brand-mark"></span>
+        <span class="brand-name">Martin Emde</span>
+      </a>
+      <nav class="nav">
+        <a class="nav-link" class:active={isBlog} href={resolve('/blog')}>
+          <span class="slash">/</span>blog
+        </a>
+        <a class="nav-link" class:active={isProjects} href={resolve('/projects')}>
+          <span class="slash">/</span>projects
+        </a>
+        <a class="nav-link" class:active={isAbout} href={resolve('/about')}>
+          <span class="slash">/</span>about
+        </a>
+        <span class="theme-ind" aria-hidden="true">
+          <span class="theme-blip"></span>
+          <span class="theme-text"
+            >theme:<span class="theme-when-dark">dark</span><span class="theme-when-light"
+              >light</span
+            ></span
+          >
+        </span>
+      </nav>
     </div>
   </header>
-  <!-- Main Content -->
-  <main class="container mx-auto max-w-4xl px-4 py-12">
+
+  <main class="site-main">
     {@render children()}
   </main>
-  <!-- Footer -->
-  <footer class="border-t border-surface-200-800 py-8">
-    <div class="container mx-auto max-w-4xl px-4 text-center text-sm text-surface-600-400">
-      <p>© 2025 Martin Emde. All rights reserved.</p>
+
+  <footer class="site-footer">
+    <div class="statusline">
+      <span class="sl-path"><span class="sl-pulse"></span>{pathDisplay}</span>
+      <span class="sl-accent">Teal &amp; Violet</span>
+      <span class="sl-spacer"></span>
+      <span class="sl-dim">© 2025 Martin Emde</span>
+      <span class="sl-dim"
+        >theme:<span class="theme-when-dark">dark</span><span class="theme-when-light">light</span
+        ></span
+      >
+      <span class="sl-ver">v2026.7<span class="sl-cursor">_</span></span>
     </div>
   </footer>
 </div>
+
+<style>
+  .site {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+
+  /* Header */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklch, var(--bg) 86%, transparent);
+    backdrop-filter: saturate(1.2) blur(8px);
+  }
+  .bar {
+    margin: 0 auto;
+    display: flex;
+    max-width: 1040px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 16px 32px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    color: var(--text);
+  }
+  .brand-mark {
+    height: 11px;
+    width: 11px;
+    border-radius: 3px;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--accent) 16%, transparent);
+  }
+  .brand-name {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 17px;
+    letter-spacing: -0.01em;
+  }
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .nav-link {
+    font-family: var(--font-mono);
+    font-weight: 460;
+    font-size: 13.5px;
+    letter-spacing: 0.01em;
+    padding: 7px 11px;
+    color: var(--muted);
+  }
+  .nav-link .slash {
+    opacity: 0.5;
+  }
+  .nav-link.active {
+    color: var(--accent);
+    font-weight: 560;
+  }
+
+  /* Theme indicator (non-interactive) */
+  .theme-ind {
+    margin-left: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 7px 12px;
+  }
+  .theme-blip {
+    height: 10px;
+    width: 10px;
+    border-radius: 3px;
+    background: var(--text); /* opposite of the background */
+  }
+  .theme-text {
+    font-family: var(--font-mono);
+    font-weight: 480;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+
+  /* Main */
+  .site-main {
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1040px;
+    flex: 1;
+    padding: 0 32px;
+  }
+
+  /* Footer status line */
+  .site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .statusline {
+    margin: 0 auto;
+    display: flex;
+    max-width: 1040px;
+    align-items: center;
+    gap: 20px;
+    padding: 11px 32px;
+    font-family: var(--font-mono);
+    font-weight: 460;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .sl-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .sl-pulse {
+    height: 7px;
+    width: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: mePulse 2.4s ease-in-out infinite;
+  }
+  .sl-accent,
+  .sl-dim {
+    color: var(--faint);
+  }
+  .sl-spacer {
+    flex: 1;
+  }
+  .sl-ver {
+    display: inline-flex;
+    align-items: center;
+  }
+  .sl-cursor {
+    margin-left: 1px;
+    color: var(--accent);
+    animation: meBlink 1.1s step-end infinite;
+  }
+
+  @media (max-width: 640px) {
+    .bar,
+    .site-main,
+    .statusline {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    .theme-text {
+      display: none; /* collapse to just the blip on mobile */
+    }
+    .sl-accent {
+      display: none;
+    }
+  }
+</style>

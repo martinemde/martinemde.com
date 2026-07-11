@@ -137,8 +137,10 @@ All content pages use real data and existing loaders/utilities
    (date + reading time column | title + description).
 3. `02 Selected projects`: section header row (`all projects →` to `/projects`) +
    the first 4 projects from `projects.ts` as 2-column cards. Each card shows the
-   project's existing lucide `icon` (colored `--accent`) beside the name, plus
-   tag chip, description, and link label. Cards get accent border on hover.
+   project's existing lucide `icon` (colored `--accent`) beside the name,
+   description, and link label (`linktext ?? name`). No tag chip — the comp's
+   per-project tags are invented data and `projects.ts` has none.
+   Cards get accent border on hover.
 4. "elsewhere" links row: existing real external links (GitHub, ruby.social).
 
 ### Blog index (`src/routes/blog/+page.svelte`)
@@ -147,7 +149,10 @@ All content pages use real data and existing loaders/utilities
 - Post list: each post a row `grid-template-columns: 130px 1fr` —
   left column date + reading time (mono); right column title, description, and
   tag chips. Tags render only if the post's metadata has them; otherwise the tag
-  row is omitted. Row hover tints with a translucent `--surface`.
+  row is omitted. (No posts currently define tags, so this is plumbing that stays
+  dormant until a post adds a `tags` frontmatter array — see the optional
+  `tags` passthrough in `PostMetadata`.) Row hover tints with a translucent
+  `--surface`.
 
 ### Blog post (`src/routes/blog/[slug]/+page.svelte`)
 
@@ -177,9 +182,10 @@ All content pages use real data and existing loaders/utilities
 - List layout from the comp: each project a row
   `grid-template-columns: 200px 1fr 150px` (responsive collapse on mobile) —
   the project's existing lucide `icon` (colored `--accent`) + name | description |
-  tag + link label (`↗`). The comp's plain accent square is replaced by the real
-  icon. Uses the existing `projects.ts` data (including each project's existing
-  `linktext`/`icon`). Row hover tints with translucent `--surface`.
+  link label (`linktext ?? name`, with `↗`). The comp's plain accent square is
+  replaced by the real icon; the comp's invented per-project tag is omitted since
+  `projects.ts` has no tags. Uses the existing `projects.ts` data. Row hover tints
+  with translucent `--surface`.
 
 ### About (`src/routes/about/+page.svelte`)
 

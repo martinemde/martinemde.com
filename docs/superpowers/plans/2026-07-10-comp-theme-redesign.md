@@ -43,10 +43,12 @@ Note on verification: this is a visual redesign. Except for the pure `formatPost
 ### Task 1: Design-token layer + global styles + prose/code retune
 
 **Files:**
+
 - Create: `src/theme.css`
 - Modify: `src/app.css` (add import; add border to `.shiki`)
 
 **Interfaces:**
+
 - Produces: global CSS custom properties `--bg --surface --code --border --text --muted --faint --accent --accent2`; keyframes `mePulse`, `meBlink`; helper classes `.theme-when-light` / `.theme-when-dark`; retuned `.prose`. All later tasks consume these.
 
 - [ ] **Step 1: Create `src/theme.css`**
@@ -235,10 +237,12 @@ Shiki code blocks to it, backing the comp-matched redesign."
 ### Task 2: Posts utilities — short date formatter + optional tags
 
 **Files:**
+
 - Modify: `src/lib/utils/posts.ts` (add `tags` to `PostMetadata`, pass through in `normalizeMetadata`, add `formatPostDateShort`)
 - Test: `src/lib/utils/posts.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `formatPostDateShort(date: Date): string` → e.g. `"Jan 22, 2026"`.
   - `PostMetadata.tags?: string[]` — present only when a post's frontmatter defines a `tags` array of strings.
@@ -339,9 +343,11 @@ array through post metadata, rendered only when a post defines it."
 ### Task 3: Shared chrome — sticky header + status-line footer
 
 **Files:**
+
 - Modify: `src/routes/+layout.svelte` (replace the visual wrapper; keep the `<svelte:head>` block unchanged)
 
 **Interfaces:**
+
 - Consumes: tokens and `.theme-when-*` helpers from Task 1; `page` from `$app/state`; `resolve` from `$app/paths` (both already imported).
 
 - [ ] **Step 1: Add derived nav/path state to the `<script>`**
@@ -349,12 +355,12 @@ array through post metadata, rendered only when a post defines it."
 In `src/routes/+layout.svelte`, after the existing `contentType` derived (around line 34), add:
 
 ```ts
-  // Active-section + status-line path for the redesigned chrome
-  const path = $derived(page.url.pathname);
-  const isBlog = $derived(path === '/blog' || path.startsWith('/blog/'));
-  const isProjects = $derived(path.startsWith('/projects'));
-  const isAbout = $derived(path.startsWith('/about'));
-  const pathDisplay = $derived('martinemde.com' + (path === '/' ? '' : path));
+// Active-section + status-line path for the redesigned chrome
+const path = $derived(page.url.pathname);
+const isBlog = $derived(path === '/blog' || path.startsWith('/blog/'));
+const isProjects = $derived(path.startsWith('/projects'));
+const isAbout = $derived(path.startsWith('/about'));
+const pathDisplay = $derived('martinemde.com' + (path === '/' ? '' : path));
 ```
 
 - [ ] **Step 2: Replace the markup wrapper**
@@ -595,10 +601,12 @@ a system-reflecting theme indicator, and a terminal status-line footer."
 ### Task 4: Home page
 
 **Files:**
+
 - Modify: `src/routes/+page.ts` (load 3 recent posts)
 - Modify: `src/routes/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: `getRecentPosts`, `formatPostDateShort`, `getReadingTime` from `$lib/utils/posts`; `projects` from `$lib/data/projects`; tokens + `.eyebrow` from Task 1.
 
 - [ ] **Step 1: Load 3 recent posts in `src/routes/+page.ts`**
@@ -708,7 +716,7 @@ export const load: PageLoad = async () => {
   </div>
 </section>
 
-<section class="block elsewhere">
+<section class="elsewhere block">
   <span class="else-label">elsewhere:</span>
   <a href="https://github.com/martinemde" rel="external">github/@martinemde ↗</a>
   <a href="https://ruby.social/@martinemde" rel="external">ruby.social/@martinemde ↗</a>
@@ -975,9 +983,11 @@ lucide icons), and elsewhere links against the token palette."
 ### Task 5: Blog index
 
 **Files:**
+
 - Modify: `src/routes/blog/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: `data.posts` (array of `Post`), `formatPostDateShort`, `getReadingTime`, tokens; `post.tags` renders only when present.
 
 - [ ] **Step 1: Replace `src/routes/blog/+page.svelte`**
@@ -1169,10 +1179,12 @@ meta, optional tag chips, and token styling."
 ### Task 6: Blog post + ShareButtons
 
 **Files:**
+
 - Modify: `src/routes/blog/[slug]/+page.svelte`
 - Modify: `src/lib/components/ShareButtons.svelte`
 
 **Interfaces:**
+
 - Consumes: `data.metadata` (`PostMetadata`), `data.content` (Svelte component), `formatPostDateShort`, `getReadingTime`; retuned `.prose` from Task 1.
 
 - [ ] **Step 1: Replace `src/routes/blog/[slug]/+page.svelte`**
@@ -1359,7 +1371,9 @@ Replace the `CopyButton` `class` and the `<button>` `class` (the two Skeleton-cl
     color: var(--muted);
     background: transparent;
     cursor: pointer;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
   }
   .share :global(.share-btn:hover) {
     color: var(--accent);
@@ -1398,9 +1412,11 @@ restyle the LLM/Share buttons to the mono status-line aesthetic."
 ### Task 7: Projects page
 
 **Files:**
+
 - Modify: `src/routes/projects/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: `projects` from `$lib/data/projects` (keeps each project's `icon` and optional `linktext`); tokens + `.eyebrow`.
 
 - [ ] **Step 1: Replace `src/routes/projects/+page.svelte`**
@@ -1562,9 +1578,11 @@ real project data."
 ### Task 8: About page
 
 **Files:**
+
 - Modify: `src/routes/about/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: tokens + `.eyebrow`. Uses existing real about copy and links only.
 
 - [ ] **Step 1: Replace `src/routes/about/+page.svelte`**

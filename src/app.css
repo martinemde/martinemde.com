@@ -3,6 +3,7 @@
 @import '@skeletonlabs/skeleton-svelte';
 @import '@skeletonlabs/skeleton/themes/catppuccin';
 @import './espresso.css'; /* Custom Themes */
+@import './theme.css'; /* Comp-matched design tokens (Teal & Violet) */
 @import './fonts.css'; /* MonoLisa webfonts (@font-face) */
 
 @plugin '@tailwindcss/forms';
@@ -38,6 +39,7 @@ body {
 /* Style code blocks */
 .shiki {
   padding: 1rem;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow-x: auto;
   margin: 1.5rem 0;

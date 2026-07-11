@@ -30,17 +30,17 @@ theme selection purely system-based.
 
 Teal & Violet values (from the comp's `renderVals`):
 
-| token       | light (`oklch`)     | dark (`oklch`)      | role                     |
-| ----------- | ------------------- | ------------------- | ------------------------ |
-| `--bg`      | `0.976 0.008 85`    | `0.185 0.012 70`    | warm page background     |
-| `--surface` | `0.945 0.011 85`    | `0.235 0.014 70`    | cards, footer            |
-| `--code`    | `0.928 0.013 85`    | `0.262 0.015 70`    | inline code / code bg    |
-| `--border`  | `0.875 0.013 80`    | `0.33 0.012 70`     | hairlines                |
-| `--text`    | `0.27 0.013 75`     | `0.925 0.01 80`     | body text                |
-| `--muted`   | `0.475 0.015 75`    | `0.70 0.014 75`     | secondary text           |
-| `--faint`   | `0.65 0.013 75`     | `0.52 0.012 70`     | tertiary text            |
-| `--accent`  | `0.545 0.10 200`    | `0.81 0.11 195`     | primary accent (teal)    |
-| `--accent2` | `0.52 0.14 305`     | `0.77 0.11 305`     | secondary accent (violet)|
+| token       | light (`oklch`)  | dark (`oklch`)   | role                      |
+| ----------- | ---------------- | ---------------- | ------------------------- |
+| `--bg`      | `0.976 0.008 85` | `0.185 0.012 70` | warm page background      |
+| `--surface` | `0.945 0.011 85` | `0.235 0.014 70` | cards, footer             |
+| `--code`    | `0.928 0.013 85` | `0.262 0.015 70` | inline code / code bg     |
+| `--border`  | `0.875 0.013 80` | `0.33 0.012 70`  | hairlines                 |
+| `--text`    | `0.27 0.013 75`  | `0.925 0.01 80`  | body text                 |
+| `--muted`   | `0.475 0.015 75` | `0.70 0.014 75`  | secondary text            |
+| `--faint`   | `0.65 0.013 75`  | `0.52 0.012 70`  | tertiary text             |
+| `--accent`  | `0.545 0.10 200` | `0.81 0.11 195`  | primary accent (teal)     |
+| `--accent2` | `0.52 0.14 305`  | `0.77 0.11 305`  | secondary accent (violet) |
 
 Each is declared as e.g.
 `--bg: light-dark(oklch(0.976 0.008 85), oklch(0.185 0.012 70));`

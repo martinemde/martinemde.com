@@ -1,0 +1,133 @@
+/*
+ * Comp-matched design tokens (Teal & Violet), system-driven light/dark.
+ * Resolves via light-dark() off `color-scheme: light dark` (set in app.css).
+ * No .dark class and no JS — theme follows the OS setting only.
+ */
+:root {
+  --bg: light-dark(oklch(0.976 0.008 85), oklch(0.185 0.012 70));
+  --surface: light-dark(oklch(0.945 0.011 85), oklch(0.235 0.014 70));
+  --code: light-dark(oklch(0.928 0.013 85), oklch(0.262 0.015 70));
+  --border: light-dark(oklch(0.875 0.013 80), oklch(0.33 0.012 70));
+  --text: light-dark(oklch(0.27 0.013 75), oklch(0.925 0.01 80));
+  --muted: light-dark(oklch(0.475 0.015 75), oklch(0.7 0.014 75));
+  --faint: light-dark(oklch(0.65 0.013 75), oklch(0.52 0.012 70));
+  --accent: light-dark(oklch(0.545 0.1 200), oklch(0.81 0.11 195));
+  --accent2: light-dark(oklch(0.52 0.14 305), oklch(0.77 0.11 305));
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--accent) 30%, transparent);
+}
+
+@keyframes mePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+@keyframes meBlink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* No-JS theme label swap: show the label matching the OS scheme. */
+.theme-when-light {
+  display: none;
+}
+.theme-when-dark {
+  display: inline;
+}
+@media (prefers-color-scheme: light) {
+  .theme-when-light {
+    display: inline;
+  }
+  .theme-when-dark {
+    display: none;
+  }
+}
+
+/* Shared eyebrow utility used across content pages. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-weight: 480;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+/* Blog-post prose retuned to tokens (replaces dark:prose-invert). */
+.prose {
+  --tw-prose-body: var(--text);
+  --tw-prose-headings: var(--text);
+  --tw-prose-links: var(--accent);
+  --tw-prose-bold: var(--text);
+  --tw-prose-quotes: var(--text);
+  --tw-prose-quote-borders: var(--accent);
+  --tw-prose-code: var(--accent);
+  --tw-prose-hr: var(--border);
+  --tw-prose-bullets: var(--faint);
+  --tw-prose-counters: var(--faint);
+  --tw-prose-captions: var(--muted);
+  --tw-prose-pre-bg: var(--code);
+  --tw-prose-pre-code: var(--text);
+  --tw-prose-th-borders: var(--border);
+  --tw-prose-td-borders: var(--border);
+  color: var(--text);
+}
+.prose a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
+}
+.prose a:hover {
+  border-bottom-color: var(--accent);
+}
+.prose :not(pre) > code {
+  font-family: var(--font-mono);
+  background: var(--code);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 0.86em;
+  font-weight: 450;
+}
+/* Remove typography's backtick pseudo-quotes around inline code. */
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: none;
+}
+.prose blockquote {
+  font-style: normal;
+  font-weight: inherit;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+  border-radius: 0 10px 10px 0;
+  padding: 1.25rem 1.5rem;
+  margin: 1.75rem 0;
+}
+.prose blockquote p:first-of-type::before,
+.prose blockquote p:last-of-type::after {
+  content: none;
+}
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}

@@ -22,7 +22,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.20.0",
     "globals": "^17.7.0",
-    "happy-dom": "^20.8.4",
+    "happy-dom": "^20.11.1",
     "jsdom": "^29.1.1",
     "mdsvex": "^0.12.7",
     "prettier": "^3.8.3",

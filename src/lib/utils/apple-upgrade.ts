@@ -35,8 +35,10 @@ export interface Assumptions {
   category: Category;
   price: number;
   term: Term;
-  /** Apple's quoted monthly payment, before trade-in. Null derives it from list price. */
+  /** A payment the user was quoted, before trade-in. Overrides everything below. */
   paymentOverride: number | null;
+  /** Apple's published payment for this exact configuration and term, if known. */
+  quotedPayment: number | null;
   tradeIn: number;
   fork: Fork;
 
@@ -107,23 +109,26 @@ export function round2(n: number): number {
 }
 
 /**
- * Apple quotes lease payments as $X.99, so snap to the nearest one. This is what
- * makes the published examples reproduce exactly from the ratios.
- */
-export function roundTo99(n: number): number {
-  return Math.round(n - 0.99) + 0.99;
-}
-
-/**
- * The monthly lease payment before any trade-in credit.
+ * Estimated monthly lease payment before any trade-in credit: list price × the
+ * family's ratio, spread over the term.
  *
- * `total lease payments = list price × ratio`, spread over the term and snapped
- * to $X.99. Reproduces every example in Apple's footnote ∆.
+ * An estimate on purpose. Apple's real quotes don't follow a single percentage —
+ * the 512GB and 1TB iPhone 17 Pro Max lease for $40.82 and $46.67, neither of
+ * which is reachable from the same ratio that produces the 256GB's $34.99. Prefer
+ * `effectiveBasePayment`, which uses a real quote when one is known.
  */
 export function basePayment(price: number, category: Category, term: Term): number {
   const ratio = LEASE_RATIOS[category][term];
   if (!ratio || price <= 0) return 0;
-  return Math.max(0, roundTo99((price * ratio) / term));
+  return Math.max(0, round2((price * ratio) / term));
+}
+
+/**
+ * The payment to actually bill, in order of trust: what the user was quoted, then
+ * what Apple publishes for this exact configuration, then the estimate.
+ */
+export function effectiveBasePayment(a: Assumptions): number {
+  return a.paymentOverride ?? a.quotedPayment ?? basePayment(a.price, a.category, a.term);
 }
 
 /** Trade-in credit is divided evenly across the payments of the initial term. */
@@ -134,7 +139,7 @@ export function tradeInPerMonth(tradeIn: number, term: Term): number {
 
 /** What Klarna actually charges each month during the initial term. */
 export function leasePayment(a: Assumptions): number {
-  const base = a.paymentOverride ?? basePayment(a.price, a.category, a.term);
+  const base = effectiveBasePayment(a);
   return Math.max(0, round2(base - tradeInPerMonth(a.tradeIn, a.term)));
 }
 
@@ -231,9 +236,7 @@ function leaseTermFlows(
   opts: { withTradeIn: boolean }
 ): Flow[] {
   const flows: Flow[] = [];
-  const payment = opts.withTradeIn
-    ? leasePayment(a)
-    : (a.paymentOverride ?? basePayment(a.price, a.category, a.term));
+  const payment = opts.withTradeIn ? leasePayment(a) : effectiveBasePayment(a);
   const perPayment = a.taxLeasePayments ? payment + tax(a, payment) : payment;
 
   if (!a.taxLeasePayments) {
@@ -332,7 +335,7 @@ export function buildLeaseFlows(a: Assumptions): Flow[] {
   } else if (a.fork === 'extend') {
     // Month-to-month for up to six months at the undiscounted payment, then
     // Klarna charges the buyout automatically.
-    const base = a.paymentOverride ?? basePayment(a.price, a.category, a.term);
+    const base = effectiveBasePayment(a);
     const perPayment = a.taxLeasePayments ? base + tax(a, base) : base;
     for (let m = a.term + 1; m <= a.term + 6; m++) {
       flows.push({

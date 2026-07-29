@@ -18,6 +18,7 @@
     basePayment,
     CARE_CHOICES,
     compare,
+    effectiveBasePayment,
     formatUsd,
     formatUsd0,
     leasePayment,
@@ -134,6 +135,17 @@
   const fork = $derived<Fork>(forkChoice ?? 'upgrade');
   const tradeIn = $derived(hasTradeIn ? (tradeInValue ?? 0) : 0);
 
+  /**
+   * Apple's published payment for the selected configuration, when we have one.
+   * A hand-edited price means the catalog quote no longer describes this device,
+   * so it falls back to the estimate.
+   */
+  function quoteFor(t: Term): number | null {
+    if (priceOverride !== null) return null;
+    return config.quoted?.[t] ?? null;
+  }
+  const quotedPayment = $derived(quoteFor(term));
+
   const carrierMonths = $derived(carrierMonthsInput ?? 36);
   /**
    * Carriers spread a trade-in across the installment plan as bill credits, the
@@ -147,6 +159,7 @@
     price,
     term,
     paymentOverride,
+    quotedPayment,
     tradeIn,
     fork,
     care,
@@ -174,7 +187,7 @@
   const comparison = $derived(compare(assumptions));
   const horizon = $derived(comparison.horizon);
   const monthly = $derived(leasePayment(assumptions));
-  const undiscountedMonthly = $derived(paymentOverride ?? basePayment(price, category, term));
+  const undiscountedMonthly = $derived(effectiveBasePayment(assumptions));
   const leaseTotalFirstTerm = $derived(monthly * term);
   const leaseSharePct = $derived(price > 0 ? (undiscountedMonthly * term * 100) / price : 0);
 
@@ -531,21 +544,33 @@
         <NumberField
           label="Quoted payment (before trade-in)"
           bind:value={paymentOverride}
-          placeholder={basePayment(price, category, term).toFixed(2)}
+          placeholder={undiscountedMonthly.toFixed(2)}
           prefix="$"
           step={1}
-          hint="Derived from Apple's own published examples. Enter the real quote if you have one."
+          hint={quotedPayment !== null
+            ? "Apple's published payment for this exact configuration. Change it if you were quoted something else."
+            : 'Estimated from list price. Enter the real quote if you have one — it will be a few cents off.'}
         />
       </div>
 
       <div class="callout">
         <p>
-          Apple's footnotes give five worked examples, and one rule reproduces all five: total lease
-          payments come to a fixed share of list price, snapped to the nearest $X.99. For an iPhone
-          that's <strong>50% over 12 months</strong> or <strong>70% over 24</strong>. A
-          {device.name} at {formatUsd0(price)} leases for
-          {formatUsd(basePayment(price, category, term))}/mo on the {term}-month term, which is
-          {leaseSharePct.toFixed(0)}% of the device over the term.
+          {#if quotedPayment !== null}
+            Apple publishes <strong>{formatUsd(quotedPayment)}/mo</strong> for this
+            {device.name} on the {term}-month term, which comes to
+            {leaseSharePct.toFixed(1)}% of the {formatUsd0(price)} device over the term.
+          {:else}
+            No published payment exists for this configuration, so this is an estimate:
+            <strong>{formatUsd(undiscountedMonthly)}/mo</strong>, or
+            {leaseSharePct.toFixed(1)}% of the {formatUsd0(price)} device over {term} months.
+          {/if}
+        </p>
+        <p>
+          There is no clean formula behind those numbers. Apple's own examples sit at slightly
+          different ratios &mdash; 69.9% of a $1099 iPhone 17 Pro against 70.0% of a $1199 Pro Max
+          &mdash; and the higher storage tiers don't land on round cents at all: the 512GB Pro Max
+          leases for $40.82 and the 1TB for $46.67. The ratio here is a fit, accurate to within
+          about a nickel, so the page prefers a real quote wherever one is known.
         </p>
       </div>
     </section>
@@ -622,7 +647,8 @@
 
         <div class="choices">
           {#each terms as t (t)}
-            {@const base = basePayment(price, category, t)}
+            {@const quote = quoteFor(t)}
+            {@const base = quote ?? basePayment(price, category, t)}
             <button
               type="button"
               class="choice"
@@ -635,7 +661,7 @@
               </span>
               <span class="choice-detail">
                 {formatUsd0(base * t)} in payments &middot; {((base * t * 100) / price).toFixed(0)}%
-                of the device
+                of the device{quote === null ? ' · estimated' : ''}
               </span>
             </button>
           {/each}

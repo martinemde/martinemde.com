@@ -10,15 +10,15 @@ import {
   leasePayment,
   npvOf,
   purchaseOptionFee,
+  effectiveBasePayment,
   remainingLeaseObligation,
   resaleValue,
-  roundTo99,
   toMonthRows,
   withCashBack,
   type Assumptions,
   type Flow
 } from './apple-upgrade';
-import type { Category, Term } from '$lib/data/apple-upgrade';
+import { findDevice, type Category, type Term } from '$lib/data/apple-upgrade';
 
 function assume(overrides: Partial<Assumptions> = {}): Assumptions {
   return {
@@ -26,6 +26,9 @@ function assume(overrides: Partial<Assumptions> = {}): Assumptions {
     price: 1199,
     term: 24,
     paymentOverride: null,
+    // Apple's published payment for this exact config, so the fixture bills what
+    // a real lease would rather than the estimate.
+    quotedPayment: 34.99,
     tradeIn: 0,
     fork: 'upgrade',
 
@@ -58,19 +61,15 @@ function assume(overrides: Partial<Assumptions> = {}): Assumptions {
   };
 }
 
-describe('roundTo99', () => {
-  it('snaps to the nearest $X.99', () => {
-    expect(roundTo99(45.79)).toBeCloseTo(45.99, 2);
-    expect(roundTo99(32.05)).toBeCloseTo(31.99, 2);
-    expect(roundTo99(54.14)).toBeCloseTo(53.99, 2);
-  });
-});
-
-describe('basePayment reproduces Apple footnote ∆', () => {
-  // Every example Apple publishes, as [category, price, term, published payment].
-  const examples: Array<[Category, number, Term, number]> = [
+describe('basePayment estimates', () => {
+  // Every payment Apple publishes, as [category, price, term, published payment].
+  const published: Array<[Category, number, Term, number]> = [
     ['iphone', 1099, 24, 31.99],
     ['iphone', 1099, 12, 45.99],
+    ['iphone', 1199, 24, 34.99],
+    ['iphone', 1199, 12, 49.99],
+    ['iphone', 1399, 24, 40.82],
+    ['iphone', 1599, 24, 46.67],
     ['watch', 399, 24, 11.99],
     ['watch', 399, 12, 21.99],
     ['ipad', 1099, 36, 24.99],
@@ -79,15 +78,24 @@ describe('basePayment reproduces Apple footnote ∆', () => {
     ['mac', 1999, 24, 53.99]
   ];
 
-  for (const [category, price, term, expected] of examples) {
-    it(`${category} $${price} over ${term}mo is $${expected}/mo`, () => {
-      expect(basePayment(price, category, term)).toBeCloseTo(expected, 2);
+  for (const [category, price, term, expected] of published) {
+    it(`${category} $${price} over ${term}mo lands within a dime of $${expected}/mo`, () => {
+      // A fit, not a formula — Apple's own examples disagree with each other by
+      // more than a rounding error, so a dime is the best a single ratio can do.
+      expect(Math.abs(basePayment(price, category, term) - expected)).toBeLessThanOrEqual(0.1);
     });
   }
 
-  it('reproduces the iPhone 17 Pro Max examples the program advertises', () => {
-    expect(basePayment(1199, 'iphone', 12)).toBeCloseTo(49.99, 2);
-    expect(basePayment(1199, 'iphone', 24)).toBeCloseTo(34.99, 2);
+  it('does not pretend to hit the cent', () => {
+    // The whole point of preferring real quotes: the higher storage tiers of the
+    // iPhone 17 Pro Max lease for $40.82 and $46.67, which no single ratio
+    // produces alongside the 256GB's $34.99.
+    const off = [
+      Math.abs(basePayment(1399, 'iphone', 24) - 40.82),
+      Math.abs(basePayment(1599, 'iphone', 24) - 46.67)
+    ];
+    expect(Math.max(...off)).toBeGreaterThan(0);
+    expect(Math.max(...off)).toBeLessThan(0.06);
   });
 
   it('returns zero for a term the family does not offer', () => {
@@ -96,11 +104,74 @@ describe('basePayment reproduces Apple footnote ∆', () => {
   });
 });
 
+describe('effectiveBasePayment precedence', () => {
+  it('prefers a user quote over everything', () => {
+    const a = assume({ paymentOverride: 29.99, quotedPayment: 34.99 });
+    expect(effectiveBasePayment(a)).toBe(29.99);
+  });
+
+  it('prefers Apple’s published payment over the estimate', () => {
+    const a = assume({ quotedPayment: 40.82, price: 1399 });
+    expect(effectiveBasePayment(a)).toBe(40.82);
+    expect(basePayment(1399, 'iphone', 24)).not.toBe(40.82);
+  });
+
+  it('falls back to the estimate when nothing is quoted', () => {
+    const a = assume({ price: 1999, quotedPayment: null });
+    expect(effectiveBasePayment(a)).toBe(basePayment(1999, 'iphone', 24));
+  });
+
+  it('bills the quoted payment for the whole term', () => {
+    const a = assume({ price: 1599, quotedPayment: 46.67, fork: 'walk' });
+    const payments = buildLeaseFlows(a).filter((f) => f.label === 'Lease payment');
+    expect(payments).toHaveLength(24);
+    expect(payments.every((f) => f.amount === 46.67)).toBe(true);
+  });
+});
+
+describe('catalog quotes', () => {
+  it('matches every payment Apple publishes, to the cent', () => {
+    const cases: Array<[string, string, Term, number]> = [
+      ['iphone-17-pro', '256GB', 12, 45.99],
+      ['iphone-17-pro', '256GB', 24, 31.99],
+      ['iphone-17-pro-max', '256GB', 12, 49.99],
+      ['iphone-17-pro-max', '256GB', 24, 34.99],
+      ['iphone-17-pro-max', '512GB', 24, 40.82],
+      ['iphone-17-pro-max', '1TB', 24, 46.67],
+      ['watch-series-11', '42mm GPS', 12, 21.99],
+      ['watch-series-11', '42mm GPS', 24, 11.99]
+    ];
+
+    for (const [deviceId, label, term, expected] of cases) {
+      const config = findDevice(deviceId)?.configs.find((c) => c.label === label);
+      expect(config?.quoted?.[term], `${deviceId} ${label} ${term}mo`).toBe(expected);
+    }
+  });
+
+  it('keeps quoted payments consistent with the prices they were quoted against', () => {
+    const prices: Array<[string, string, number]> = [
+      ['iphone-17-pro', '256GB', 1099],
+      ['iphone-17-pro-max', '256GB', 1199],
+      ['iphone-17-pro-max', '512GB', 1399],
+      ['iphone-17-pro-max', '1TB', 1599],
+      ['watch-series-11', '42mm GPS', 399]
+    ];
+
+    for (const [deviceId, label, price] of prices) {
+      const config = findDevice(deviceId)?.configs.find((c) => c.label === label);
+      expect(config?.price, `${deviceId} ${label}`).toBe(price);
+    }
+  });
+});
+
 describe('trade-in credit', () => {
   it('spreads a $375 trade-in across the term', () => {
     // The worked example: $1199 iPhone 17 Pro Max with $375 traded in.
-    expect(leasePayment(assume({ term: 12 }))).toBeCloseTo(49.99, 2);
-    expect(leasePayment(assume({ term: 12, tradeIn: 375 }))).toBeCloseTo(18.74, 2);
+    expect(leasePayment(assume({ term: 12, quotedPayment: 49.99 }))).toBeCloseTo(49.99, 2);
+    expect(leasePayment(assume({ term: 12, quotedPayment: 49.99, tradeIn: 375 }))).toBeCloseTo(
+      18.74,
+      2
+    );
     expect(leasePayment(assume({ term: 24, tradeIn: 375 }))).toBeCloseTo(19.37, 2);
   });
 
@@ -236,7 +307,14 @@ describe('AppleCare billing cadence', () => {
   });
 
   it('bills three years across a 36-month term', () => {
-    const a = assume({ category: 'ipad', term: 36, price: 1099, care: 'annual', fork: 'walk' });
+    const a = assume({
+      category: 'ipad',
+      term: 36,
+      price: 1099,
+      quotedPayment: null,
+      care: 'annual',
+      fork: 'walk'
+    });
     const charges = buildLeaseFlows(a).filter((f) => f.label === 'AppleCare+ (one year)');
     expect(charges.map((f) => f.month)).toEqual([0, 12, 24]);
   });
@@ -299,7 +377,7 @@ describe('carrier flows', () => {
   });
 
   it('stops installments at the horizon when the plan runs longer', () => {
-    const a = assume({ term: 12, carrierMonths: 36 });
+    const a = assume({ term: 12, quotedPayment: 49.99, carrierMonths: 36 });
     const installments = buildCarrierFlows(a).filter((f) => f.label === 'Installment');
     expect(installments).toHaveLength(horizonMonths(a));
   });
@@ -386,7 +464,7 @@ describe('compare', () => {
   });
 
   it('compares every scenario over the same two-term horizon', () => {
-    const a = assume({ term: 12 });
+    const a = assume({ term: 12, quotedPayment: 49.99 });
     const { lease, cash, carrier, horizon } = compare(a);
     expect(horizon).toBe(24);
     for (const s of [lease, cash, carrier]) {

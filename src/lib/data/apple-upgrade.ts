@@ -15,6 +15,12 @@ export interface DeviceConfig {
   /** Storage tier or size variant, e.g. "256GB" or "46mm Cellular" */
   label: string;
   price: number;
+  /**
+   * Payments Apple actually quotes for this exact configuration, by term.
+   * Preferred over the estimate whenever it exists — see LEASE_RATIOS for why
+   * the estimate can't be trusted to the cent.
+   */
+  quoted?: Partial<Record<Term, number>>;
 }
 
 export interface Device {
@@ -40,18 +46,23 @@ export const CATEGORY_TERMS: Record<Category, Term[]> = {
 };
 
 /**
- * Total lease payments as a fraction of list price, by family and term.
+ * Total lease payments as a fraction of list price, by family and term. Used
+ * only when a configuration has no `quoted` payment.
  *
- * Derived from the five examples in Apple's footnote ∆ — each ratio below
- * reproduces the published monthly payment exactly once rounded to the nearest
- * $X.99. An iPhone leased for 12 months costs half the phone; leased for 24 it
- * costs 70% of the phone, and you still own nothing at the end.
+ * This is a fitted approximation, not Apple's formula. Real quotes for the same
+ * phone and term sit at slightly different ratios — 69.86% for a $1099 iPhone 17
+ * Pro against 70.03–70.05% across the three iPhone 17 Pro Max tiers — so no
+ * single percentage reproduces them all. The best flat fit lands within about a
+ * nickel for 24-month terms and a dime for 12-month ones, which is close enough
+ * to reason about and not close enough to quote. The shape is what matters: a
+ * 12-month iPhone lease costs about half the phone, 24 months costs about 70%,
+ * and you own nothing either way.
  */
 export const LEASE_RATIOS: Record<Category, Partial<Record<Term, number>>> = {
-  iphone: { 12: 0.5, 24: 0.7 },
-  watch: { 12: 0.66, 24: 0.72 },
-  ipad: { 24: 0.7, 36: 0.82 },
-  mac: { 24: 0.65, 36: 0.7 }
+  iphone: { 12: 0.50124, 24: 0.69967 },
+  watch: { 12: 0.66135, 24: 0.7212 },
+  ipad: { 24: 0.6986, 36: 0.81874 },
+  mac: { 24: 0.64822, 36: 0.70221 }
 };
 
 /**
@@ -123,7 +134,7 @@ export const DEVICES: Device[] = [
     name: 'iPhone 17 Pro',
     category: 'iphone',
     configs: [
-      { label: '256GB', price: 1099 },
+      { label: '256GB', price: 1099, quoted: { 12: 45.99, 24: 31.99 } },
       { label: '512GB', price: 1299 },
       { label: '1TB', price: 1499 }
     ]
@@ -133,9 +144,9 @@ export const DEVICES: Device[] = [
     name: 'iPhone 17 Pro Max',
     category: 'iphone',
     configs: [
-      { label: '256GB', price: 1199 },
-      { label: '512GB', price: 1399 },
-      { label: '1TB', price: 1599 },
+      { label: '256GB', price: 1199, quoted: { 12: 49.99, 24: 34.99 } },
+      { label: '512GB', price: 1399, quoted: { 24: 40.82 } },
+      { label: '1TB', price: 1599, quoted: { 24: 46.67 } },
       { label: '2TB', price: 1999 }
     ]
   },
@@ -144,7 +155,7 @@ export const DEVICES: Device[] = [
     name: 'Apple Watch Series 11',
     category: 'watch',
     configs: [
-      { label: '42mm GPS', price: 399 },
+      { label: '42mm GPS', price: 399, quoted: { 12: 21.99, 24: 11.99 } },
       { label: '46mm GPS', price: 429 },
       { label: '42mm Cellular', price: 499 },
       { label: '46mm Cellular', price: 529 }

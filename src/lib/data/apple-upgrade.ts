@@ -57,22 +57,23 @@ export const LEASE_RATIOS: Record<Category, Partial<Record<Term, number>>> = {
 /**
  * Default AppleCare pricing per family, in dollars.
  *
- * `monthly` is AppleCare+ with Theft and Loss where it exists, `annual` is the
- * prepaid plan covering the same window as a 24-month lease. Editable on the
- * page because Apple's prices move and vary by model.
+ * `monthly` is AppleCare+ with Theft and Loss where it exists. `annual` is the
+ * yearly plan, which bills a year at a time and renews — not a one-time prepay
+ * covering the whole lease. All of these are starting estimates, editable on the
+ * page, because Apple's prices move and vary by model.
  */
 export interface CarePricing {
   monthly: number;
-  /** Prepaid, covering 24 months. */
-  prepaid24: number;
+  /** Billed once a year, every year you keep coverage. */
+  annual: number;
   deductible: number;
 }
 
 export const CARE_PRICING: Record<Category, CarePricing> = {
-  iphone: { monthly: 13.49, prepaid24: 269, deductible: 99 },
-  watch: { monthly: 5.99, prepaid24: 119, deductible: 69 },
-  ipad: { monthly: 7.99, prepaid24: 149, deductible: 49 },
-  mac: { monthly: 14.99, prepaid24: 299, deductible: 99 }
+  iphone: { monthly: 13.49, annual: 149, deductible: 99 },
+  watch: { monthly: 5.99, annual: 59, deductible: 69 },
+  ipad: { monthly: 7.99, annual: 79, deductible: 49 },
+  mac: { monthly: 14.99, annual: 149, deductible: 99 }
 };
 
 /** AppleCare One covers up to three devices for one monthly price. */

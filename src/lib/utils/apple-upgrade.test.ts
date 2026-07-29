@@ -31,7 +31,7 @@ function assume(overrides: Partial<Assumptions> = {}): Assumptions {
 
     care: 'none',
     careMonthly: 13.49,
-    carePrepaid24: 269,
+    careAnnual: 149,
     careOneMonthly: 19.99,
     careDeductible: 99,
 
@@ -223,6 +223,41 @@ describe('lease flows', () => {
     expect(upfront?.month).toBe(0);
     expect(upfront?.amount).toBeCloseTo(119.9, 2);
     expect(flows.find((f) => f.label === 'Lease payment')?.amount).toBeCloseTo(34.99, 2);
+  });
+});
+
+describe('AppleCare billing cadence', () => {
+  it('bills the annual plan once a year, renewing, not once up front', () => {
+    const a = assume({ care: 'annual', fork: 'walk' });
+    const charges = buildLeaseFlows(a).filter((f) => f.label === 'AppleCare+ (one year)');
+    // A 24-month lease means two yearly charges: one at signing, one at month 12.
+    expect(charges.map((f) => f.month)).toEqual([0, 12]);
+    expect(charges.every((f) => f.amount === 149)).toBe(true);
+  });
+
+  it('bills three years across a 36-month term', () => {
+    const a = assume({ category: 'ipad', term: 36, price: 1099, care: 'annual', fork: 'walk' });
+    const charges = buildLeaseFlows(a).filter((f) => f.label === 'AppleCare+ (one year)');
+    expect(charges.map((f) => f.month)).toEqual([0, 12, 24]);
+  });
+
+  it('keeps renewing through a second term on the upgrade path', () => {
+    const a = assume({ care: 'annual', fork: 'upgrade' });
+    const charges = buildLeaseFlows(a).filter((f) => f.label === 'AppleCare+ (one year)');
+    expect(charges.map((f) => f.month)).toEqual([0, 12, 24, 36]);
+  });
+
+  it('stops at the return when you walk away, since there is no device', () => {
+    const a = assume({ care: 'annual', fork: 'walk' });
+    const charges = buildLeaseFlows(a).filter((f) => f.label === 'AppleCare+ (one year)');
+    expect(charges.every((f) => f.month < a.term)).toBe(true);
+  });
+
+  it('charges the monthly plan every month of the term', () => {
+    const a = assume({ care: 'monthly', fork: 'walk' });
+    const charges = buildLeaseFlows(a).filter((f) => f.label === 'AppleCare+ monthly');
+    expect(charges).toHaveLength(24);
+    expect(charges[0].month).toBe(1);
   });
 });
 

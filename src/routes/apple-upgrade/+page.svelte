@@ -16,6 +16,7 @@
   } from '$lib/data/apple-upgrade';
   import {
     basePayment,
+    CARE_CHOICES,
     compare,
     formatUsd,
     formatUsd0,
@@ -51,7 +52,7 @@
     damageFeeInput: number | null;
     damageLikelihoodInput: number | null;
     careMonthlyInput: number | null;
-    carePrepaidInput: number | null;
+    careAnnualInput: number | null;
     careOneInput: number | null;
     careDeductibleInput: number | null;
     purchaseCreditHonored: boolean;
@@ -71,6 +72,9 @@
       const parsed = JSON.parse(raw) as Partial<Saved>;
       // A catalog entry that no longer exists would break every derivation.
       if (parsed.deviceId && !findDevice(parsed.deviceId)) return {};
+      // Choices saved before an option was renamed would restore as a selection
+      // no card matches.
+      if (parsed.careChoice && !CARE_CHOICES.includes(parsed.careChoice)) parsed.careChoice = null;
       return parsed;
     } catch {
       return {};
@@ -105,7 +109,7 @@
   let damageFeeInput = $state<number | null>(saved.damageFeeInput ?? null);
   let damageLikelihoodInput = $state<number | null>(saved.damageLikelihoodInput ?? null);
   let careMonthlyInput = $state<number | null>(saved.careMonthlyInput ?? null);
-  let carePrepaidInput = $state<number | null>(saved.carePrepaidInput ?? null);
+  let careAnnualInput = $state<number | null>(saved.careAnnualInput ?? null);
   let careOneInput = $state<number | null>(saved.careOneInput ?? null);
   let careDeductibleInput = $state<number | null>(saved.careDeductibleInput ?? null);
   let purchaseCreditHonored = $state(saved.purchaseCreditHonored ?? false);
@@ -147,7 +151,7 @@
     fork,
     care,
     careMonthly: careMonthlyInput ?? CARE_PRICING[category].monthly,
-    carePrepaid24: carePrepaidInput ?? CARE_PRICING[category].prepaid24,
+    careAnnual: careAnnualInput ?? CARE_PRICING[category].annual,
     careOneMonthly: careOneInput ?? APPLECARE_ONE_MONTHLY,
     careDeductible: careDeductibleInput ?? CARE_PRICING[category].deductible,
     taxRate: taxRateInput ?? 8.5,
@@ -173,6 +177,10 @@
   const undiscountedMonthly = $derived(paymentOverride ?? basePayment(price, category, term));
   const leaseTotalFirstTerm = $derived(monthly * term);
   const leaseSharePct = $derived(price > 0 ? (undiscountedMonthly * term * 100) / price : 0);
+
+  /** Walking away at term's end ends coverage with the device; everything else keeps it. */
+  const careCoverageMonths = $derived(fork === 'walk' ? term : horizon);
+  const careYears = $derived(Math.ceil(careCoverageMonths / 12));
 
   /** Each fork priced out, so the decision cards can show real numbers. */
   const forkOutcomes = $derived(
@@ -310,7 +318,7 @@
     resaleInput = null;
     damageFeeInput = null;
     careMonthlyInput = null;
-    carePrepaidInput = null;
+    careAnnualInput = null;
     careDeductibleInput = null;
   }
 
@@ -339,9 +347,11 @@
       detail: `${formatUsd(assumptions.careMonthly)}/mo, cancel anytime`
     },
     {
-      value: 'prepaid',
-      name: 'AppleCare+ prepaid',
-      detail: `${formatUsd0(assumptions.carePrepaid24)} up front for 24 months`
+      value: 'annual',
+      name: 'AppleCare+ annual',
+      detail: `${formatUsd0(assumptions.careAnnual)}/yr, billed a year at a time — ${careYears} ${
+        careYears === 1 ? 'charge' : 'charges'
+      } over ${careCoverageMonths} months`
     },
     {
       value: 'one',
@@ -398,7 +408,7 @@
       damageFeeInput,
       damageLikelihoodInput,
       careMonthlyInput,
-      carePrepaidInput,
+      careAnnualInput,
       careOneInput,
       careDeductibleInput,
       purchaseCreditHonored,
@@ -647,6 +657,15 @@
           the standard for "good condition" is Klarna's, not yours. Without coverage, a cracked
           screen becomes a damage fee at return.
         </p>
+        <p class="step-copy">
+          Note that the annual plan is not a one-time payment covering the lease. It bills a year at
+          a time and renews, so a {term}-month term means {Math.ceil(term / 12)} charges, and
+          {#if fork === 'walk'}
+            coverage ends when you hand the device back.
+          {:else}
+            it keeps renewing through the whole {horizon} months.
+          {/if}
+        </p>
 
         <div class="choices choices-wide">
           {#each CARE_OPTIONS as option (option.value)}
@@ -712,6 +731,49 @@
             </span>
           </span>
         </label>
+
+        <h3 class="group-title">AppleCare prices</h3>
+        <p class="step-copy">
+          Estimates for a {CATEGORY_LABELS[category].toLowerCase()}, since Apple's prices vary by
+          model and move over time. The annual plan bills a year at a time and renews, so a
+          {term}-month lease sees {Math.ceil(term / 12)} of them before you even reach the end-of-term
+          decision.
+        </p>
+        <div class="fields">
+          <NumberField
+            label="AppleCare+ monthly"
+            bind:value={careMonthlyInput}
+            placeholder={CARE_PRICING[category].monthly}
+            prefix="$"
+            suffix="/mo"
+            step={1}
+          />
+          <NumberField
+            label="AppleCare+ annual"
+            bind:value={careAnnualInput}
+            placeholder={CARE_PRICING[category].annual}
+            prefix="$"
+            suffix="/yr"
+            step={10}
+          />
+          <NumberField
+            label="AppleCare One"
+            bind:value={careOneInput}
+            placeholder={APPLECARE_ONE_MONTHLY}
+            prefix="$"
+            suffix="/mo"
+            step={1}
+            hint="Covers up to three devices, so if you already pay it, the marginal cost of adding this one may be zero."
+          />
+          <NumberField
+            label="Repair deductible"
+            bind:value={careDeductibleInput}
+            placeholder={CARE_PRICING[category].deductible}
+            prefix="$"
+            step={10}
+            hint="What a covered repair still costs you."
+          />
+        </div>
 
         <h3 class="group-title">Getting it out the door</h3>
         <div class="fields">

@@ -12,7 +12,9 @@
 
 import { LEASE_RATIOS, type Category, type Term } from '$lib/data/apple-upgrade';
 
-export type CareChoice = 'none' | 'monthly' | 'prepaid' | 'one';
+export type CareChoice = 'none' | 'monthly' | 'annual' | 'one';
+
+export const CARE_CHOICES: CareChoice[] = ['none', 'monthly', 'annual', 'one'];
 
 /** What you do when the initial lease term ends. */
 export type Fork = 'upgrade' | 'buy' | 'extend' | 'walk';
@@ -40,7 +42,7 @@ export interface Assumptions {
 
   care: CareChoice;
   careMonthly: number;
-  carePrepaid24: number;
+  careAnnual: number;
   careOneMonthly: number;
   careDeductible: number;
 
@@ -181,13 +183,17 @@ export function horizonMonths(a: Assumptions): number {
 
 function careFlows(a: Assumptions, startMonth: number, months: number): Flow[] {
   const flows: Flow[] = [];
-  if (a.care === 'prepaid') {
-    flows.push({
-      month: startMonth,
-      label: 'AppleCare+ (prepaid)',
-      amount: a.carePrepaid24,
-      billedBy: 'apple'
-    });
+  if (a.care === 'annual') {
+    // A year at a time, renewing — not one payment covering the whole lease. A
+    // 24-month term means two charges, and a 36-month term means three.
+    for (let m = startMonth; m < startMonth + months; m += 12) {
+      flows.push({
+        month: m,
+        label: 'AppleCare+ (one year)',
+        amount: a.careAnnual,
+        billedBy: 'apple'
+      });
+    }
   } else if (a.care === 'monthly' || a.care === 'one') {
     const rate = a.care === 'one' ? a.careOneMonthly : a.careMonthly;
     const label = a.care === 'one' ? 'AppleCare One' : 'AppleCare+ monthly';

@@ -46,6 +46,18 @@ export const CATEGORY_TERMS: Record<Category, Term[]> = {
 };
 
 /**
+ * Months in Apple's own interest-free installment plan, per family. This is the
+ * benchmark the lease has to beat: no interest, no residual, and the device is
+ * yours the whole time.
+ */
+export const FINANCE_MONTHS: Record<Category, number> = {
+  iphone: 24,
+  watch: 24,
+  ipad: 12,
+  mac: 12
+};
+
+/**
  * Total lease payments as a fraction of list price, by family and term. Used
  * only when a configuration has no `quoted` payment.
  *

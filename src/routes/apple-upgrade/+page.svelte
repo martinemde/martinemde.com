@@ -9,6 +9,7 @@
     DEFAULT_DAMAGE_FEE,
     DEFAULT_RESALE_PCT,
     DEVICES,
+    FINANCE_MONTHS,
     devicesInCategory,
     findDevice,
     type Category,
@@ -19,6 +20,7 @@
     CARE_CHOICES,
     compare,
     effectiveBasePayment,
+    financeInstallment,
     formatUsd,
     formatUsd0,
     leasePayment,
@@ -57,6 +59,8 @@
     careOneInput: number | null;
     careDeductibleInput: number | null;
     purchaseCreditHonored: boolean;
+    financeMonthsInput: number | null;
+    financeTaxUpfront: boolean;
     carrierMonthsInput: number | null;
     carrierDownInput: number | null;
     carrierCreditInput: number | null;
@@ -114,6 +118,8 @@
   let careOneInput = $state<number | null>(saved.careOneInput ?? null);
   let careDeductibleInput = $state<number | null>(saved.careDeductibleInput ?? null);
   let purchaseCreditHonored = $state(saved.purchaseCreditHonored ?? false);
+  let financeMonthsInput = $state<number | null>(saved.financeMonthsInput ?? null);
+  let financeTaxUpfront = $state(saved.financeTaxUpfront ?? true);
   let carrierMonthsInput = $state<number | null>(saved.carrierMonthsInput ?? null);
   let carrierDownInput = $state<number | null>(saved.carrierDownInput ?? null);
   let carrierCreditInput = $state<number | null>(saved.carrierCreditInput ?? null);
@@ -145,6 +151,11 @@
     return config.quoted?.[t] ?? null;
   }
   const quotedPayment = $derived(quoteFor(term));
+
+  const financeMonths = $derived(financeMonthsInput ?? FINANCE_MONTHS[category]);
+  const financeMonthly = $derived(financeInstallment(Math.max(0, price - tradeIn), financeMonths));
+  /** The advertised figure, before any trade-in is netted off the price. */
+  const financeMonthlyListed = $derived(financeInstallment(price, financeMonths));
 
   const carrierMonths = $derived(carrierMonthsInput ?? 36);
   /**
@@ -178,6 +189,8 @@
     damageFee: damageFeeInput ?? DEFAULT_DAMAGE_FEE[category],
     damageLikelihood: damageLikelihoodInput ?? 20,
     purchaseCreditHonored,
+    financeMonths,
+    financeTaxUpfront,
     carrierMonths,
     carrierDownPayment: carrierDownInput ?? 0,
     carrierBillCredit: carrierCreditInput ?? carrierCreditDefault,
@@ -313,6 +326,7 @@
 
   const railMonth = $derived(Math.min(activeMonth, horizon));
   const railLease = $derived(comparison.lease.months[railMonth]);
+  const railFinance = $derived(comparison.finance.months[railMonth]);
   const railCash = $derived(comparison.cash.months[railMonth]);
   const railCarrier = $derived(comparison.carrier.months[railMonth]);
   const railBuyout = $derived(buyoutAt(railMonth));
@@ -425,6 +439,8 @@
       careOneInput,
       careDeductibleInput,
       purchaseCreditHonored,
+      financeMonthsInput,
+      financeTaxUpfront,
       carrierMonthsInput,
       carrierDownInput,
       carrierCreditInput,
@@ -865,6 +881,36 @@
           />
         </div>
 
+        <h3 class="group-title">Apple's own 0% financing</h3>
+        <p class="step-copy">
+          The comparison the lease is really up against. Apple splits the price into interest-free
+          installments &mdash; a {formatUsd0(price)}
+          {device.name} over {financeMonths} months is
+          <strong>{formatUsd(financeMonthlyListed)}/mo</strong>{#if tradeIn > 0}, or
+            {formatUsd(financeMonthly)} once your {formatUsd0(tradeIn)} trade-in comes off the price{/if}
+          &mdash; and the device is yours the entire time. No residual, no buyout, nothing to hand back.
+        </p>
+        <div class="fields">
+          <NumberField
+            label="Installment term"
+            bind:value={financeMonthsInput}
+            placeholder={FINANCE_MONTHS[category]}
+            suffix="mo"
+            step={6}
+            min={1}
+          />
+        </div>
+        <label class="toggle">
+          <input type="checkbox" bind:checked={financeTaxUpfront} />
+          <span>
+            Pay the sales tax at purchase
+            <span class="toggle-hint">
+              Uncheck if your tax gets rolled into the installments, which is what Apple Card
+              Monthly Installments normally does.
+            </span>
+          </span>
+        </label>
+
         <h3 class="group-title">The carrier comparison</h3>
         <div class="fields">
           <NumberField
@@ -1101,17 +1147,18 @@
       <section class="step">
         <div class="step-head">
           <span class="step-num">09</span>
-          <h2 class="step-title">{horizon} months, three ways</h2>
+          <h2 class="step-title">{horizon} months, four ways</h2>
           <span class="rule"></span>
         </div>
         <p class="step-copy">
           Same device, same taxes, same case, same damage odds, same {horizon} months. The lease column
           follows the path you chose. Buying outright mirrors its device cadence, so if you upgrade at
-          month {term}, the cash buyer sells and rebuys then too.
+          month {term}, the cash buyer sells and rebuys then too; the financing and carrier columns
+          assume you keep the device instead.
         </p>
 
         <div class="verdict">
-          {#each [comparison.lease, comparison.cash, comparison.carrier] as scenario (scenario.key)}
+          {#each comparison.scenarios as scenario (scenario.key)}
             <div
               class="vcard"
               class:best={comparison.bestValueKey === scenario.key}
@@ -1184,16 +1231,27 @@
         <h3 class="group-title">What the math actually says</h3>
         <div class="takeaways">
           <p>
-            <strong>The lease is 0% financing if you buy at the end.</strong> Payments plus buyout
-            equal list price exactly, and paying list price over {term} months at 0% beats paying it today
-            whenever your money can earn anything at all. On that path this is a genuinely fine deal.
+            <strong>Apple already sells 0% financing, and that's the real benchmark.</strong>
+            {formatUsd(financeMonthlyListed)}/mo for {financeMonths} months on this
+            {formatUsd0(price)} device, no interest, and you own it the whole way. Every question about
+            the lease reduces to how it compares with that, not with paying cash.
           </p>
           <p>
-            <strong>It's an expensive rental if you don't.</strong>
-            {leaseSharePct.toFixed(0)}% of the device over {term} months, and you hand it back. Buying
-            and selling the same device at the same moment costs you the depreciation instead &mdash;
-            roughly {(100 - (resaleInput ?? DEFAULT_RESALE_PCT[category] * 100)).toFixed(0)}% here.
-            The gap between those two numbers is what the program earns.
+            <strong>The lease with a buyout is that same deal, wearing a costume.</strong> Payments
+            plus buyout equal list price exactly &mdash; the identical total as financing. The lease
+            just reshapes it: {formatUsd(monthly)}/mo instead of {formatUsd(financeMonthly)}, with
+            the difference waiting at month {term} as a balloon payment. Money deferred is money saved,
+            so in today's dollars the lease edges ahead, and in exchange you spend two years not owning
+            the thing and carrying return-condition risk.
+          </p>
+          <p>
+            <strong>It's an expensive rental if you don't buy.</strong>
+            {leaseSharePct.toFixed(0)}% of the device over {term} months, and you hand it back. Finance
+            the same phone instead and you're out only the depreciation &mdash; roughly
+            {(100 - (resaleInput ?? DEFAULT_RESALE_PCT[category] * 100)).toFixed(0)}% here, since
+            you still hold something worth selling at month {term}. The gap between those two
+            numbers is what the program earns for renting you a device you could have been buying at
+            0% the whole time.
           </p>
           <p>
             <strong>A trade-in and a buyout don't mix.</strong> The credit is spread across your payments,
@@ -1274,6 +1332,10 @@
       </div>
 
       <div class="rail-compare">
+        <div>
+          <span class="rc-key">Apple 0% financing</span>
+          <span class="rc-val">{formatUsd0(railFinance?.cumulativeNpv ?? 0)}</span>
+        </div>
         <div>
           <span class="rc-key">Bought outright</span>
           <span class="rc-val">{formatUsd0(railCash?.cumulativeNpv ?? 0)}</span>
@@ -1666,9 +1728,12 @@
   }
   .vcard-head {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 8px;
+    /* Reserve two lines so a wrapped name doesn't misalign this card's figure
+       against its neighbours'. */
+    min-height: 2.7em;
     margin-bottom: 10px;
   }
   .vcard-name {

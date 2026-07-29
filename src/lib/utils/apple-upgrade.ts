@@ -19,7 +19,7 @@ export const CARE_CHOICES: CareChoice[] = ['none', 'monthly', 'annual', 'one'];
 /** What you do when the initial lease term ends. */
 export type Fork = 'upgrade' | 'buy' | 'extend' | 'walk';
 
-export type ScenarioKey = 'lease' | 'cash' | 'carrier';
+export type ScenarioKey = 'lease' | 'finance' | 'cash' | 'carrier';
 
 export type BilledBy = 'klarna' | 'apple' | 'carrier' | 'other';
 
@@ -29,6 +29,11 @@ export interface Flow {
   label: string;
   amount: number;
   billedBy: BilledBy;
+  /**
+   * Set false for Apple-billed amounts that shouldn't generate their own Daily
+   * Cash line — installments, where the rebate lands once at purchase instead.
+   */
+  earnsRebate?: boolean;
 }
 
 export interface Assumptions {
@@ -67,6 +72,10 @@ export interface Assumptions {
 
   /** Does buying at term's end credit back the trade-in already applied to payments? */
   purchaseCreditHonored: boolean;
+
+  /** Apple's own interest-free installment plan. */
+  financeMonths: number;
+  financeTaxUpfront: boolean;
 
   carrierMonths: number;
   carrierDownPayment: number;
@@ -439,6 +448,87 @@ export function buildCashFlows(a: Assumptions): Flow[] {
   return flows;
 }
 
+/**
+ * Apple divides the total by the term and floors to the cent, so a $1199 iPhone
+ * over 24 months is the advertised $49.95/mo. The shortfall rides on the final
+ * payment, which is why the installments sum to list price exactly.
+ */
+export function financeInstallment(amount: number, months: number): number {
+  if (amount <= 0 || months <= 0) return 0;
+  return Math.floor((amount / months) * 100) / 100;
+}
+
+export function financeFinalPayment(amount: number, months: number): number {
+  if (amount <= 0 || months <= 0) return 0;
+  return round2(amount - financeInstallment(amount, months) * (months - 1));
+}
+
+/**
+ * Apple's interest-free installments: no residual, no buyout, no return. You own
+ * the device from day one and pay exactly list price, which makes this the
+ * benchmark the lease is really competing against.
+ */
+export function buildFinanceFlows(a: Assumptions): Flow[] {
+  const horizon = horizonMonths(a);
+  const months = Math.max(1, Math.round(a.financeMonths));
+  // A trade-in is a credit against the purchase, so it shrinks what's financed.
+  const netPrice = Math.max(0, a.price - a.tradeIn);
+  const financed = a.financeTaxUpfront ? netPrice : netPrice + tax(a, netPrice);
+  const installment = financeInstallment(financed, months);
+  const finalPayment = financeFinalPayment(financed, months);
+
+  const flows: Flow[] = [...acquisitionFlows(a, 0, true), ...careFlows(a, 0, horizon)];
+
+  if (a.financeTaxUpfront) {
+    flows.push({
+      month: 0,
+      label: 'Sales tax (due at purchase)',
+      amount: tax(a, netPrice),
+      billedBy: 'apple'
+    });
+  }
+
+  for (let m = 1; m <= Math.min(months, horizon); m++) {
+    flows.push({
+      month: m,
+      label: m === months ? 'Final installment' : 'Installment (0% interest)',
+      amount: m === months ? finalPayment : installment,
+      billedBy: 'apple',
+      // Daily Cash on an Apple Card installment purchase pays out at the sale,
+      // not month by month.
+      earnsRebate: false
+    });
+  }
+
+  if (a.cashBackPct > 0) {
+    flows.push({
+      month: 0,
+      label: 'Daily Cash on the purchase',
+      amount: -round2(financed * (a.cashBackPct / 100)),
+      billedBy: 'apple'
+    });
+  }
+
+  const damage = expectedDamageCost(a);
+  if (damage > 0) {
+    flows.push({
+      month: a.term,
+      label: `Expected damage cost (${a.damageLikelihood}%)`,
+      amount: damage,
+      billedBy: 'apple'
+    });
+  }
+
+  flows.push({
+    month: horizon,
+    label: 'Resale value if you sell it',
+    amount: -resaleValue(a, horizon),
+    billedBy: 'other'
+  });
+
+  return flows;
+}
+
 export function buildCarrierFlows(a: Assumptions): Flow[] {
   const horizon = horizonMonths(a);
   const months = Math.max(1, Math.round(a.carrierMonths));
@@ -507,7 +597,7 @@ export function buildCarrierFlows(a: Assumptions): Flow[] {
 export function withCashBack(flows: Flow[], pct: number): Flow[] {
   if (pct <= 0) return flows;
   const rebates: Flow[] = flows
-    .filter((f) => f.billedBy === 'apple' && f.amount > 0)
+    .filter((f) => f.billedBy === 'apple' && f.amount > 0 && f.earnsRebate !== false)
     .map((f) => ({
       month: f.month,
       label: `Daily Cash on ${f.label.toLowerCase()}`,
@@ -548,6 +638,7 @@ export function toMonthRows(flows: Flow[], horizon: number, discountRate: number
 
 const SCENARIO_NAMES: Record<ScenarioKey, string> = {
   lease: 'Apple Upgrade lease',
+  finance: 'Apple 0% financing',
   cash: 'Buy outright',
   carrier: 'Carrier installments'
 };
@@ -575,8 +666,11 @@ function buildScenario(key: ScenarioKey, a: Assumptions, raw: Flow[]): Scenario 
 
 export interface Comparison {
   lease: Scenario;
+  finance: Scenario;
   cash: Scenario;
   carrier: Scenario;
+  /** All four, in presentation order. */
+  scenarios: Scenario[];
   horizon: number;
   /** Lowest total in today's dollars, whatever you end up holding. */
   bestKey: ScenarioKey;
@@ -586,19 +680,22 @@ export interface Comparison {
 
 export function compare(a: Assumptions): Comparison {
   const lease = buildScenario('lease', a, buildLeaseFlows(a));
+  const finance = buildScenario('finance', a, buildFinanceFlows(a));
   const cash = buildScenario('cash', a, buildCashFlows(a));
   const carrier = buildScenario('carrier', a, buildCarrierFlows(a));
 
-  const all = [lease, cash, carrier];
-  const best = all.reduce((lowest, s) => (s.npv < lowest.npv ? s : lowest));
-  const bestValue = all.reduce((lowest, s) =>
+  const scenarios = [lease, finance, cash, carrier];
+  const best = scenarios.reduce((lowest, s) => (s.npv < lowest.npv ? s : lowest));
+  const bestValue = scenarios.reduce((lowest, s) =>
     s.npvPerDeviceMonth < lowest.npvPerDeviceMonth ? s : lowest
   );
 
   return {
     lease,
+    finance,
     cash,
     carrier,
+    scenarios,
     horizon: horizonMonths(a),
     bestKey: best.key,
     bestValueKey: bestValue.key

@@ -5,7 +5,10 @@ import {
   buildCashFlows,
   buildLeaseFlows,
   compare,
+  buildFinanceFlows,
   expectedDamageCost,
+  financeFinalPayment,
+  financeInstallment,
   horizonMonths,
   leasePayment,
   npvOf,
@@ -13,6 +16,7 @@ import {
   effectiveBasePayment,
   remainingLeaseObligation,
   resaleValue,
+  round2,
   toMonthRows,
   withCashBack,
   type Assumptions,
@@ -52,6 +56,9 @@ function assume(overrides: Partial<Assumptions> = {}): Assumptions {
     damageLikelihood: 0,
 
     purchaseCreditHonored: false,
+
+    financeMonths: 24,
+    financeTaxUpfront: true,
 
     carrierMonths: 36,
     carrierDownPayment: 0,
@@ -358,6 +365,81 @@ describe('cash flows', () => {
     const resale = buildCashFlows(a).find((f) => f.label.startsWith('Resale value'));
     expect(resale?.month).toBe(48);
     expect(resale?.amount).toBeLessThan(0);
+  });
+});
+
+describe('Apple 0% financing', () => {
+  it('quotes $49.95/mo on a $1199 iPhone over 24 months', () => {
+    // Apple floors the division to the cent; the advertised figure is 49.95,
+    // not the 49.96 you'd get from rounding.
+    expect(financeInstallment(1199, 24)).toBe(49.95);
+    expect(financeFinalPayment(1199, 24)).toBe(50.15);
+  });
+
+  it('sums to exactly the financed amount', () => {
+    for (const [amount, months] of [
+      [1199, 24],
+      [1099, 24],
+      [799, 24],
+      [1999, 12]
+    ] as const) {
+      const total =
+        financeInstallment(amount, months) * (months - 1) + financeFinalPayment(amount, months);
+      expect(total).toBeCloseTo(amount, 2);
+    }
+  });
+
+  it('charges no interest — the installments total list price', () => {
+    const a = assume({ financeMonths: 24, taxRate: 0, cashBackPct: 0 });
+    const installments = buildFinanceFlows(a).filter((f) => f.label.includes('nstallment'));
+    expect(installments).toHaveLength(24);
+    expect(installments.reduce((s, f) => s + f.amount, 0)).toBeCloseTo(a.price, 2);
+  });
+
+  it('nets a trade-in off the financed amount', () => {
+    const a = assume({ tradeIn: 375, financeMonths: 24, taxRate: 0, cashBackPct: 0 });
+    const installments = buildFinanceFlows(a).filter((f) => f.label.includes('nstallment'));
+    expect(installments.reduce((s, f) => s + f.amount, 0)).toBeCloseTo(a.price - a.tradeIn, 2);
+  });
+
+  it('pays Daily Cash once at purchase, not on every installment', () => {
+    const a = assume({ cashBackPct: 3, taxRate: 0 });
+    const flows = withCashBack(buildFinanceFlows(a), a.cashBackPct);
+    const rebates = flows.filter((f) => f.amount < 0 && f.label.includes('Daily Cash'));
+    expect(rebates).toHaveLength(1);
+    expect(rebates[0].month).toBe(0);
+    expect(rebates[0].amount).toBeCloseTo(-round2(a.price * 0.03), 2);
+  });
+
+  it('leaves you owning the device for the whole horizon', () => {
+    const { finance } = compare(assume());
+    expect(finance.ownsDevice).toBe(true);
+    expect(finance.deviceMonths).toBe(48);
+  });
+
+  it('beats leasing and returning, per month of phone', () => {
+    // The comparison that matters: $49.95/mo and it's yours, against $34.99/mo
+    // and it isn't.
+    const a = assume({ fork: 'walk', discountRate: 7, resalePct: 0.5 });
+    const { lease, finance } = compare(a);
+    expect(finance.npvPerDeviceMonth).toBeLessThan(lease.npvPerDeviceMonth);
+  });
+
+  it('costs the same as leasing then buying out, since both total list price', () => {
+    const a = assume({ fork: 'buy', taxRate: 0, cashBackPct: 0, caseCost: 0, activationFee: 0 });
+    const { lease, finance } = compare(a);
+    // Same money, different shape: the lease defers more of it to the buyout.
+    const leaseSpend = lease.flows.filter((f) => f.amount > 0).reduce((s, f) => s + f.amount, 0);
+    const financeSpend = finance.flows
+      .filter((f) => f.amount > 0)
+      .reduce((s, f) => s + f.amount, 0);
+    expect(leaseSpend).toBeCloseTo(financeSpend, 2);
+  });
+
+  it('stops installments at the horizon when the plan runs longer', () => {
+    const a = assume({ term: 12, quotedPayment: 49.99, financeMonths: 24 });
+    const installments = buildFinanceFlows(a).filter((f) => f.label.includes('nstallment'));
+    expect(installments).toHaveLength(horizonMonths(a));
   });
 });
 

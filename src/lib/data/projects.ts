@@ -12,6 +12,7 @@ import {
   Ghost,
   FolderOpenDot,
   Shrimp,
+  Smartphone,
   UtensilsCrossed,
   Volleyball,
   type Icon as IconType
@@ -88,6 +89,13 @@ export const projects: Project[] = [
       'Score tracker for Sushi Go! Spin Some for Dim Sum. Supports 2-6 players with automatic scoring for all dim sum cards.',
     url: resolve('/dimsum'),
     icon: UtensilsCrossed
+  },
+  {
+    name: 'Apple Upgrade, Priced Out',
+    description:
+      "A step-by-step calculator for Apple's new lease program. Walk the lease month by month, pick what you do at the end, and compare the total in today's dollars against buying outright or financing with a carrier.",
+    url: resolve('/apple-upgrade'),
+    icon: Smartphone
   },
   {
     name: 'Loan Calculator',

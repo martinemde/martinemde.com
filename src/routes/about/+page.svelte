@@ -10,8 +10,8 @@
   <div class="body">
     <p>
       AI Developer Tools Engineer at
-      <a href="https://gusto.com" rel="external">Gusto</a>. Founding member of
-      <a href="https://gem.coop" rel="external">gem.coop</a>.
+      <a href="https://gusto.com" rel="external">Gusto</a>. Avid open source contributor and
+      maintainer.
     </p>
   </div>
 

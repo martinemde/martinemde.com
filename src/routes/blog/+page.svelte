@@ -15,7 +15,8 @@
   <div class="eyebrow">// {data.posts.length} posts</div>
   <h1 class="page-title">Blog</h1>
   <p class="page-lede">
-    Notes on Ruby, packaging, developer tooling, and building with AI on the command line.
+    Notes on the intersection between developer tooling, AI, and a life spent telling computers what
+    to do.
   </p>
 </section>
 

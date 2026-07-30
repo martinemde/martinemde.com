@@ -4,13 +4,18 @@
  * No .dark class and no JS — theme follows the OS setting only.
  */
 :root {
-  --bg: light-dark(oklch(0.976 0.008 85), oklch(0.185 0.012 70));
-  --surface: light-dark(oklch(0.945 0.011 85), oklch(0.235 0.014 70));
-  --code: light-dark(oklch(0.928 0.013 85), oklch(0.262 0.015 70));
-  --border: light-dark(oklch(0.875 0.013 80), oklch(0.33 0.012 70));
-  --text: light-dark(oklch(0.27 0.013 75), oklch(0.925 0.01 80));
-  --muted: light-dark(oklch(0.475 0.015 75), oklch(0.7 0.014 75));
-  --faint: light-dark(oklch(0.65 0.013 75), oklch(0.52 0.012 70));
+  /*
+   * Dark neutrals are one ramp: hue fixed at 264, lightness does all the work.
+   * Chroma shrinks as L rises so near-white text reads neutral, not tinted.
+   * Only --accent/--accent2 below are allowed off hue 264.
+   */
+  --bg: light-dark(oklch(0.976 0.008 85), oklch(0.16 0.025 264));
+  --surface: light-dark(oklch(0.945 0.011 85), oklch(0.21 0.025 264));
+  --code: light-dark(oklch(0.928 0.013 85), oklch(0.235 0.025 264));
+  --border: light-dark(oklch(0.875 0.013 80), oklch(0.32 0.025 264));
+  --text: light-dark(oklch(0.27 0.013 75), oklch(0.965 0.006 264));
+  --muted: light-dark(oklch(0.475 0.015 75), oklch(0.79 0.017 264));
+  --faint: light-dark(oklch(0.65 0.013 75), oklch(0.58 0.015 264));
   --accent: light-dark(oklch(0.545 0.1 200), oklch(0.81 0.11 195));
   --accent2: light-dark(oklch(0.52 0.14 305), oklch(0.77 0.11 305));
 }
@@ -45,7 +50,11 @@ body {
   }
 }
 
-/* No-JS theme label swap: show the label matching the OS scheme. */
+/*
+ * Theme label swap. The media queries are the no-JS fallback (and what renders
+ * in prerendered HTML before the head script runs); the data-mode rules below
+ * are more specific and win once an explicit mode is set.
+ */
 .theme-when-light {
   display: none;
 }
@@ -59,6 +68,18 @@ body {
   .theme-when-dark {
     display: none;
   }
+}
+[data-mode='light'] .theme-when-light {
+  display: inline;
+}
+[data-mode='light'] .theme-when-dark {
+  display: none;
+}
+[data-mode='dark'] .theme-when-light {
+  display: none;
+}
+[data-mode='dark'] .theme-when-dark {
+  display: inline;
 }
 
 /* Shared eyebrow utility used across content pages. */

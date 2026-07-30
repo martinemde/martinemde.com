@@ -12,22 +12,23 @@
 
 <svelte:head>
   <title>Martin Emde</title>
-  <meta name="description" content="Software Engineer, Enthusiast of Things" />
+  <meta name="description" content="Software Engineer" />
 </svelte:head>
 
 <section class="hero">
-  <div class="eyebrow">// software engineer · enthusiast of things</div>
+  <div class="eyebrow">// software engineer</div>
   <h1 class="hero-name">Martin Emde</h1>
   <p class="hero-lede">
     AI Developer Tools Engineer at
-    <a href="https://gusto.com" rel="external">Gusto</a>. Founding member of
-    <a href="https://gem.coop" rel="external">gem.coop</a>. See also:
-    <a href="https://github.com/martinemde" rel="external">GitHub</a>.
+    <a href="https://gusto.com" rel="external">Gusto</a>.
   </p>
   <div class="chips">
-    <span class="chip"><span class="dot dot-a"></span>Gusto</span>
-    <span class="chip"><span class="dot dot-b"></span>gem.coop</span>
-    <span class="chip"><span class="dot dot-a"></span>open source</span>
+    <a href="https://gusto.com" rel="external">
+      <span class="chip"><span class="dot dot-a"></span>Gusto</span>
+    </a>
+    <a href="https://github.com/martinemde" rel="external">
+      <span class="chip"><span class="dot dot-a"></span>open source</span>
+    </a>
   </div>
 </section>
 
@@ -90,7 +91,7 @@
 <section class="elsewhere block">
   <span class="else-label">elsewhere:</span>
   <a href="https://github.com/martinemde" rel="external">github/@martinemde ↗</a>
-  <a href="https://ruby.social/@martinemde" rel="external">ruby.social/@martinemde ↗</a>
+  <a href="https://bsky.app/profile/martinemde.com" rel="external">bsky/@martinemde.com ↗</a>
 </section>
 
 <style>

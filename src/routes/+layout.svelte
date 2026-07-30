@@ -94,14 +94,20 @@
         <a class="nav-link" class:active={isAbout} href={resolve('/about')}>
           <span class="slash">/</span>about
         </a>
-        <span class="theme-ind" aria-hidden="true">
-          <span class="theme-blip"></span>
-          <span class="theme-text"
+        <button
+          type="button"
+          class="theme-ind"
+          data-theme-toggle
+          aria-label="Switch color theme"
+          aria-pressed="false"
+        >
+          <span class="theme-blip" aria-hidden="true"></span>
+          <span class="theme-text" aria-hidden="true"
             >theme:<span class="theme-when-dark">dark</span><span class="theme-when-light"
               >light</span
             ></span
           >
-        </span>
+        </button>
       </nav>
     </div>
   </header>
@@ -113,12 +119,16 @@
   <footer class="site-footer">
     <div class="statusline">
       <span class="sl-path"><span class="sl-pulse"></span>{pathDisplay}</span>
-      <span class="sl-accent">Teal &amp; Violet</span>
       <span class="sl-spacer"></span>
       <span class="sl-dim">© 2025 Martin Emde</span>
-      <span class="sl-dim"
+      <button
+        type="button"
+        class="sl-dim sl-theme"
+        data-theme-toggle
+        aria-label="Switch color theme"
+        aria-pressed="false"
         >theme:<span class="theme-when-dark">dark</span><span class="theme-when-light">light</span
-        ></span
+        ></button
       >
       <span class="sl-ver">v2026.7<span class="sl-cursor">_</span></span>
     </div>
@@ -190,7 +200,7 @@
     font-weight: 560;
   }
 
-  /* Theme indicator (non-interactive) */
+  /* Theme switch — reads as the current mode, click toggles it */
   .theme-ind {
     margin-left: 14px;
     display: inline-flex;
@@ -200,6 +210,16 @@
     border-radius: 8px;
     background: var(--surface);
     padding: 7px 12px;
+    cursor: pointer;
+    font: inherit;
+    line-height: 1;
+  }
+  .theme-ind:hover {
+    border-color: var(--accent);
+  }
+  .theme-ind:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .theme-blip {
     height: 10px;
@@ -253,9 +273,24 @@
     background: var(--accent);
     animation: mePulse 2.4s ease-in-out infinite;
   }
-  .sl-accent,
   .sl-dim {
     color: var(--faint);
+  }
+  /* Same look as the .sl-dim span it replaced — just the button chrome removed. */
+  .sl-theme {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+  }
+  .sl-theme:hover {
+    color: var(--accent);
+  }
+  .sl-theme:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .sl-spacer {
     flex: 1;
@@ -279,9 +314,6 @@
     }
     .theme-text {
       display: none; /* collapse to just the blip on mobile */
-    }
-    .sl-accent {
-      display: none;
     }
   }
 </style>

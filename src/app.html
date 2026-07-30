@@ -13,6 +13,54 @@
     <meta property="og:site_name" content="Martin Emde" />
     <meta property="og:locale" content="en_us" />
     <meta name="twitter:site" content="@martinemde" />
+    <!--
+      Color mode. Runs before first paint so there is no flash, and handles the
+      toggle by delegation so it still works on routes that ship no client JS
+      (see `csr = dev` in about/+page.ts). Absent localStorage = follow the OS.
+    -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+
+        function store(mode) {
+          try {
+            localStorage.setItem('mode', mode);
+          } catch (e) {
+            /* private mode — the choice just won't persist */
+          }
+        }
+
+        function stored() {
+          try {
+            return localStorage.getItem('mode');
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function apply(mode) {
+          root.setAttribute('data-mode', mode);
+          for (var el of document.querySelectorAll('[data-theme-toggle]')) {
+            el.setAttribute('aria-pressed', String(mode === 'dark'));
+          }
+        }
+
+        apply(stored() || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+
+        // The buttons don't exist yet at head time; sync aria-pressed once they do.
+        document.addEventListener('DOMContentLoaded', function () {
+          apply(root.getAttribute('data-mode'));
+        });
+
+        document.addEventListener('click', function (event) {
+          var target = event.target;
+          if (!(target instanceof Element) || !target.closest('[data-theme-toggle]')) return;
+          var mode = root.getAttribute('data-mode') === 'dark' ? 'light' : 'dark';
+          apply(mode);
+          store(mode);
+        });
+      })();
+    </script>
     <!-- Dynamic meta tags, RSS feed, and IndieAuth endpoints are set in +layout.svelte -->
     %sveltekit.head%
   </head>

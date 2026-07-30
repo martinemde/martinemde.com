@@ -9,12 +9,31 @@
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
 
+/*
+ * Dark mode uses Tailwind's data-attribute strategy, per Skeleton's guide:
+ * https://www.skeleton.dev/docs/svelte/guides/mode
+ */
+@custom-variant dark (&:where([data-mode='dark'], [data-mode='dark'] *));
+
 :root {
   --font-body:
     'MonoLisaText', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
     Cantarell, 'Helvetica Neue', sans-serif;
   --font-mono: 'MonoLisaCode', ui-monospace, monospace;
+  /* No data-mode (JS off) falls back to the OS setting, as before. */
   color-scheme: light dark;
+}
+
+/*
+ * The design tokens in theme.css resolve through light-dark(), which reads
+ * color-scheme — so data-mode has to drive color-scheme for the switch to
+ * reach them. This is what keeps the `dark:` variant and the tokens in sync.
+ */
+html[data-mode='light'] {
+  color-scheme: light;
+}
+html[data-mode='dark'] {
+  color-scheme: dark;
 }
 
 body {

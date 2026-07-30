@@ -221,6 +221,10 @@
   const careCostToCompare = $derived(careCostOver(care === 'none' ? 'monthly' : care));
   /** What coverage saves on one incident: the repair you skip, less the deductible. */
   const damageSaved = $derived(Math.max(0, assumptions.damageFee - assumptions.careDeductible));
+  /** The two sides of the coverage question, blended by the odds you set. */
+  const damageOdds = $derived(assumptions.damageLikelihood / 100);
+  const repairsUncovered = $derived(assumptions.damageFee * damageOdds);
+  const repairsCovered = $derived(careCostToCompare + assumptions.careDeductible * damageOdds);
   /**
    * Incidents over the coverage window needed for the premiums to pay for
    * themselves. Null when a covered repair costs as much as an uncovered one.
@@ -661,16 +665,91 @@
       <section class="step">
         <div class="step-head">
           <span class="step-num">04</span>
-          <h2 class="step-title">AppleCare?</h2>
+          <h2 class="step-title">Will you break it?</h2>
           <span class="rule"></span>
         </div>
         <p class="step-copy">
+          Not how careful you feel &mdash; the count. How many times in the last four years have you
+          cracked a screen or a back glass, including the ones you never bothered to fix? One in
+          four years is roughly <strong>25%</strong> odds over a {careCoverageMonths}-month window.
+          Two is more like 50%. Never, with a case on and no kids or job site involved, is 10% or
+          less. Pick the number your history supports, not the one you'd like to be true.
+        </p>
+        <div class="fields">
+          <NumberField
+            label="Odds you damage it"
+            bind:value={damageLikelihoodInput}
+            placeholder="20"
+            suffix="%"
+            step={5}
+            max={100}
+            hint="Charged as an expected cost, once per return or repair moment in the model."
+          />
+          <NumberField
+            label="Out-of-warranty repair"
+            bind:value={damageFeeInput}
+            placeholder={DEFAULT_DAMAGE_FEE[category]}
+            prefix="$"
+            step={25}
+            hint="What Apple charges with no coverage — also roughly what Klarna would bill you for handing back a damaged device."
+          />
+          <NumberField
+            label="AppleCare deductible"
+            bind:value={careDeductibleInput}
+            placeholder={CARE_PRICING[category].deductible}
+            prefix="$"
+            step={10}
+            hint="What the same repair still costs you with coverage."
+          />
+        </div>
+
+        <div class="exit-grid">
+          <div>
+            <span class="ek">Pay repairs yourself</span><span class="ev"
+              >{formatUsd0(repairsUncovered)}</span
+            >
+          </div>
+          <div>
+            <span class="ek">Buy AppleCare+ instead</span><span class="ev"
+              >{formatUsd0(repairsCovered)}</span
+            >
+          </div>
+        </div>
+        <div class="callout">
+          <p>
+            At {assumptions.damageLikelihood}% odds you either pay
+            {formatUsd0(assumptions.damageFee)} for a repair or nothing at all, which averages out to
+            {formatUsd0(repairsUncovered)} over {careCoverageMonths} months. Coverage turns that same
+            repair into a {formatUsd0(assumptions.careDeductible)} deductible, so it's worth
+            {formatUsd0(damageSaved)} each time you use it &mdash; but the premiums cost
+            {formatUsd0(careCostToCompare)} whether you use them or not.
+            {#if careBreakEven === null}
+              The deductible is as expensive as the repair here, so coverage only earns its keep on
+              theft, loss, or a second failure.
+            {:else if careBreakEven <= 1}
+              It pays for itself at roughly
+              <strong>{Math.round(careBreakEven * 100)}%</strong> odds &mdash; about one incident in that
+              window. Above that, coverage is the cheaper bet. Below it you're buying peace of mind rather
+              than expected value, and the honest alternative is to bank the premium and pay the repair
+              if it happens.
+            {:else}
+              For the premiums to pay for themselves on repairs alone you'd have to break it about
+              <strong>{careBreakEven.toFixed(1)} times</strong> in {careCoverageMonths} months, which
+              is more than most people manage. Priced purely as repair insurance it's a losing bet; what
+              you're actually buying is the tail &mdash; theft, loss, and the return-condition risk below.
+            {/if}
+          </p>
+        </div>
+
+        <h3 class="group-title">AppleCare?</h3>
+        <p class="step-copy">
           AppleCare is not part of the lease and Apple bills it separately. It matters more here
           than it would on a device you own because you have to hand this one back in "good
-          condition" (according to Apple). Returning a damaged device at the end of the lease will
-          result in a repair fee or an AppleCare deductible fee depending on your coverage at the
-          time. Prices are estimated; enter the quoted price from apple.com for the most accurate
-          calculation.
+          condition" (according to Apple), and whether a scuffed return counts is Klarna's judgment
+          call rather than yours. If you plan to buy the device out, or you're a careful owner with
+          a history to prove it, skipping coverage is defensible. If you plan to hand it back,
+          coverage is buying down a risk you don't control. Prices are estimated; enter the quoted
+          price from apple.com for the most accurate calculation.
         </p>
 
         <div class="choices choices-wide">
@@ -720,73 +799,6 @@
             {/if}
           </div>
         {/if}
-
-        <h3 class="group-title">How often do you actually break one?</h3>
-        <p class="step-copy">
-          Not how careful you feel &mdash; the count. How many times in the last four years have you
-          cracked a screen or a back glass, including the ones you never bothered to fix? One in
-          four years is roughly <strong>25%</strong> odds over a {careCoverageMonths}-month window.
-          Two is more like 50%. Never, with a case on and no kids or job site involved, is 10% or
-          less. Pick the number your history supports, not the one you'd like to be true.
-        </p>
-        <div class="fields">
-          <NumberField
-            label="Odds you damage it"
-            bind:value={damageLikelihoodInput}
-            placeholder="20"
-            suffix="%"
-            step={5}
-            max={100}
-            hint="Charged as an expected cost, once per return or repair moment in the model."
-          />
-          <NumberField
-            label="Out-of-warranty repair"
-            bind:value={damageFeeInput}
-            placeholder={DEFAULT_DAMAGE_FEE[category]}
-            prefix="$"
-            step={25}
-            hint="What Apple charges with no coverage — also roughly what Klarna would bill you for handing back a damaged device."
-          />
-          <NumberField
-            label="AppleCare deductible"
-            bind:value={careDeductibleInput}
-            placeholder={CARE_PRICING[category].deductible}
-            prefix="$"
-            step={10}
-            hint="What the same repair still costs you with coverage."
-          />
-        </div>
-
-        <div class="callout">
-          <p>
-            Coverage turns a {formatUsd0(assumptions.damageFee)} repair into a
-            {formatUsd0(assumptions.careDeductible)} one, so each incident it catches is worth
-            {formatUsd0(damageSaved)} to you. Over {careCoverageMonths} months, AppleCare+ costs about
-            {formatUsd0(careCostToCompare)}.
-            {#if careBreakEven === null}
-              The deductible is as expensive as the repair here, so coverage only earns its keep on
-              theft, loss, or a second failure.
-            {:else if careBreakEven <= 1}
-              It pays for itself at roughly
-              <strong>{Math.round(careBreakEven * 100)}%</strong> odds &mdash; about one incident in that
-              window. Above that, coverage is the cheaper bet. Below it you're buying peace of mind rather
-              than expected value, and the honest alternative is to bank the premium and pay the repair
-              if it happens.
-            {:else}
-              For the premiums to pay for themselves on repairs alone you'd have to break it about
-              <strong>{careBreakEven.toFixed(1)} times</strong> in {careCoverageMonths} months, which
-              is more than most people manage. Priced purely as repair insurance it's a losing bet; what
-              you're actually buying is the tail &mdash; theft, loss, and the return-condition risk below.
-            {/if}
-          </p>
-        </div>
-        <p class="step-copy">
-          Two thumbs on the scale for coverage on a lease specifically: you have to hand this device
-          back in good condition, and a scratched-up return is Klarna's judgment call rather than
-          yours. If you plan to buy it out or you're a careful owner with a history to prove it,
-          skipping AppleCare is defensible. If you plan to return it, coverage is buying down a risk
-          you don't control.
-        </p>
       </section>
     {/if}
 

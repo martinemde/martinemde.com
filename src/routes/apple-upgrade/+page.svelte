@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { ChevronUp } from 'lucide-svelte';
   import NumberField from '$lib/components/NumberField.svelte';
   import {
     APPLECARE_ONE_MONTHLY,
@@ -269,6 +270,17 @@
 
   /** The three scenarios stacked against the lease, in presentation order. */
   const alternatives = $derived([comparison.finance, comparison.cash, comparison.carrier]);
+
+  /**
+   * Mobile collapses the rail to a single tappable line; desktop always shows
+   * everything regardless of this state, so a toggle there is a harmless no-op.
+   */
+  let railExpanded = $state(false);
+
+  // Keep aria-expanded honest on desktop, where the body is never hidden.
+  $effect(() => {
+    if (window.matchMedia('(min-width: 901px)').matches) railExpanded = true;
+  });
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   function pickCategory(next: Category) {
@@ -1252,44 +1264,58 @@
   </div>
 
   <!-- Rail ───────────────────────────────────────────────────────────────── -->
-  <aside class="rail" aria-label="Comparison totals">
+  <aside class="rail" class:expanded={railExpanded} aria-label="Comparison totals">
     <div class="rail-inner">
-      <div class="rail-when">
-        The comparison
-        <span class="rail-of">{horizon} months &middot; today's dollars</span>
-      </div>
-
-      <div class="rail-figure">
-        <span class="rail-label">
-          {comparison.lease.name}: {forkLabel.toLowerCase()}
-          {#if comparison.bestValueKey === 'lease'}
-            <span class="badge">best value</span>
-          {/if}
+      <button
+        type="button"
+        class="rail-head"
+        aria-expanded={railExpanded}
+        aria-controls="rail-body"
+        onclick={() => (railExpanded = !railExpanded)}
+      >
+        <span class="rail-when">
+          The comparison
+          <span class="rail-of">{horizon} months &middot; today's dollars</span>
         </span>
-        <span class="rail-value">{formatUsd0(comparison.lease.npv)}</span>
-        <span class="rail-sub">
-          {formatUsd0(comparison.lease.total)} cash out &middot;
-          {formatUsd(comparison.lease.npvPerDeviceMonth)}/mo of device
+        <span class="rail-peek">{formatUsd0(comparison.lease.npv)}</span>
+        <span class="rail-chevron" aria-hidden="true">
+          <ChevronUp size={15} />
         </span>
-      </div>
+      </button>
 
-      <div class="rail-compare">
-        {#each alternatives as scenario (scenario.key)}
-          <div>
-            <span class="rc-key">{scenario.name}</span>
-            <span class="rc-side">
-              {#if comparison.bestValueKey === scenario.key}
-                <span class="badge">best value</span>
-              {/if}
-              <span class="rc-val">{formatUsd0(scenario.npv)}</span>
-            </span>
-          </div>
-        {/each}
-      </div>
+      <div class="rail-body" id="rail-body">
+        <div class="rail-figure">
+          <span class="rail-label">
+            {comparison.lease.name}: {forkLabel.toLowerCase()}
+            {#if comparison.bestValueKey === 'lease'}
+              <span class="badge">best value</span>
+            {/if}
+          </span>
+          <span class="rail-value">{formatUsd0(comparison.lease.npv)}</span>
+          <span class="rail-sub">
+            {formatUsd0(comparison.lease.total)} cash out &middot;
+            {formatUsd(comparison.lease.npvPerDeviceMonth)}/mo of device
+          </span>
+        </div>
 
-      <div class="rail-foot">
-        {monthly > 0 ? `${formatUsd(monthly)}/mo` : '—'} &middot; {term}mo &middot;
-        {care === 'none' ? 'no AppleCare' : 'AppleCare'}
+        <div class="rail-compare">
+          {#each alternatives as scenario (scenario.key)}
+            <div>
+              <span class="rc-key">{scenario.name}</span>
+              <span class="rc-side">
+                {#if comparison.bestValueKey === scenario.key}
+                  <span class="badge">best value</span>
+                {/if}
+                <span class="rc-val">{formatUsd0(scenario.npv)}</span>
+              </span>
+            </div>
+          {/each}
+        </div>
+
+        <div class="rail-foot">
+          {monthly > 0 ? `${formatUsd(monthly)}/mo` : '—'} &middot; {term}mo &middot;
+          {care === 'none' ? 'no AppleCare' : 'AppleCare'}
+        </div>
       </div>
     </div>
   </aside>
@@ -1868,6 +1894,53 @@
     font-size: 10.5px;
     color: var(--faint);
   }
+  /* The head is a <button> so the whole line is a tap target on mobile. */
+  .rail-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+  }
+  .rail-peek {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .rail-chevron {
+    display: inline-flex;
+    flex: none;
+    align-self: center;
+    color: var(--faint);
+    transition: transform 160ms ease;
+  }
+  .rail.expanded .rail-chevron {
+    transform: rotate(180deg);
+  }
+  .rail-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  @media (min-width: 901px) {
+    /* Desktop never collapses, so the toggle affordances would lie. */
+    .rail-peek,
+    .rail-chevron {
+      display: none;
+    }
+    .rail-head {
+      pointer-events: none;
+    }
+  }
   .rail-figure {
     display: flex;
     flex-direction: column;
@@ -1935,27 +2008,50 @@
     .layout {
       grid-template-columns: minmax(0, 1fr);
       gap: 0;
+      /* Keep the end of the page clear of the fixed bar. */
+      padding-bottom: calc(110px + env(safe-area-inset-bottom));
     }
     .rail {
-      position: sticky;
-      top: 0;
-      order: -1;
-      z-index: 10;
-      margin: 0 -20px;
-      padding: 0;
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 20;
     }
     .rail-inner {
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 10px 20px;
+      gap: 0;
+      border: none;
+      border-top: 1px solid var(--border);
       border-radius: 0;
-      border-left: none;
-      border-right: none;
-      border-top: none;
-      padding: 10px 20px;
+      padding: 0 0 env(safe-area-inset-bottom);
       background: color-mix(in oklch, var(--surface) 94%, transparent);
       backdrop-filter: blur(8px);
+    }
+    /* The head anchors the bottom edge; the body grows upward above it. */
+    .rail-head {
+      order: 2;
+      padding: 12px 20px;
+      cursor: pointer;
+    }
+    .rail-body {
+      order: 1;
+      display: none;
+    }
+    .rail.expanded .rail-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 12px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rail-of {
+      display: none;
+    }
+    .rail.expanded .rail-of {
+      display: inline;
+    }
+    .rail.expanded .rail-peek {
+      display: none;
     }
     .rail-figure {
       flex-direction: row;
@@ -1978,10 +2074,6 @@
     .rc-key,
     .rc-val {
       font-size: 10.5px;
-    }
-    .rail-sub,
-    .rail-foot {
-      display: none;
     }
   }
 

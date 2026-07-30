@@ -362,30 +362,13 @@
     paymentOverride = null;
   }
 
-  const CARE_OPTIONS: { value: CareChoice; name: string; detail: string }[] = $derived([
-    {
-      value: 'none',
-      name: 'No AppleCare',
-      detail: 'One year of warranty. You carry the damage risk.'
-    },
-    {
-      value: 'monthly',
-      name: 'AppleCare+ monthly',
-      detail: `${formatUsd(assumptions.careMonthly)}/mo, cancel anytime`
-    },
-    {
-      value: 'annual',
-      name: 'AppleCare+ annual',
-      detail: `${formatUsd0(assumptions.careAnnual)}/yr, billed a year at a time — ${careYears} ${
-        careYears === 1 ? 'charge' : 'charges'
-      } over ${careCoverageMonths} months`
-    },
-    {
-      value: 'one',
-      name: 'AppleCare One',
-      detail: `${formatUsd(assumptions.careOneMonthly)}/mo for up to three devices`
-    }
-  ]);
+  /** Details render in the template so the prices can be inline inputs. */
+  const CARE_OPTIONS: { value: CareChoice; name: string }[] = [
+    { value: 'none', name: 'No AppleCare' },
+    { value: 'monthly', name: 'AppleCare+ monthly' },
+    { value: 'annual', name: 'AppleCare+ annual' },
+    { value: 'one', name: 'AppleCare One' }
+  ];
 
   const FORK_OPTIONS: { value: Fork; name: string; detail: string }[] = [
     {
@@ -697,7 +680,9 @@
           AppleCare is not part of the lease and Apple bills it separately. It matters more here
           than it would on a device you own: you have to hand this one back in good condition, and
           the standard for "good condition" is Klarna's, not yours. Without coverage, a cracked
-          screen becomes a damage fee at return.
+          screen becomes a damage fee at return. The prices on the cards are estimates for a
+          {CATEGORY_LABELS[category].toLowerCase()} and editable in place &mdash; if apple.com quotes
+          you something different, that number wins.
         </p>
         <p class="step-copy">
           Note that the annual plan is not a one-time payment covering the lease. It bills a year at
@@ -711,15 +696,70 @@
 
         <div class="choices choices-wide">
           {#each CARE_OPTIONS as option (option.value)}
-            <button
-              type="button"
+            <!-- role="button" rather than <button> so the price can be an input
+                 inside the card; the input stops propagation so editing a price
+                 doesn't change the selection. -->
+            <div
               class="choice"
+              role="button"
+              tabindex="0"
               aria-pressed={careChoice === option.value}
               onclick={() => (careChoice = option.value)}
+              onkeydown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  careChoice = option.value;
+                }
+              }}
             >
               <span class="choice-name">{option.name}</span>
-              <span class="choice-detail">{option.detail}</span>
-            </button>
+              <span class="choice-detail">
+                {#if option.value === 'monthly'}
+                  $<input
+                    class="price-input"
+                    type="number"
+                    bind:value={careMonthlyInput}
+                    placeholder={String(CARE_PRICING[category].monthly)}
+                    step={1}
+                    min={0}
+                    inputmode="decimal"
+                    aria-label="AppleCare+ monthly price"
+                    onclick={(e) => e.stopPropagation()}
+                    onkeydown={(e) => e.stopPropagation()}
+                  />/mo, cancel anytime
+                {:else if option.value === 'annual'}
+                  $<input
+                    class="price-input"
+                    type="number"
+                    bind:value={careAnnualInput}
+                    placeholder={String(CARE_PRICING[category].annual)}
+                    step={10}
+                    min={0}
+                    inputmode="decimal"
+                    aria-label="AppleCare+ annual price"
+                    onclick={(e) => e.stopPropagation()}
+                    onkeydown={(e) => e.stopPropagation()}
+                  />/yr, billed a year at a time &mdash; {careYears}
+                  {careYears === 1 ? 'charge' : 'charges'} over {careCoverageMonths} months
+                {:else if option.value === 'one'}
+                  $<input
+                    class="price-input"
+                    type="number"
+                    bind:value={careOneInput}
+                    placeholder={String(APPLECARE_ONE_MONTHLY)}
+                    step={1}
+                    min={0}
+                    inputmode="decimal"
+                    aria-label="AppleCare One monthly price"
+                    onclick={(e) => e.stopPropagation()}
+                    onkeydown={(e) => e.stopPropagation()}
+                  />/mo for up to three devices &mdash; if you already pay it, adding this one may
+                  cost nothing
+                {:else}
+                  One year of warranty. You carry the damage risk.
+                {/if}
+              </span>
+            </div>
           {/each}
         </div>
       </section>
@@ -774,49 +814,6 @@
           </span>
         </label>
 
-        <h3 class="group-title">AppleCare prices</h3>
-        <p class="step-copy">
-          Estimates for a {CATEGORY_LABELS[category].toLowerCase()}, since Apple's prices vary by
-          model and move over time. The annual plan bills a year at a time and renews, so a
-          {term}-month lease sees {Math.ceil(term / 12)} of them before you even reach the end-of-term
-          decision.
-        </p>
-        <div class="fields">
-          <NumberField
-            label="AppleCare+ monthly"
-            bind:value={careMonthlyInput}
-            placeholder={CARE_PRICING[category].monthly}
-            prefix="$"
-            suffix="/mo"
-            step={1}
-          />
-          <NumberField
-            label="AppleCare+ annual"
-            bind:value={careAnnualInput}
-            placeholder={CARE_PRICING[category].annual}
-            prefix="$"
-            suffix="/yr"
-            step={10}
-          />
-          <NumberField
-            label="AppleCare One"
-            bind:value={careOneInput}
-            placeholder={APPLECARE_ONE_MONTHLY}
-            prefix="$"
-            suffix="/mo"
-            step={1}
-            hint="Covers up to three devices, so if you already pay it, the marginal cost of adding this one may be zero."
-          />
-          <NumberField
-            label="Repair deductible"
-            bind:value={careDeductibleInput}
-            placeholder={CARE_PRICING[category].deductible}
-            prefix="$"
-            step={10}
-            hint="What a covered repair still costs you."
-          />
-        </div>
-
         <h3 class="group-title">Getting it out the door</h3>
         <div class="fields">
           <NumberField
@@ -867,6 +864,14 @@
             placeholder={DEFAULT_DAMAGE_FEE[category]}
             prefix="$"
             step={25}
+          />
+          <NumberField
+            label="Repair deductible"
+            bind:value={careDeductibleInput}
+            placeholder={CARE_PRICING[category].deductible}
+            prefix="$"
+            step={10}
+            hint="What a covered repair still costs you with AppleCare."
           />
           <NumberField
             label="Odds you damage it"
@@ -1543,6 +1548,43 @@
     line-height: 1.55;
     color: var(--muted);
     text-wrap: pretty;
+  }
+  /* Cards with embedded inputs are divs with role="button", so they need an
+     explicit focus ring — buttons got one from the UA for free. */
+  .choice[role='button']:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .price-input {
+    /* ch-sized so six digits (e.g. "149.99") fit without clipping. */
+    width: 8ch;
+    margin: 0 1px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    padding: 1px 4px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--accent);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .price-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 18%, transparent);
+  }
+  .price-input::placeholder {
+    color: var(--faint);
+  }
+  .price-input::-webkit-outer-spin-button,
+  .price-input::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+  .price-input {
+    appearance: textfield;
+    -moz-appearance: textfield;
   }
 
   /* ── Chips ──────────────────────────────────────────────────────────────── */

@@ -230,6 +230,21 @@
    * themselves. Null when a covered repair costs as much as an uncovered one.
    */
   const careBreakEven = $derived(damageSaved > 0 ? careCostToCompare / damageSaved : null);
+  /** One incident, all in: the premiums you already paid plus the deductible you still owe. */
+  const careOneIncident = $derived(careCostToCompare + assumptions.careDeductible);
+  /** What coverage nets you on that one incident. Negative means it lost the bet. */
+  const careNetOnOneIncident = $derived(assumptions.damageFee - careOneIncident);
+
+  /**
+   * Losing it is the tail the lease makes uniquely bad. There's nothing to hand
+   * back at month `term`, so the return option disappears: the remaining payments
+   * still come, and the buyout lands anyway.
+   */
+  const lossMonth = $derived(Math.max(1, Math.round(term / 2)));
+  const lossPaid = $derived(monthly * lossMonth);
+  const lossOwed = $derived(remainingLeaseObligation(assumptions, lossMonth));
+  const lossBuyout = $derived(purchaseOptionFee(assumptions, term));
+  const lossTotal = $derived(lossPaid + lossOwed + lossBuyout);
 
   /** The resale estimate the buy-versus-return decision turns on. */
   const resalePctAtTerm = $derived(resaleInput ?? DEFAULT_RESALE_PCT[category] * 100);
@@ -344,7 +359,7 @@
     {
       value: 'none',
       name: 'No AppleCare',
-      detail: 'One year of warranty. You carry the damage risk.'
+      detail: 'One year of warranty. Damage and loss are yours.'
     },
     {
       value: 'monthly',
@@ -669,11 +684,16 @@
           <span class="rule"></span>
         </div>
         <p class="step-copy">
-          Not how careful you feel &mdash; the count. How many times in the last four years have you
-          cracked a screen or a back glass, including the ones you never bothered to fix? One in
-          four years is roughly <strong>25%</strong> odds over a {careCoverageMonths}-month window.
-          Two is more like 50%. Never, with a case on and no kids or job site involved, is 10% or
-          less. Pick the number your history supports, not the one you'd like to be true.
+          On a phone you own, a cracked back glass is something you can decide to live with. This
+          one you hand back in "good condition", and whether a scuffed return counts is Klarna's
+          judgment call rather than yours. That's what the lease changes: a repair you would have
+          ignored becomes a bill you didn't plan for.
+        </p>
+        <p class="step-copy">
+          Count, don't guess. How many screens or back glasses have you cracked in the last four
+          years, including the ones you never fixed? One is roughly <strong>25%</strong> odds over a
+          {careCoverageMonths}-month window, two is more like 50%, and none &mdash; with a case, no
+          kids, no job site &mdash; is 10% or less.
         </p>
         <div class="fields">
           <NumberField
@@ -705,51 +725,81 @@
 
         <div class="exit-grid">
           <div>
-            <span class="ek">Pay repairs yourself</span><span class="ev"
-              >{formatUsd0(repairsUncovered)}</span
+            <span class="ek">One repair, no coverage</span><span class="ev"
+              >{formatUsd0(assumptions.damageFee)}</span
             >
           </div>
           <div>
-            <span class="ek">Buy AppleCare+ instead</span><span class="ev"
-              >{formatUsd0(repairsCovered)}</span
+            <span class="ek">AppleCare+ for {careCoverageMonths} months</span><span class="ev"
+              >{formatUsd0(careCostToCompare)}</span
+            >
+          </div>
+          <div>
+            <span class="ek">Premiums plus one deductible</span><span class="ev"
+              >{formatUsd0(careOneIncident)}</span
             >
           </div>
         </div>
         <div class="callout">
           <p>
-            At {assumptions.damageLikelihood}% odds you either pay
-            {formatUsd0(assumptions.damageFee)} for a repair or nothing at all, which averages out to
-            {formatUsd0(repairsUncovered)} over {careCoverageMonths} months. Coverage turns that same
-            repair into a {formatUsd0(assumptions.careDeductible)} deductible, so it's worth
-            {formatUsd0(damageSaved)} each time you use it &mdash; but the premiums cost
-            {formatUsd0(careCostToCompare)} whether you use them or not.
+            The premiums cost {formatUsd0(careCostToCompare)} whether you use them or not.
             {#if careBreakEven === null}
-              The deductible is as expensive as the repair here, so coverage only earns its keep on
-              theft, loss, or a second failure.
-            {:else if careBreakEven <= 1}
-              It pays for itself at roughly
-              <strong>{Math.round(careBreakEven * 100)}%</strong> odds &mdash; about one incident in that
-              window. Above that, coverage is the cheaper bet. Below it you're buying peace of mind rather
-              than expected value, and the honest alternative is to bank the premium and pay the repair
-              if it happens.
+              And the deductible here is as expensive as the repair, so coverage buys you nothing on
+              damage at all &mdash; only on loss.
+            {:else if careNetOnOneIncident >= 0}
+              Break it once and they save you {formatUsd0(careNetOnOneIncident)}. Never break it and
+              you spent {formatUsd0(careCostToCompare)} for nothing. That's the whole bet.
             {:else}
-              For the premiums to pay for themselves on repairs alone you'd have to break it about
-              <strong>{careBreakEven.toFixed(1)} times</strong> in {careCoverageMonths} months, which
-              is more than most people manage. Priced purely as repair insurance it's a losing bet; what
-              you're actually buying is the tail &mdash; theft, loss, and the return-condition risk below.
+              One repair isn't enough to justify them: {formatUsd0(careOneIncident)} covered against
+              {formatUsd0(assumptions.damageFee)} uncovered, so coverage loses by
+              {formatUsd0(-careNetOnOneIncident)}. You'd need about
+              <strong>{careBreakEven.toFixed(1)} incidents</strong> in {careCoverageMonths} months to
+              come out ahead on damage alone.
             {/if}
+            At the {assumptions.damageLikelihood}% odds you set, the model charges every scenario
+            {formatUsd0(repairsUncovered)} without coverage and {formatUsd0(repairsCovered)} with it.
+          </p>
+        </div>
+
+        <h3 class="group-title">Will you lose it?</h3>
+        <p class="step-copy">
+          This is the bigger risk, and the lease is what makes it bad. Lose a phone you own and
+          you've lost a phone. Lose a leased one and the lease outlives it &mdash; there's nothing
+          to hand back at month {term}, so returning it stops being an option and the buyout arrives
+          anyway. Lose it halfway through and it looks like this.
+        </p>
+        <div class="exit-grid">
+          <div>
+            <span class="ek">Paid by month {lossMonth}</span><span class="ev"
+              >{formatUsd0(lossPaid)}</span
+            >
+          </div>
+          <div>
+            <span class="ek">Payments still owed</span><span class="ev">{formatUsd0(lossOwed)}</span
+            >
+          </div>
+          <div>
+            <span class="ek">Buyout, nothing to return</span><span class="ev"
+              >{formatUsd0(lossBuyout)}</span
+            >
+          </div>
+        </div>
+        <div class="callout warn">
+          <p>
+            {formatUsd0(lossTotal)} for a device you no longer have &mdash; essentially the full price
+            of the {device.name}, and you still need a phone. AppleCare+ with Theft and Loss is the
+            only thing that caps this, which is the strongest argument for coverage on this page.
+            Klarna doesn't publish what it actually does about a lost device, so treat this as the
+            ceiling.
           </p>
         </div>
 
         <h3 class="group-title">AppleCare?</h3>
         <p class="step-copy">
-          AppleCare is not part of the lease and Apple bills it separately. It matters more here
-          than it would on a device you own because you have to hand this one back in "good
-          condition" (according to Apple), and whether a scuffed return counts is Klarna's judgment
-          call rather than yours. If you plan to buy the device out, or you're a careful owner with
-          a history to prove it, skipping coverage is defensible. If you plan to hand it back,
-          coverage is buying down a risk you don't control. Prices are estimated; enter the quoted
-          price from apple.com for the most accurate calculation.
+          AppleCare isn't part of the lease &mdash; Apple bills it separately and it stays yours to
+          cancel. Skipping it is defensible if you plan to buy the device out and your history says
+          you don't break things. Prices are estimates; enter the quote from apple.com for the real
+          number.
         </p>
 
         <div class="choices choices-wide">
@@ -1422,6 +1472,10 @@
           <li>
             Klarna's condition standard at return. Every lease-return program in history has been
             stricter in practice than on paper.
+          </li>
+          <li>
+            What Klarna actually charges for a lost or stolen device, which it doesn't publish. The
+            payments plus the buyout are the ceiling.
           </li>
           <li>
             Price changes on the second device. The upgrade path assumes today's prices, which is

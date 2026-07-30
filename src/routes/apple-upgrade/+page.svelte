@@ -27,6 +27,7 @@
     leasePayment,
     purchaseOptionFee,
     remainingLeaseObligation,
+    resaleValue,
     type Assumptions,
     type CareChoice,
     type Fork
@@ -209,6 +210,28 @@
   const careCoverageMonths = $derived(fork === 'walk' ? term : horizon);
   const careYears = $derived(Math.ceil(careCoverageMonths / 12));
 
+  /** What a plan bills over the months it would cover, for the is-it-worth-it math. */
+  function careCostOver(choice: CareChoice): number {
+    if (choice === 'monthly') return assumptions.careMonthly * careCoverageMonths;
+    if (choice === 'annual') return assumptions.careAnnual * careYears;
+    if (choice === 'one') return assumptions.careOneMonthly * careCoverageMonths;
+    return 0;
+  }
+  /** With no plan picked yet, monthly AppleCare+ is the thing worth pricing against. */
+  const careCostToCompare = $derived(careCostOver(care === 'none' ? 'monthly' : care));
+  /** What coverage saves on one incident: the repair you skip, less the deductible. */
+  const damageSaved = $derived(Math.max(0, assumptions.damageFee - assumptions.careDeductible));
+  /**
+   * Incidents over the coverage window needed for the premiums to pay for
+   * themselves. Null when a covered repair costs as much as an uncovered one.
+   */
+  const careBreakEven = $derived(damageSaved > 0 ? careCostToCompare / damageSaved : null);
+
+  /** The resale estimate the buy-versus-return decision turns on. */
+  const resalePctAtTerm = $derived(resaleInput ?? DEFAULT_RESALE_PCT[category] * 100);
+  const resaleAtTerm = $derived(resaleValue(assumptions, term));
+  const resaleAtHorizon = $derived(resaleValue(assumptions, horizon));
+
   /** Each fork priced out, so the decision cards can show real numbers. */
   const forkOutcomes = $derived(
     (['upgrade', 'buy', 'extend', 'walk'] as Fork[]).map((f) => ({
@@ -218,8 +241,8 @@
   );
 
   // ── Progressive reveal, checkout-style ─────────────────────────────────────
-  const showTerm = $derived(hasTradeIn !== null);
-  const showCare = $derived(showTerm && termChoice !== null);
+  const showTradeIn = $derived(termChoice !== null);
+  const showCare = $derived(showTradeIn && hasTradeIn !== null);
   const showDetails = $derived(showCare && careChoice !== null);
   const showTimeline = $derived(showDetails);
   const showCycle2 = $derived(showTimeline && forkChoice !== null);
@@ -509,16 +532,41 @@
           step={10}
           hint="Override if the catalog is stale or you configured something custom."
         />
-        <NumberField
-          label="Quoted payment (before trade-in)"
-          bind:value={paymentOverride}
-          placeholder={undiscountedMonthly.toFixed(2)}
-          prefix="$"
-          step={1}
-          hint={quotedPayment !== null
-            ? "Apple's published payment for this exact configuration. Change it if you were quoted something else."
-            : 'Estimated from list price. Enter the real quote if you have one — it will be a few cents off.'}
-        />
+      </div>
+    </section>
+
+    <!-- 02 ─────────────────────────────────────────────────────────────────── -->
+    <section class="step">
+      <div class="step-head">
+        <span class="step-num">02</span>
+        <h2 class="step-title">How long?</h2>
+        <span class="rule"></span>
+      </div>
+      <p class="step-copy">
+        Shorter terms cost more per month but less in total, because you're renting the steepest
+        part of the depreciation curve for less time.
+      </p>
+
+      <div class="choices">
+        {#each terms as t (t)}
+          {@const quote = quoteFor(t)}
+          {@const base = quote ?? basePayment(price, category, t)}
+          <button
+            type="button"
+            class="choice"
+            aria-pressed={termChoice === t}
+            onclick={() => (termChoice = t)}
+          >
+            <span class="choice-name">{t} months</span>
+            <span class="choice-figure">
+              {formatUsd(Math.max(0, base - tradeIn / t))}<span class="per">/mo</span>
+            </span>
+            <span class="choice-detail">
+              {formatUsd0(base * t)} in payments &middot; {((base * t * 100) / price).toFixed(0)}%
+              of the device{quote === null ? ' · estimated' : ''}
+            </span>
+          </button>
+        {/each}
       </div>
 
       <div class="callout">
@@ -534,99 +582,77 @@
           {/if}
         </p>
       </div>
-    </section>
 
-    <!-- 02 ─────────────────────────────────────────────────────────────────── -->
-    <section class="step">
-      <div class="step-head">
-        <span class="step-num">02</span>
-        <h2 class="step-title">Do you have a trade-in?</h2>
-        <span class="rule"></span>
+      <div class="fields">
+        <NumberField
+          label="Quoted payment (before trade-in)"
+          bind:value={paymentOverride}
+          placeholder={undiscountedMonthly.toFixed(2)}
+          prefix="$"
+          step={1}
+          hint={quotedPayment !== null
+            ? "Optional. Apple's published payment for this exact configuration — change it only if you were quoted something else."
+            : 'Optional. Estimated from list price, so it will be a few cents off. Enter the real quote if you have one.'}
+        />
       </div>
-      <p class="step-copy">
-        A trade-in doesn't come off the price here. Klarna divides its value across the payments of
-        the initial term and lowers each one. It applies to the first term only &mdash; you cannot
-        trade in again when you upgrade.
-      </p>
-
-      <div class="choices">
-        <button
-          type="button"
-          class="choice"
-          aria-pressed={hasTradeIn === true}
-          onclick={() => (hasTradeIn = true)}
-        >
-          <span class="choice-name">Yes, I have a device</span>
-          <span class="choice-detail">Spread across {term} payments</span>
-        </button>
-        <button
-          type="button"
-          class="choice"
-          aria-pressed={hasTradeIn === false}
-          onclick={() => {
-            hasTradeIn = false;
-            tradeInValue = null;
-          }}
-        >
-          <span class="choice-name">No trade-in</span>
-          <span class="choice-detail">Full monthly payment</span>
-        </button>
-      </div>
-
-      {#if hasTradeIn}
-        <div class="fields">
-          <NumberField
-            label="Trade-in value"
-            bind:value={tradeInValue}
-            placeholder="375"
-            prefix="$"
-            step={25}
-            hint="Apple's quote. If the device arrives in worse shape than you said, Klarna raises the payment."
-          />
-        </div>
-        {#if tradeIn > 0}
-          <p class="step-copy">
-            {formatUsd0(tradeIn)} over {term} payments is {formatUsd(tradeIn / term)} off each month:
-            <strong>{formatUsd(monthly)}/mo</strong> instead of {formatUsd(undiscountedMonthly)}.
-          </p>
-        {/if}
-      {/if}
     </section>
 
     <!-- 03 ─────────────────────────────────────────────────────────────────── -->
-    {#if showTerm}
+    {#if showTradeIn}
       <section class="step">
         <div class="step-head">
           <span class="step-num">03</span>
-          <h2 class="step-title">How long?</h2>
+          <h2 class="step-title">Do you have a trade-in?</h2>
           <span class="rule"></span>
         </div>
         <p class="step-copy">
-          Shorter terms cost more per month but less in total, because you're renting the steepest
-          part of the depreciation curve for less time.
+          A trade-in doesn't come off the price here. Klarna divides its value across the {term} payments
+          of the initial term and lowers each one. It applies to the first term only &mdash; you cannot
+          trade in again when you upgrade.
         </p>
 
         <div class="choices">
-          {#each terms as t (t)}
-            {@const quote = quoteFor(t)}
-            {@const base = quote ?? basePayment(price, category, t)}
-            <button
-              type="button"
-              class="choice"
-              aria-pressed={termChoice === t}
-              onclick={() => (termChoice = t)}
-            >
-              <span class="choice-name">{t} months</span>
-              <span class="choice-figure">
-                {formatUsd(Math.max(0, base - tradeIn / t))}<span class="per">/mo</span>
-              </span>
-              <span class="choice-detail">
-                {formatUsd0(base * t)} in payments &middot; {((base * t * 100) / price).toFixed(0)}%
-                of the device{quote === null ? ' · estimated' : ''}
-              </span>
-            </button>
-          {/each}
+          <button
+            type="button"
+            class="choice"
+            aria-pressed={hasTradeIn === true}
+            onclick={() => (hasTradeIn = true)}
+          >
+            <span class="choice-name">Yes, I have a device</span>
+            <span class="choice-detail">Spread across {term} payments</span>
+          </button>
+          <button
+            type="button"
+            class="choice"
+            aria-pressed={hasTradeIn === false}
+            onclick={() => {
+              hasTradeIn = false;
+              tradeInValue = null;
+            }}
+          >
+            <span class="choice-name">No trade-in</span>
+            <span class="choice-detail">Full monthly payment</span>
+          </button>
         </div>
+
+        {#if hasTradeIn}
+          <div class="fields">
+            <NumberField
+              label="Trade-in value"
+              bind:value={tradeInValue}
+              placeholder="375"
+              prefix="$"
+              step={25}
+              hint="Apple's quote. If the device arrives in worse shape than you said, Klarna raises the payment."
+            />
+          </div>
+          {#if tradeIn > 0}
+            <p class="step-copy">
+              {formatUsd0(tradeIn)} over {term} payments is {formatUsd(tradeIn / term)} off each month:
+              <strong>{formatUsd(monthly)}/mo</strong> instead of {formatUsd(undiscountedMonthly)}.
+            </p>
+          {/if}
+        {/if}
       </section>
     {/if}
 
@@ -694,6 +720,73 @@
             {/if}
           </div>
         {/if}
+
+        <h3 class="group-title">How often do you actually break one?</h3>
+        <p class="step-copy">
+          Not how careful you feel &mdash; the count. How many times in the last four years have you
+          cracked a screen or a back glass, including the ones you never bothered to fix? One in
+          four years is roughly <strong>25%</strong> odds over a {careCoverageMonths}-month window.
+          Two is more like 50%. Never, with a case on and no kids or job site involved, is 10% or
+          less. Pick the number your history supports, not the one you'd like to be true.
+        </p>
+        <div class="fields">
+          <NumberField
+            label="Odds you damage it"
+            bind:value={damageLikelihoodInput}
+            placeholder="20"
+            suffix="%"
+            step={5}
+            max={100}
+            hint="Charged as an expected cost, once per return or repair moment in the model."
+          />
+          <NumberField
+            label="Out-of-warranty repair"
+            bind:value={damageFeeInput}
+            placeholder={DEFAULT_DAMAGE_FEE[category]}
+            prefix="$"
+            step={25}
+            hint="What Apple charges with no coverage — also roughly what Klarna would bill you for handing back a damaged device."
+          />
+          <NumberField
+            label="AppleCare deductible"
+            bind:value={careDeductibleInput}
+            placeholder={CARE_PRICING[category].deductible}
+            prefix="$"
+            step={10}
+            hint="What the same repair still costs you with coverage."
+          />
+        </div>
+
+        <div class="callout">
+          <p>
+            Coverage turns a {formatUsd0(assumptions.damageFee)} repair into a
+            {formatUsd0(assumptions.careDeductible)} one, so each incident it catches is worth
+            {formatUsd0(damageSaved)} to you. Over {careCoverageMonths} months, AppleCare+ costs about
+            {formatUsd0(careCostToCompare)}.
+            {#if careBreakEven === null}
+              The deductible is as expensive as the repair here, so coverage only earns its keep on
+              theft, loss, or a second failure.
+            {:else if careBreakEven <= 1}
+              It pays for itself at roughly
+              <strong>{Math.round(careBreakEven * 100)}%</strong> odds &mdash; about one incident in that
+              window. Above that, coverage is the cheaper bet. Below it you're buying peace of mind rather
+              than expected value, and the honest alternative is to bank the premium and pay the repair
+              if it happens.
+            {:else}
+              For the premiums to pay for themselves on repairs alone you'd have to break it about
+              <strong>{careBreakEven.toFixed(1)} times</strong> in {careCoverageMonths} months, which
+              is more than most people manage. Priced purely as repair insurance it's a losing bet; what
+              you're actually buying is the tail &mdash; theft, loss, and the return-condition risk below.
+            {/if}
+          </p>
+        </div>
+        <p class="step-copy">
+          Two thumbs on the scale for coverage on a lease specifically: you have to hand this device
+          back in good condition, and a scratched-up return is Klarna's judgment call rather than
+          yours. If you plan to buy it out or you're a careful owner with a history to prove it,
+          skipping AppleCare is defensible. If you plan to return it, coverage is buying down a risk
+          you don't control.
+        </p>
       </section>
     {/if}
 
@@ -706,11 +799,21 @@
           <span class="rule"></span>
         </div>
         <p class="step-copy">
-          The parts nobody puts on the product page. Defaults are reasonable guesses; every one is
-          editable, and every one is applied to all three scenarios so the comparison stays fair.
+          The parts nobody puts on the product page. Each one is small on its own and none of them
+          are simple, so here they are one at a time. Defaults are reasonable guesses; every one is
+          editable, and every one is applied to all four scenarios so the comparison stays fair.
         </p>
 
-        <h3 class="group-title">Taxes and time</h3>
+        <h3 class="group-title">Sales tax</h3>
+        <p class="step-copy">
+          A lease usually changes <em>when</em> you pay tax, not how much. Most states tax each
+          lease payment as it's billed, so the tax rides along at
+          {(taxRateInput ?? 8.5).toFixed(2).replace(/\.?0+$/, '')}% of
+          {formatUsd(monthly)} &mdash; about {formatUsd(monthly * ((taxRateInput ?? 8.5) / 100))} a month
+          &mdash; and the buyout gets taxed too when you take it. A few states instead tax the full
+          {formatUsd0(price)} at signing, which is the same money much sooner and therefore worse for
+          you. Buying outright or financing is always taxed on the full price up front.
+        </p>
         <div class="fields">
           <NumberField
             label="Sales tax"
@@ -718,22 +821,7 @@
             placeholder="8.5"
             suffix="%"
             step={0.25}
-          />
-          <NumberField
-            label="Discount rate"
-            bind:value={discountRateInput}
-            placeholder="7"
-            suffix="%"
-            step={0.5}
-            hint="What your money would earn elsewhere. Drives the today's-dollars column."
-          />
-          <NumberField
-            label="Apple Card Daily Cash"
-            bind:value={cashBackInput}
-            placeholder="3"
-            suffix="%"
-            step={0.5}
-            hint="Applies to what Apple bills you — and to the lease payments themselves, which Apple says earn 3% when you make them with Apple Card. The purchase option fee doesn't."
+            hint="Your combined state and local rate."
           />
         </div>
         <label class="toggle">
@@ -741,12 +829,55 @@
           <span>
             My state taxes each lease payment
             <span class="toggle-hint">
-              Most do. Uncheck if you owe tax on the full price at signing instead.
+              Most do. Uncheck if you owe tax on the full {formatUsd0(price)} at signing instead &mdash;
+              roughly {formatUsd0(price * ((taxRateInput ?? 8.5) / 100))} on day one.
             </span>
           </span>
         </label>
 
-        <h3 class="group-title">Getting it out the door</h3>
+        <h3 class="group-title">Credit card rewards</h3>
+        <p class="step-copy">
+          On a purchase this size, the card matters. Apple Card pays 3% Daily Cash on anything Apple
+          bills directly, and Apple says lease payments made with Apple Card earn the same 3% even
+          though Klarna is the one billing them &mdash; worth about
+          {formatUsd0(monthly * term * ((cashBackInput ?? 3) / 100))} on this lease's {term} payments,
+          on top of the rebate on everything Apple bills you directly. The purchase option fee is the
+          exception: it's a Klarna sale rather than a lease payment, so it earns nothing.
+        </p>
+        <p class="step-copy">
+          Without an Apple Card you're at the mercy of what Klarna accepts, and Apple's own fine
+          print says several networks and issuers don't work for these payments &mdash; American
+          Express and UnionPay outright, plus some Chase and Citi cards that get declined even
+          though they're Visa or Mastercard. Debit works. If your 2% catch-all card is on that list,
+          your effective rebate on the largest line item here is 0%, so set this to what you'd
+          actually earn.
+        </p>
+        <div class="fields">
+          <NumberField
+            label="Card rewards rate"
+            bind:value={cashBackInput}
+            placeholder="3"
+            suffix="%"
+            step={0.5}
+            hint="3% is Apple Card. Use your card's rate on Apple purchases, or 0 if the card you'd use can't pay Klarna at all."
+          />
+        </div>
+
+        <h3 class="group-title">Carrier fees</h3>
+        <p class="step-copy">
+          A leased iPhone has to sit on an AT&amp;T, T-Mobile or Verizon postpaid line, and all
+          three charge an upgrade or activation fee &mdash; currently {formatUsd0(35)} per line &mdash;
+          for the privilege of putting a new device on it. It's not part of the lease and it doesn't show
+          up in the monthly quote; it lands on your next phone bill. The model charges it once at signing.
+          Carriers generally charge it again every time you upgrade, so if you take the upgrade path at
+          month {term}, double it.
+        </p>
+        <p class="step-copy">
+          The postpaid requirement is its own cost if you'd otherwise be on a prepaid or MVNO plan.
+          Only the difference belongs here &mdash; a jump from a {formatUsd0(30)} prepaid plan to a
+          {formatUsd0(75)} postpaid line is {formatUsd0(45)} a month, which over {horizon} months dwarfs
+          everything else on this page.
+        </p>
         <div class="fields">
           <NumberField
             label="Carrier activation"
@@ -754,14 +885,7 @@
             placeholder={category === 'iphone' ? 35 : 0}
             prefix="$"
             step={5}
-          />
-          <NumberField
-            label="Case and accessories"
-            bind:value={caseInput}
-            placeholder="60"
-            prefix="$"
-            step={10}
-            hint="Charged again on the upgrade path, since the new device needs its own."
+            hint="Charged at signing on the new line."
           />
           <NumberField
             label="Postpaid plan premium"
@@ -770,51 +894,55 @@
             prefix="$"
             suffix="/mo"
             step={5}
-            hint="A leased iPhone must sit on AT&T, T-Mobile or Verizon postpaid. If that's pricier than the plan you'd otherwise use, the difference belongs here."
+            hint="Extra per month over the plan you'd otherwise use. Applied for the whole {horizon}-month window, since the requirement outlives the lease."
           />
         </div>
 
-        <h3 class="group-title">What it's worth later, and what could go wrong</h3>
+        <h3 class="group-title">Case and accessories</h3>
+        <p class="step-copy">
+          Easy to wave off, except that a lease makes it closer to mandatory: you're on the hook for
+          returning this device in good condition, so the case and screen protector are part of the
+          cost of the program rather than a nice-to-have. This gets charged again on the upgrade
+          path, because a new body shape needs new everything &mdash; which is exactly the recurring
+          cost the treadmill is built to hide.
+        </p>
         <div class="fields">
           <NumberField
-            label="Resale value at {term} months"
-            bind:value={resaleInput}
-            placeholder={(DEFAULT_RESALE_PCT[category] * 100).toFixed(0)}
-            suffix="%"
-            step={5}
-            max={100}
-            hint="Of list price. Decays geometrically after that, so {(
-              DEFAULT_RESALE_PCT[category] * 100
-            ).toFixed(0)}% at {term} months means {(
-              DEFAULT_RESALE_PCT[category] ** 2 *
-              100
-            ).toFixed(0)}% at {term * 2}."
-          />
-          <NumberField
-            label="Damage fee / repair cost"
-            bind:value={damageFeeInput}
-            placeholder={DEFAULT_DAMAGE_FEE[category]}
-            prefix="$"
-            step={25}
-          />
-          <NumberField
-            label="Repair deductible"
-            bind:value={careDeductibleInput}
-            placeholder={CARE_PRICING[category].deductible}
+            label="Case and accessories"
+            bind:value={caseInput}
+            placeholder="60"
             prefix="$"
             step={10}
-            hint="What a covered repair still costs you with AppleCare."
+            hint="Taxed like any Apple purchase, and charged again for the second device if you upgrade."
           />
+        </div>
+
+        <h3 class="group-title">Today's dollars versus future dollars</h3>
+        <p class="step-copy">
+          Every total on this page is also shown in today's dollars, because {formatUsd0(1000)} you pay
+          two years from now costs you less than {formatUsd0(1000)} you pay today &mdash; the money you
+          haven't handed over yet is still working for you. That's the discount rate: whatever your cash
+          would otherwise earn. Around 4&ndash;5% is a savings account, 7% is a long-run stock market
+          assumption, and if you're carrying credit card debt the honest number is your APR, because paying
+          Apple later means paying that interest for less time.
+        </p>
+        <p class="step-copy">
+          This is the one assumption that structurally favors the lease. Payments plus buyout equal
+          list price exactly, so the lease and 0% financing cost the same nominal dollars &mdash;
+          the lease just pushes a big chunk of it out to month {term}. At {(discountRateInput ?? 7)
+            .toFixed(2)
+            .replace(/\.?0+$/, '')}% that deferral is worth real money; set the rate to 0 and the
+          two collapse into the same number, which is a useful sanity check on how much of the
+          lease's advantage is timing rather than price.
+        </p>
+        <div class="fields">
           <NumberField
-            label="Odds you damage it"
-            bind:value={damageLikelihoodInput}
-            placeholder="20"
+            label="Discount rate"
+            bind:value={discountRateInput}
+            placeholder="7"
             suffix="%"
-            step={5}
-            max={100}
-            hint="Charged as an expected cost. With AppleCare it drops to the {formatUsd0(
-              assumptions.careDeductible
-            )} deductible."
+            step={0.5}
+            hint="What your money would earn elsewhere, annually. Set it to 0 to compare raw dollars."
           />
         </div>
 
@@ -970,6 +1098,59 @@
             {leaseSharePct.toFixed(0)}% of it and own nothing if you hand the device back.
           </p>
         </div>
+
+        <h3 class="group-title">What the device is worth by then</h3>
+        <p class="step-copy">
+          Every option below turns on this number, so it's worth setting deliberately. Two of the
+          four paths hand the device back, and what you're giving up is whatever it would have sold
+          for. iPhones hold value better than almost any consumer electronic &mdash; roughly half of
+          list after two years on the private market, less through a trade-in program, which is the
+          whole reason Apple can price a lease this way. The estimate decays geometrically from your
+          number, so {resalePctAtTerm.toFixed(0)}% at {term} months implies
+          {((resalePctAtTerm / 100) ** 2 * 100).toFixed(0)}% at {horizon}.
+        </p>
+        <div class="fields">
+          <NumberField
+            label="Resale value at {term} months"
+            bind:value={resaleInput}
+            placeholder={(DEFAULT_RESALE_PCT[category] * 100).toFixed(0)}
+            suffix="%"
+            step={5}
+            max={100}
+            hint="Of the {formatUsd0(
+              price
+            )} list price. Check a real quote on Swappa or eBay for the same model a generation back — that's what this device will be."
+          />
+        </div>
+        <div class="exit-grid">
+          <div>
+            <span class="ek">Worth at month {term}</span><span class="ev"
+              >{formatUsd0(resaleAtTerm)}</span
+            >
+          </div>
+          <div>
+            <span class="ek">Buyout at month {term}</span><span class="ev"
+              >{formatUsd0(purchaseOptionFee(assumptions, term))}</span
+            >
+          </div>
+          <div>
+            <span class="ek">Worth at month {horizon}</span><span class="ev"
+              >{formatUsd0(resaleAtHorizon)}</span
+            >
+          </div>
+        </div>
+        <p class="step-copy">
+          {#if resaleAtTerm > purchaseOptionFee(assumptions, term)}
+            The device is worth more than the buyout costs, which makes buying it out the closest
+            thing to free money on this page: pay {formatUsd0(purchaseOptionFee(assumptions, term))} for
+            something you could sell for {formatUsd0(resaleAtTerm)}. Handing it back instead gives
+            that spread to Apple.
+          {:else}
+            The buyout costs more than the device is worth, so buying it out only makes sense
+            because you want to keep using it &mdash; not as a resale play. Handing it back is the
+            rational move if you were going to sell it anyway.
+          {/if}
+        </p>
 
         <h3 class="group-title">What do you do next?</h3>
         <p class="step-copy">
@@ -1200,9 +1381,9 @@
             <strong>The Apple Card 3% applies to the lease too.</strong> Klarna bills the payments, but
             Apple says lease payments made with Apple Card earn 3% Daily Cash &mdash; which is what the
             calculator assumes you do. Without one, the largest line item on the page earns whatever your
-            card gives on a Klarna charge, and Klarna won't take Amex, Chase, or Capital One cards at
-            all. The purchase option fee is the exception: a Klarna sale, not a lease payment, so it earns
-            nothing.
+            card gives on a Klarna charge &mdash; and American Express and UnionPay aren't accepted at
+            all, with some Chase and Citi cards declined too. The purchase option fee is the exception:
+            a Klarna sale, not a lease payment, so it earns nothing.
           </p>
           <p>
             <strong>Doing nothing is a decision.</strong> Drift past month {term} and you get six month-to-month
@@ -1564,6 +1745,10 @@
   /* A callout opening a step sits right under the head, which already spaces it. */
   .step-head + .callout {
     margin-top: 0;
+  }
+  /* Fields carry no top margin of their own, so they'd collide with a callout. */
+  .callout + .fields {
+    margin-top: 20px;
   }
   .callout.warn {
     border-left-color: var(--accent2);

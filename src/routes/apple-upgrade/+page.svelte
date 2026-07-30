@@ -313,13 +313,30 @@
     paymentOverride = null;
   }
 
-  /** Details render in the template so the prices can be inline inputs. */
-  const CARE_OPTIONS: { value: CareChoice; name: string }[] = [
-    { value: 'none', name: 'No AppleCare' },
-    { value: 'monthly', name: 'AppleCare+ monthly' },
-    { value: 'annual', name: 'AppleCare+ annual' },
-    { value: 'one', name: 'AppleCare One' }
-  ];
+  const CARE_OPTIONS: { value: CareChoice; name: string; detail: string }[] = $derived([
+    {
+      value: 'none',
+      name: 'No AppleCare',
+      detail: 'One year of warranty. You carry the damage risk.'
+    },
+    {
+      value: 'monthly',
+      name: 'AppleCare+ monthly',
+      detail: `${formatUsd(assumptions.careMonthly)}/mo, cancel anytime`
+    },
+    {
+      value: 'annual',
+      name: 'AppleCare+ annual',
+      detail: `${formatUsd0(assumptions.careAnnual)}/yr, billed a year at a time — ${careYears} ${
+        careYears === 1 ? 'charge' : 'charges'
+      } over ${careCoverageMonths} months`
+    },
+    {
+      value: 'one',
+      name: 'AppleCare One',
+      detail: `${formatUsd(assumptions.careOneMonthly)}/mo for up to three devices`
+    }
+  ]);
 
   const FORK_OPTIONS: { value: Fork; name: string; detail: string }[] = [
     {
@@ -413,13 +430,14 @@
 </svelte:head>
 
 <section class="head">
-  <div class="eyebrow">// leases, discount rates &amp; the treadmill</div>
+  <div class="eyebrow">// Apple Upgrade lease calculator and comparison</div>
   <h1 class="page-title">Apple Upgrade, Priced Out</h1>
   <p class="page-lede">
-    Apple Upgrade is a lease. Not financing, not a payment plan &mdash; a lease, from Klarna, where
-    you hand the device back at the end. That changes the math enough to be worth walking through
-    slowly, so this page steps through the whole thing the way checkout would, then follows every
-    month to the end of a second lease.
+    Apple Upgrade is a lease, unlike previous 0% financing or carrier payment plans. You hand the
+    device back at the end or pay the remainder of the original price. I've broken down the math,
+    using Apple's published information to help you make the best decision for your finances. Since
+    the full impact of this lease is not noticable until after the lease term, I've chosen to model
+    the purchase over twice the term of the lease.
   </p>
   <p class="page-note">
     <a href={resolve('/projects')}>&larr; projects</a>
@@ -436,9 +454,9 @@
         <span class="rule"></span>
       </div>
       <p class="step-copy">
-        Apple Upgrade covers every iPhone except the 16, the Series 11 and Ultra watches, iPad Pro,
-        Air and mini, and most of the Mac line. Prices are prefilled from the current lineup and
-        editable &mdash; if apple.com quotes you something different, that number wins.
+        Apple Upgrade covers most iPhones, the Series 11 and Ultra watches, iPad Pro, Air and mini,
+        and most of the Mac line. Prices are prefilled from the current lineup and editable. Enter
+        the real price on apple.com if there's any discrepency.
       </p>
 
       <div class="tabs" role="tablist" aria-label="Product family">
@@ -514,13 +532,6 @@
             <strong>{formatUsd(undiscountedMonthly)}/mo</strong>, or
             {leaseSharePct.toFixed(1)}% of the {formatUsd0(price)} device over {term} months.
           {/if}
-        </p>
-        <p>
-          There is no clean formula behind those numbers. Apple's own examples sit at slightly
-          different ratios &mdash; 69.9% of a $1099 iPhone 17 Pro against 70.0% of a $1199 Pro Max
-          &mdash; and the higher storage tiers don't land on round cents at all: the 512GB Pro Max
-          leases for $40.82 and the 1TB for $46.67. The ratio here is a fit, accurate to within
-          about a nickel, so the page prefers a real quote wherever one is known.
         </p>
       </div>
     </section>
@@ -629,90 +640,60 @@
         </div>
         <p class="step-copy">
           AppleCare is not part of the lease and Apple bills it separately. It matters more here
-          than it would on a device you own: you have to hand this one back in good condition, and
-          the standard for "good condition" is Klarna's, not yours. Without coverage, a cracked
-          screen becomes a damage fee at return. The prices on the cards are estimates for a
-          {CATEGORY_LABELS[category].toLowerCase()} and editable in place &mdash; if apple.com quotes
-          you something different, that number wins.
-        </p>
-        <p class="step-copy">
-          Note that the annual plan is not a one-time payment covering the lease. It bills a year at
-          a time and renews, so a {term}-month term means {Math.ceil(term / 12)} charges, and
-          {#if fork === 'walk'}
-            coverage ends when you hand the device back.
-          {:else}
-            it keeps renewing through the whole {horizon} months.
-          {/if}
+          than it would on a device you own because you have to hand this one back in "good
+          condition" (according to Apple). Returning a damaged device at the end of the lease will
+          result in a repair fee or an AppleCare deductible fee depending on your coverage at the
+          time. Prices are estimated; enter the quoted price from apple.com for the most accurate
+          calculation.
         </p>
 
         <div class="choices choices-wide">
           {#each CARE_OPTIONS as option (option.value)}
-            <!-- role="button" rather than <button> so the price can be an input
-                 inside the card; the input stops propagation so editing a price
-                 doesn't change the selection. -->
-            <div
+            <button
+              type="button"
               class="choice"
-              role="button"
-              tabindex="0"
               aria-pressed={careChoice === option.value}
               onclick={() => (careChoice = option.value)}
-              onkeydown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  careChoice = option.value;
-                }
-              }}
             >
               <span class="choice-name">{option.name}</span>
-              <span class="choice-detail">
-                {#if option.value === 'monthly'}
-                  $<input
-                    class="price-input"
-                    type="number"
-                    bind:value={careMonthlyInput}
-                    placeholder={String(CARE_PRICING[category].monthly)}
-                    step={1}
-                    min={0}
-                    inputmode="decimal"
-                    aria-label="AppleCare+ monthly price"
-                    onclick={(e) => e.stopPropagation()}
-                    onkeydown={(e) => e.stopPropagation()}
-                  />/mo, cancel anytime
-                {:else if option.value === 'annual'}
-                  $<input
-                    class="price-input"
-                    type="number"
-                    bind:value={careAnnualInput}
-                    placeholder={String(CARE_PRICING[category].annual)}
-                    step={10}
-                    min={0}
-                    inputmode="decimal"
-                    aria-label="AppleCare+ annual price"
-                    onclick={(e) => e.stopPropagation()}
-                    onkeydown={(e) => e.stopPropagation()}
-                  />/yr, billed a year at a time &mdash; {careYears}
-                  {careYears === 1 ? 'charge' : 'charges'} over {careCoverageMonths} months
-                {:else if option.value === 'one'}
-                  $<input
-                    class="price-input"
-                    type="number"
-                    bind:value={careOneInput}
-                    placeholder={String(APPLECARE_ONE_MONTHLY)}
-                    step={1}
-                    min={0}
-                    inputmode="decimal"
-                    aria-label="AppleCare One monthly price"
-                    onclick={(e) => e.stopPropagation()}
-                    onkeydown={(e) => e.stopPropagation()}
-                  />/mo for up to three devices &mdash; if you already pay it, adding this one may
-                  cost nothing
-                {:else}
-                  One year of warranty. You carry the damage risk.
-                {/if}
-              </span>
-            </div>
+              <span class="choice-detail">{option.detail}</span>
+            </button>
           {/each}
         </div>
+
+        {#if care !== 'none'}
+          <div class="fields">
+            {#if care === 'monthly'}
+              <NumberField
+                label="AppleCare+ monthly"
+                bind:value={careMonthlyInput}
+                placeholder={CARE_PRICING[category].monthly}
+                prefix="$"
+                suffix="/mo"
+                step={1}
+              />
+            {:else if care === 'annual'}
+              <NumberField
+                label="AppleCare+ annual"
+                bind:value={careAnnualInput}
+                placeholder={CARE_PRICING[category].annual}
+                prefix="$"
+                suffix="/yr"
+                step={10}
+              />
+            {:else}
+              <NumberField
+                label="AppleCare One"
+                bind:value={careOneInput}
+                placeholder={APPLECARE_ONE_MONTHLY}
+                prefix="$"
+                suffix="/mo"
+                step={1}
+                hint="Covers up to three devices, so if you already pay it, the marginal cost of adding this one may be zero."
+              />
+            {/if}
+          </div>
+        {/if}
       </section>
     {/if}
 
@@ -1510,43 +1491,6 @@
     line-height: 1.55;
     color: var(--muted);
     text-wrap: pretty;
-  }
-  /* Cards with embedded inputs are divs with role="button", so they need an
-     explicit focus ring — buttons got one from the UA for free. */
-  .choice[role='button']:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-  }
-  .price-input {
-    /* ch-sized so six digits (e.g. "149.99") fit without clipping. */
-    width: 8ch;
-    margin: 0 1px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg);
-    padding: 1px 4px;
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    color: var(--accent);
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  .price-input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--accent) 18%, transparent);
-  }
-  .price-input::placeholder {
-    color: var(--faint);
-  }
-  .price-input::-webkit-outer-spin-button,
-  .price-input::-webkit-inner-spin-button {
-    appearance: none;
-    margin: 0;
-  }
-  .price-input {
-    appearance: textfield;
-    -moz-appearance: textfield;
   }
 
   /* ── Chips ──────────────────────────────────────────────────────────────── */

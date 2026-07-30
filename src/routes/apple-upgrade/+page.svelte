@@ -1017,7 +1017,15 @@
             </div>
           {/each}
         </div>
+      </section>
 
+      <!-- 07 ───────────────────────────────────────────────────────────────── -->
+      <section class="step">
+        <div class="step-head">
+          <span class="step-num">07</span>
+          <h2 class="step-title">Month {term}</h2>
+          <span class="rule"></span>
+        </div>
         <div class="callout">
           <p>
             {term} payments come to <strong>{formatUsd(leaseTotalFirstTerm)}</strong>, and the
@@ -1030,15 +1038,8 @@
             {leaseSharePct.toFixed(0)}% of it and own nothing if you hand the device back.
           </p>
         </div>
-      </section>
 
-      <!-- 07 ───────────────────────────────────────────────────────────────── -->
-      <section class="step">
-        <div class="step-head">
-          <span class="step-num">07</span>
-          <h2 class="step-title">Month {term}: what do you do?</h2>
-          <span class="rule"></span>
-        </div>
+        <h3 class="group-title">What do you do next?</h3>
         <p class="step-copy">
           You get six months to decide, and you keep paying the whole time. Each card is priced over
           the same {horizon}-month window so they're comparable, in today's dollars, including every
@@ -1654,6 +1655,10 @@
     border-radius: 0 10px 10px 0;
     background: color-mix(in oklch, var(--accent) 8%, var(--surface));
     padding: 15px 18px;
+  }
+  /* A callout opening a step sits right under the head, which already spaces it. */
+  .step-head + .callout {
+    margin-top: 0;
   }
   .callout.warn {
     border-left-color: var(--accent2);

@@ -801,7 +801,7 @@
             placeholder="3"
             suffix="%"
             step={0.5}
-            hint="Applies to what Apple bills you. Lease payments go through Klarna and don't earn it."
+            hint="Applies to what Apple bills you — and to the lease payments themselves, which Apple says earn 3% when you make them with Apple Card. The purchase option fee doesn't."
           />
         </div>
         <label class="toggle">
@@ -1265,9 +1265,12 @@
             the device; if you plan to keep it, sell the old one yourself.
           </p>
           <p>
-            <strong>The Apple Card 3% mostly doesn't apply.</strong> Klarna bills the lease, not Apple,
-            so the largest line item on the page earns whatever your card gives on a Klarna charge &mdash;
-            and Klarna won't take Amex, Chase, or Capital One cards at all.
+            <strong>The Apple Card 3% applies to the lease too.</strong> Klarna bills the payments, but
+            Apple says lease payments made with Apple Card earn 3% Daily Cash &mdash; which is what the
+            calculator assumes you do. Without one, the largest line item on the page earns whatever your
+            card gives on a Klarna charge, and Klarna won't take Amex, Chase, or Capital One cards at
+            all. The purchase option fee is the exception: a Klarna sale, not a lease payment, so it earns
+            nothing.
           </p>
           <p>
             <strong>Doing nothing is a decision.</strong> Drift past month {term} and you get six month-to-month

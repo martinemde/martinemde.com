@@ -32,6 +32,8 @@ export interface Flow {
   /**
    * Set false for Apple-billed amounts that shouldn't generate their own Daily
    * Cash line — installments, where the rebate lands once at purchase instead.
+   * Set true for the non-Apple amounts that do earn it: lease payments, which
+   * Apple says get 3% Daily Cash when made with Apple Card.
    */
   earnsRebate?: boolean;
 }
@@ -57,7 +59,7 @@ export interface Assumptions {
   /** Most states tax each lease payment rather than the full price up front. */
   taxLeasePayments: boolean;
   discountRate: number;
-  /** Apple Card Daily Cash on Apple-billed amounts. Klarna payments don't earn it. */
+  /** Apple Card Daily Cash on Apple-billed amounts and on lease payments. */
   cashBackPct: number;
 
   activationFee: number;
@@ -262,7 +264,10 @@ function leaseTermFlows(
       month: m,
       label: 'Lease payment',
       amount: round2(perPayment),
-      billedBy: 'klarna'
+      billedBy: 'klarna',
+      // Apple: "Customers can also earn 3 percent Daily Cash back when making
+      // their lease payments with Apple Card."
+      earnsRebate: true
     });
   }
   return flows;
@@ -332,7 +337,9 @@ export function buildLeaseFlows(a: Assumptions): Flow[] {
       month: a.term,
       label: 'Purchase option fee',
       amount: round2(fee + (a.taxLeasePayments ? tax(a, fee) : 0)),
-      billedBy: 'klarna'
+      billedBy: 'klarna',
+      // A Klarna sale, not a lease payment — Apple's 3% promise covers the payments.
+      earnsRebate: false
     });
     flows.push(...careFlows(a, a.term, a.term));
     flows.push({
@@ -351,7 +358,8 @@ export function buildLeaseFlows(a: Assumptions): Flow[] {
         month: m,
         label: 'Month-to-month payment (trade-in credit gone)',
         amount: round2(perPayment),
-        billedBy: 'klarna'
+        billedBy: 'klarna',
+        earnsRebate: true
       });
     }
     const fee = Math.max(0, round2(purchaseOptionFee(a, a.term) - base * 6));
@@ -359,7 +367,8 @@ export function buildLeaseFlows(a: Assumptions): Flow[] {
       month: a.term + 6,
       label: 'Purchase option fee charged automatically',
       amount: round2(fee + (a.taxLeasePayments ? tax(a, fee) : 0)),
-      billedBy: 'klarna'
+      billedBy: 'klarna',
+      earnsRebate: false
     });
     flows.push(...careFlows(a, a.term, a.term));
     flows.push({
@@ -592,12 +601,18 @@ export function buildCarrierFlows(a: Assumptions): Flow[] {
 
 /**
  * Apple Card Daily Cash, as negative flows in the month the charge lands.
- * Only Apple-billed amounts qualify; the lease itself is billed by Klarna.
+ * Apple-billed amounts qualify by default. So do Klarna-billed lease payments —
+ * Apple says they earn 3% when made with Apple Card — which are flagged
+ * `earnsRebate: true` where they're built. The purchase option fee is a Klarna
+ * sale, not a lease payment, so it stays out.
  */
 export function withCashBack(flows: Flow[], pct: number): Flow[] {
   if (pct <= 0) return flows;
   const rebates: Flow[] = flows
-    .filter((f) => f.billedBy === 'apple' && f.amount > 0 && f.earnsRebate !== false)
+    .filter((f) => {
+      if (f.amount <= 0 || f.earnsRebate === false) return false;
+      return f.billedBy === 'apple' || f.earnsRebate === true;
+    })
     .map((f) => ({
       month: f.month,
       label: `Daily Cash on ${f.label.toLowerCase()}`,

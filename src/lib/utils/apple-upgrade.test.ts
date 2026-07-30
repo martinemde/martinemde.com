@@ -466,14 +466,45 @@ describe('carrier flows', () => {
 });
 
 describe('withCashBack', () => {
-  it('rebates Apple-billed charges only', () => {
+  it('rebates Apple-billed charges by default, and nothing else unflagged', () => {
     const flows: Flow[] = [
       { month: 0, label: 'Device purchase', amount: 1000, billedBy: 'apple' },
-      { month: 1, label: 'Lease payment', amount: 35, billedBy: 'klarna' }
+      { month: 1, label: 'Purchase option fee', amount: 35, billedBy: 'klarna' }
     ];
     const rebates = withCashBack(flows, 3).filter((f) => f.amount < 0);
     expect(rebates).toHaveLength(1);
     expect(rebates[0].amount).toBeCloseTo(-30, 2);
+  });
+
+  it('rebates Klarna-billed amounts flagged as lease payments', () => {
+    const flows: Flow[] = [
+      { month: 1, label: 'Lease payment', amount: 35, billedBy: 'klarna', earnsRebate: true }
+    ];
+    const rebates = withCashBack(flows, 3).filter((f) => f.amount < 0);
+    expect(rebates).toHaveLength(1);
+    expect(rebates[0].amount).toBeCloseTo(-1.05, 2);
+  });
+
+  it('earns Daily Cash on every lease payment of both terms', () => {
+    // Apple's promise: 3% back when lease payments are made with Apple Card.
+    const a = assume({ cashBackPct: 3 });
+    const flows = withCashBack(buildLeaseFlows(a), a.cashBackPct);
+    const rebates = flows.filter((f) => f.amount < 0 && f.label === 'Daily Cash on lease payment');
+    expect(rebates).toHaveLength(a.term * 2);
+    expect(rebates[0].amount).toBeCloseTo(-round2(34.99 * 0.03), 2);
+  });
+
+  it('rebates the month-to-month extension payments as lease payments', () => {
+    const a = assume({ cashBackPct: 3, fork: 'extend' });
+    const flows = withCashBack(buildLeaseFlows(a), a.cashBackPct);
+    const rebates = flows.filter((f) => f.amount < 0 && f.label.includes('month-to-month'));
+    expect(rebates).toHaveLength(6);
+  });
+
+  it('does not rebate the purchase option fee', () => {
+    const a = assume({ cashBackPct: 3, fork: 'buy' });
+    const flows = withCashBack(buildLeaseFlows(a), a.cashBackPct);
+    expect(flows.some((f) => f.amount < 0 && f.label.includes('purchase option'))).toBe(false);
   });
 });
 

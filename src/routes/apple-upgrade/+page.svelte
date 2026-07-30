@@ -267,69 +267,8 @@
   const cycle1 = $derived(timeline.filter((r) => r.month <= term));
   const cycle2 = $derived(timeline.filter((r) => r.month > term));
 
-  // ── Scroll-linked rail ─────────────────────────────────────────────────────
-  /**
-   * The rail reports the furthest month you've scrolled past. Read straight from
-   * scroll position rather than via IntersectionObserver, which only reports
-   * *changes* — jump the whole ledger in one scroll and no row ever crosses the
-   * band, so nothing fires and the rail lies.
-   */
-  let activeMonth = $state(0);
-  const trackedRows: { node: HTMLElement; month: number }[] = [];
-  let rafPending = false;
-
-  function recomputeActiveMonth() {
-    rafPending = false;
-    // The reading line sits just above the middle of the viewport.
-    const line = window.innerHeight * 0.45;
-    let highest = 0;
-    for (const row of trackedRows) {
-      if (row.node.getBoundingClientRect().top <= line) {
-        highest = Math.max(highest, row.month);
-      }
-    }
-    activeMonth = highest;
-  }
-
-  function scheduleRecompute() {
-    if (rafPending || typeof requestAnimationFrame === 'undefined') return;
-    rafPending = true;
-    requestAnimationFrame(recomputeActiveMonth);
-  }
-
-  function trackMonth(node: HTMLElement, month: number) {
-    const row = { node, month };
-    trackedRows.push(row);
-    scheduleRecompute();
-    return {
-      update(next: number) {
-        row.month = next;
-        scheduleRecompute();
-      },
-      destroy() {
-        const index = trackedRows.indexOf(row);
-        if (index >= 0) trackedRows.splice(index, 1);
-        scheduleRecompute();
-      }
-    };
-  }
-
-  $effect(() => {
-    window.addEventListener('scroll', scheduleRecompute, { passive: true });
-    window.addEventListener('resize', scheduleRecompute);
-    scheduleRecompute();
-    return () => {
-      window.removeEventListener('scroll', scheduleRecompute);
-      window.removeEventListener('resize', scheduleRecompute);
-    };
-  });
-
-  const railMonth = $derived(Math.min(activeMonth, horizon));
-  const railLease = $derived(comparison.lease.months[railMonth]);
-  const railFinance = $derived(comparison.finance.months[railMonth]);
-  const railCash = $derived(comparison.cash.months[railMonth]);
-  const railCarrier = $derived(comparison.carrier.months[railMonth]);
-  const railBuyout = $derived(buyoutAt(railMonth));
+  /** The three scenarios stacked against the lease, in presentation order. */
+  const alternatives = $derived([comparison.finance, comparison.cash, comparison.carrier]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   function pickCategory(next: Category) {
@@ -992,7 +931,7 @@
             <span class="num">Buyout</span>
           </div>
           {#each cycle1 as row (row.month)}
-            <div class="ledger-row" class:milestone={row.milestone} use:trackMonth={row.month}>
+            <div class="ledger-row" class:milestone={row.milestone}>
               <span class="lr-when">{row.label}</span>
               <span class="lr-what">
                 {#if row.events.length === 0}
@@ -1122,7 +1061,7 @@
             <span class="num">Buyout</span>
           </div>
           {#each cycle2 as row (row.month)}
-            <div class="ledger-row" class:milestone={row.milestone} use:trackMonth={row.month}>
+            <div class="ledger-row" class:milestone={row.milestone}>
               <span class="lr-when">{row.label}</span>
               <span class="lr-what">
                 {#if row.events.length === 0}
@@ -1313,46 +1252,39 @@
   </div>
 
   <!-- Rail ───────────────────────────────────────────────────────────────── -->
-  <aside class="rail" aria-label="Running totals">
+  <aside class="rail" aria-label="Comparison totals">
     <div class="rail-inner">
       <div class="rail-when">
-        {railMonth === 0 ? 'Today' : `Month ${railMonth}`}
-        <span class="rail-of">of {horizon}</span>
+        The comparison
+        <span class="rail-of">{horizon} months &middot; today's dollars</span>
       </div>
 
       <div class="rail-figure">
-        <span class="rail-label">Lease, today's dollars</span>
-        <span class="rail-value">{formatUsd0(railLease?.cumulativeNpv ?? 0)}</span>
-        <span class="rail-sub">{formatUsd0(railLease?.cumulative ?? 0)} actually paid</span>
-      </div>
-
-      <div class="rail-figure">
-        <span class="rail-label">Buy it outright now</span>
-        <span class="rail-value alt">
-          {railBuyout === null ? 'owned' : formatUsd0(railBuyout)}
-        </span>
-        <span class="rail-sub">
-          {#if railBuyout !== null}
-            {formatUsd0((railLease?.cumulative ?? 0) + railBuyout)} all in
-          {:else}
-            no payments left
+        <span class="rail-label">
+          {comparison.lease.name}: {forkLabel.toLowerCase()}
+          {#if comparison.bestValueKey === 'lease'}
+            <span class="badge">best value</span>
           {/if}
+        </span>
+        <span class="rail-value">{formatUsd0(comparison.lease.npv)}</span>
+        <span class="rail-sub">
+          {formatUsd0(comparison.lease.total)} cash out &middot;
+          {formatUsd(comparison.lease.npvPerDeviceMonth)}/mo of device
         </span>
       </div>
 
       <div class="rail-compare">
-        <div>
-          <span class="rc-key">Apple 0% financing</span>
-          <span class="rc-val">{formatUsd0(railFinance?.cumulativeNpv ?? 0)}</span>
-        </div>
-        <div>
-          <span class="rc-key">Bought outright</span>
-          <span class="rc-val">{formatUsd0(railCash?.cumulativeNpv ?? 0)}</span>
-        </div>
-        <div>
-          <span class="rc-key">Carrier plan</span>
-          <span class="rc-val">{formatUsd0(railCarrier?.cumulativeNpv ?? 0)}</span>
-        </div>
+        {#each alternatives as scenario (scenario.key)}
+          <div>
+            <span class="rc-key">{scenario.name}</span>
+            <span class="rc-side">
+              {#if comparison.bestValueKey === scenario.key}
+                <span class="badge">best value</span>
+              {/if}
+              <span class="rc-val">{formatUsd0(scenario.npv)}</span>
+            </span>
+          </div>
+        {/each}
       </div>
 
       <div class="rail-foot">
@@ -1955,10 +1887,6 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  .rail-value.alt {
-    font-size: 20px;
-    color: var(--accent2);
-  }
   .rail-sub {
     font-family: var(--font-mono);
     font-size: 10.5px;
@@ -1975,7 +1903,14 @@
   .rail-compare > div {
     display: flex;
     justify-content: space-between;
+    align-items: baseline;
     gap: 8px;
+  }
+  .rc-side {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex: none;
   }
   .rc-key {
     font-size: 11.5px;
@@ -2030,11 +1965,21 @@
     .rail-value {
       font-size: 17px;
     }
-    .rail-value.alt {
-      font-size: 15px;
+    .rail-compare {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 4px 14px;
+      padding-top: 0;
+      border-top: none;
+    }
+    .rail-compare > div {
+      gap: 6px;
+    }
+    .rc-key,
+    .rc-val {
+      font-size: 10.5px;
     }
     .rail-sub,
-    .rail-compare,
     .rail-foot {
       display: none;
     }

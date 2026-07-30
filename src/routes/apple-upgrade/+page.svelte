@@ -817,15 +817,6 @@
         </p>
 
         <h3 class="group-title">Sales tax</h3>
-        <p class="step-copy">
-          A lease usually changes <em>when</em> you pay tax, not how much. Most states tax each
-          lease payment as it's billed, so the tax rides along at
-          {(taxRateInput ?? 8.5).toFixed(2).replace(/\.?0+$/, '')}% of
-          {formatUsd(monthly)} &mdash; about {formatUsd(monthly * ((taxRateInput ?? 8.5) / 100))} a month
-          &mdash; and the buyout gets taxed too when you take it. A few states instead tax the full
-          {formatUsd0(price)} at signing, which is the same money much sooner and therefore worse for
-          you. Buying outright or financing is always taxed on the full price up front.
-        </p>
         <div class="fields">
           <NumberField
             label="Sales tax"
@@ -836,6 +827,16 @@
             hint="Your combined state and local rate."
           />
         </div>
+        <p class="step-copy">
+          A lease usually changes <em>when</em> you pay that rate, not how much of it you pay. Most
+          states tax each lease payment as it's billed, so the tax rides along at
+          {(taxRateInput ?? 8.5).toFixed(2).replace(/\.?0+$/, '')}% of
+          {formatUsd(monthly)} &mdash; about {formatUsd(monthly * ((taxRateInput ?? 8.5) / 100))} a month
+          &mdash; and the buyout gets taxed too when you take it. A few states instead tax the full
+          {formatUsd0(price)} at signing, which is the same money much sooner and therefore worse for
+          you. Buying outright or financing is always taxed on the full price up front, so this is the
+          one place the lease has a genuine timing advantage.
+        </p>
         <label class="toggle">
           <input type="checkbox" bind:checked={taxLeasePayments} />
           <span>

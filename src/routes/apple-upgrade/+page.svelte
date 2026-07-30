@@ -236,15 +236,19 @@
   const careNetOnOneIncident = $derived(assumptions.damageFee - careOneIncident);
 
   /**
-   * Losing it is the tail the lease makes uniquely bad. There's nothing to hand
-   * back at month `term`, so the return option disappears: the remaining payments
-   * still come, and the buyout lands anyway.
+   * Losing it is the tail the lease makes uniquely bad. Without theft and loss
+   * coverage, Apple closes the lease out one of two ways — the early termination
+   * fee or the purchase option fee — and both come to the unpaid remainder of the
+   * price, which is the purchase option formula either way. Payments keep coming
+   * until you pay it; take no action and Klarna bills through the extension period
+   * and charges the purchase option fee regardless.
    */
   const lossMonth = $derived(Math.max(1, Math.round(term / 2)));
   const lossPaid = $derived(monthly * lossMonth);
-  const lossOwed = $derived(remainingLeaseObligation(assumptions, lossMonth));
-  const lossBuyout = $derived(purchaseOptionFee(assumptions, term));
-  const lossTotal = $derived(lossPaid + lossOwed + lossBuyout);
+  const lossRemainder = $derived(purchaseOptionFee(assumptions, lossMonth));
+  const lossTotal = $derived(lossPaid + lossRemainder);
+  /** Apple's theft and loss claim path covers iPhone, iPad and Watch. Not Mac. */
+  const lossCoverable = $derived(category !== 'mac');
 
   /** The resale estimate the buy-versus-return decision turns on. */
   const resalePctAtTerm = $derived(resaleInput ?? DEFAULT_RESALE_PCT[category] * 100);
@@ -764,9 +768,11 @@
         <h3 class="group-title">Will you lose it?</h3>
         <p class="step-copy">
           This is the bigger risk, and the lease is what makes it bad. Lose a phone you own and
-          you've lost a phone. Lose a leased one and the lease outlives it &mdash; there's nothing
-          to hand back at month {term}, so returning it stops being an option and the buyout arrives
-          anyway. Lose it halfway through and it looks like this.
+          you've lost a phone. Lose a leased one and the lease outlives the device: the payments
+          keep coming until you close it out, and both ways Apple offers to do that &mdash; the
+          early termination fee or the purchase option fee &mdash; come to the same figure, the
+          unpaid remainder of the price less any trade-in credit. Lose it halfway through the term
+          and it looks like this.
         </p>
         <div class="exit-grid">
           <div>
@@ -775,22 +781,34 @@
             >
           </div>
           <div>
-            <span class="ek">Payments still owed</span><span class="ev">{formatUsd0(lossOwed)}</span
+            <span class="ek">Remainder to close it out</span><span class="ev"
+              >{formatUsd0(lossRemainder)}</span
             >
           </div>
           <div>
-            <span class="ek">Buyout, nothing to return</span><span class="ev"
-              >{formatUsd0(lossBuyout)}</span
+            <span class="ek">Paid, with no device</span><span class="ev"
+              >{formatUsd0(lossTotal)}</span
             >
           </div>
         </div>
         <div class="callout warn">
           <p>
-            {formatUsd0(lossTotal)} for a device you no longer have &mdash; essentially the full price
-            of the {device.name}, and you still need a phone. AppleCare+ with Theft and Loss is the
-            only thing that caps this, which is the strongest argument for coverage on this page.
-            Klarna doesn't publish what it actually does about a lost device, so treat this as the
-            ceiling.
+            You have bought the {device.name} at full price, less whatever trade-in credit still applied,
+            and you don't have it. There is no cheaper exit &mdash; terminating and buying out are the
+            same number, so the only thing you're choosing is whether you nominally own the missing device
+            at the end. And every month you wait is another payment on a phone you don't have, because
+            the billing doesn't stop until you pay the remainder.
+          </p>
+          <p>
+            {#if lossCoverable}
+              This is what AppleCare+ is actually for. Theft and loss is part of it now, so a claim
+              replaces the whole {formatUsd0(lossTotal)} with a deductible &mdash; a better argument for
+              the plans below than any of the repair math above.
+            {:else}
+              AppleCare+ for Mac has no theft and loss claim path &mdash; Apple offers it for
+              iPhone, iPad and Apple Watch only &mdash; so there's no version of this you can insure
+              against.
+            {/if}
           </p>
         </div>
 
@@ -1474,8 +1492,8 @@
             stricter in practice than on paper.
           </li>
           <li>
-            What Klarna actually charges for a lost or stolen device, which it doesn't publish. The
-            payments plus the buyout are the ceiling.
+            The theft and loss deductible, which is its own figure rather than the repair deductible
+            above. A claim isn't free &mdash; it's just far cheaper than closing out the lease.
           </li>
           <li>
             Price changes on the second device. The upgrade path assumes today's prices, which is
@@ -1828,6 +1846,9 @@
     line-height: 1.7;
     color: var(--text);
     text-wrap: pretty;
+  }
+  .callout p + p {
+    margin-top: 12px;
   }
   .callout strong {
     font-weight: 560;

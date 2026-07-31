@@ -281,7 +281,7 @@
       value: 'nothing' as const,
       label: 'Do nothing',
       sub: money0(appleUpgrade({ ...inputs, endChoice: 'nothing' }).summary.npv),
-      note: 'Six more payments, then Klarna buys it'
+      note: 'Six more payments, then you own it'
     }
   ]);
 
@@ -655,12 +655,16 @@
             </p>
           {:else}
             <p>
-              <strong>Do nothing.</strong> The lease converts to month-to-month. Payments continue
-              at
-              {money(gross)} &mdash; the un-credited rate, so it may be higher than what you were paying
-              &mdash; for up to six months, and then Klarna charges the remaining
-              {money0(buyoutAfter(extensionEnd, listPrice, gross, 0, term ?? 24))} to your card and you
-              own it. Same total as buying it, {EXTENSION_MONTHS} months later, decided by inertia.
+              <strong>Do nothing.</strong> This is not the walk-away option. It is the buy-it option with
+              a six-month delay, and it ends with the phone belonging to you.
+            </p>
+            <p>
+              The lease converts to month-to-month and payments continue at {money(gross)} &mdash; the
+              un-credited rate, so possibly more than you had been paying &mdash; for six more months.
+              At the end of those six, Klarna charges the entire remaining
+              {money0(buyoutAfter(extensionEnd, listPrice, gross, 0, term ?? 24))} to your card in one
+              go and the phone is yours outright. You land in exactly the same place as buying it, for
+              the same total, {EXTENSION_MONTHS} months later, having decided nothing.
             </p>
           {/if}
         </div>

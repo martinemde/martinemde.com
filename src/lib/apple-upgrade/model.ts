@@ -17,7 +17,8 @@ export type EndChoice =
   | 'upgrade'
   /** Pay the purchase option fee and own it. */
   | 'buyout'
-  /** Take no action: keep paying month-to-month, then Klarna charges the buyout. */
+  /** Take no action: keep paying month-to-month, then Klarna charges the remaining
+   *  buyout to your card and the device becomes yours. */
   | 'nothing';
 
 export type AppleCarePlan = 'none' | 'monthly' | 'annual' | 'one';
@@ -355,7 +356,11 @@ export function appleUpgrade(input: Inputs): Scenario {
 
     if (month === extensionEnd && endChoice === 'nothing') {
       const remaining = buyoutAfter(extensionEnd, listPrice, gross, tradeIn, term);
-      out.push({ label: 'Automatic buyout', amount: remaining * tax, biller: 'klarna' });
+      out.push({
+        label: 'Automatic buyout — it\u2019s yours',
+        amount: remaining * tax,
+        biller: 'klarna'
+      });
     }
 
     // Damage fee lands when you hand a device back without AppleCare.
@@ -410,7 +415,7 @@ export function appleUpgrade(input: Inputs): Scenario {
               owns: false,
               note:
                 month === extensionEnd
-                  ? 'Six months of silence and Klarna buys it for you.'
+                  ? 'No decision for six months, so Klarna charges you the rest and the phone is yours.'
                   : undefined
             }
           : { buyout: null, hasPhone: true, owns: true, note: undefined };

@@ -71,7 +71,7 @@
     activationFee: 35,
     caseCost: 59,
     appleCardBack: 3,
-    klarnaCardBack: 0,
+    klarnaCardBack: 3,
     carrierCardBack: 2,
     discountRate: 4,
     carrierCredits: 0
@@ -537,7 +537,7 @@
         bind:value={klarnaCardBack}
         unit="%"
         step={0.5}
-        hint="Probably zero. See below."
+        hint="Apple Card pays 3% here too."
       />
       <Field
         label="Card rewards on the carrier bill"
@@ -568,17 +568,17 @@
     </div>
 
     <div class="aside">
-      <h3>Klarna will not take your good card</h3>
+      <h3>Klarna is picky about cards, but not the one that matters</h3>
       <p>
-        This is the single largest hidden cost of the lease and it is three sentences in the FAQ.
         Klarna does not accept AMEX or UnionPay, and does not accept cards <em>issued</em> by Chase or
-        Capital One. Apple Pay and PayPal are out entirely.
+        Capital One. Apple Pay and PayPal are out entirely. Check your card before you count on it.
       </p>
       <p>
-        On every other path in this comparison, the full purchase price runs through a card. Apple
-        Card&rsquo;s 3% Daily Cash on a $1,199 phone is about {money0(1199 * 1.085 * 0.03)} you simply
-        do not get when Klarna is the one collecting. That is most of the lease&rsquo;s timing advantage,
-        handed back.
+        Apple Card works, though, and pays its usual 3% Daily Cash on lease payments &mdash; about
+        {money0(1199 * 1.085 * 0.03)} across a full term on a $1,199 phone, the same 3% you would have
+        earned buying it outright. This is the detail that decides the whole comparison. Card rewards
+        were the one thing that could have made leasing structurally worse than financing, and they turn
+        out to be a wash across every path on this page. What is left is timing, and nothing else.
       </p>
       <h3>Why the discount rate matters here</h3>
       <p>
@@ -683,6 +683,11 @@
           same question: what did this cost, and what do you have to show for it? The lease columns
           use the ending you picked.
         </p>
+        <p class="lede">
+          Watch the <strong>total paid</strong> row in particular. Pay cash, Apple Card financing
+          and both leases will often land on the identical number, because Apple built them to.
+          Every row below it is a consequence of <em>when</em> that identical number gets paid.
+        </p>
       </div>
 
       <Compare {scenarios} highlight={`upgrade-${term}`} />
@@ -700,19 +705,20 @@
         <div class="note-card">
           <h3>Apple Card, 24 months at 0%</h3>
           <p>
-            Financing the tax-inclusive total over 24 months at zero interest while still earning 3%
-            Daily Cash up front. This is the one the lease has to beat, and on a strict
-            dollars-and-timing basis it is very hard to beat, because it does what the lease does
-            without giving up the rewards.
+            Financing the tax-inclusive total over 24 months at zero interest, with the 3% Daily
+            Cash paid up front. This is the honest baseline: the same total as cash, spread over two
+            years, with no lease, no carrier requirement and no return inspection. The lease only
+            beats it on when the money moves.
           </p>
         </div>
         <div class="note-card">
           <h3>Apple Upgrade, 12 or 24 months</h3>
           <p>
             The lowest monthly payment and the lowest day-one cost, in exchange for a device you do
-            not own, a carrier you must attach, a card you probably cannot use, and a decision
-            waiting for you at the end. Its unique value is the option to walk away &mdash; which is
-            worth real money only if the phone depreciates faster than Apple assumed.
+            not own, a carrier you must attach, and a decision waiting for you at the end. It earns
+            the same 3% and can total the same number as paying cash &mdash; it just pays later,
+            which is the entirety of its advantage. The option to walk away is worth real money only
+            if the phone depreciates faster than Apple assumed.
           </p>
         </div>
         <div class="note-card">
@@ -755,8 +761,9 @@
           <h3>Klarna is picky about cards</h3>
           <p>
             No AMEX, no UnionPay, and no cards issued by Chase or Capital One. No Apple Pay, no
-            PayPal. Debit works. Whatever card you were planning to earn rewards on, check it first
-            &mdash; this quietly costs more than any other line item here.
+            PayPal. Debit works, and so does Apple Card, which still pays its 3% on lease payments.
+            But if the card you were counting on for rewards is on that list, check before you
+            assume.
           </p>
         </li>
         <li>

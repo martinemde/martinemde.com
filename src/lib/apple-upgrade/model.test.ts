@@ -194,6 +194,25 @@ describe('NPV', () => {
     expect(scenario.summary.npv).toBeCloseTo(scenario.summary.cash, 2);
   });
 
+  // Klarna pays Apple Card's 3% on lease payments, so rewards come out a wash
+  // across every path and timing is the only thing left separating them.
+  it('earns rewards on Klarna lease payments too', () => {
+    const base = inputs({ taxRate: 8.5, endChoice: 'nothing', appleCardBack: 3 });
+    const withBack = appleUpgrade({ ...base, klarnaCardBack: 3 });
+    const without = appleUpgrade(base);
+    expect(without.summary.cash - withBack.summary.cash).toBeCloseTo(1199 * 1.085 * 0.03, 2);
+  });
+
+  it('leaves the lease strictly cheaper than cash once rewards match', () => {
+    const base = inputs({ taxRate: 8.5, appleCardBack: 3, klarnaCardBack: 3 });
+    const lease = appleUpgrade({ ...base, endChoice: 'nothing' });
+    const cash = outright(base);
+
+    // Identical nominal totals, so the only difference is when it gets paid.
+    expect(lease.summary.cash).toBeCloseTo(cash.summary.cash, 2);
+    expect(lease.summary.npv).toBeLessThan(cash.summary.npv);
+  });
+
   it('gives 3% Apple Card rewards back on a cash purchase', () => {
     const withBack = outright(inputs({ taxRate: 8.5, appleCardBack: 3 }));
     const without = outright(inputs({ taxRate: 8.5 }));

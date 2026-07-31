@@ -365,35 +365,43 @@
           onMonthChange={(m) => (throughMonth = m)}
         />
       </section>
+
+      <!-- Catches -->
+      <section
+        class="rounded-xl border border-surface-300-700 bg-surface-100-900/40 p-4"
+        aria-labelledby="catches-heading"
+      >
+        <h2 id="catches-heading" class="text-sm font-semibold text-surface-950-50">
+          Catches worth knowing
+        </h2>
+        <ul
+          class="mt-2 grid list-disc gap-x-6 gap-y-1.5 pl-4 text-xs leading-relaxed text-surface-600-400 sm:grid-cols-2"
+        >
+          <li>Klarna runs the lease and doesn't take Amex, Chase, or Capital One cards.</li>
+          <li>
+            iPhone leases require AT&amp;T, T-Mobile, or Verizon at signup (the phone itself is
+            unlocked).
+          </li>
+          <li>14-day return window; after that, leaving early costs every remaining payment.</li>
+          <li>
+            Trade-in credit applies to your first lease only — upgrades start at the full payment.
+          </li>
+          <li>
+            Wait out the 6-month decision window and Klarna charges the purchase option fee
+            automatically.
+          </li>
+          <li>
+            Advertised lease payments exclude sales tax — most states add it to each monthly
+            payment.
+          </li>
+        </ul>
+      </section>
     </div>
 
     <!-- Sidebar -->
     <aside class="mt-10 lg:mt-0">
       <div class="space-y-4 lg:sticky lg:top-20">
         <SummaryPanel {scenarios} discountRatePct={inputs.discountRatePct} {throughMonth} />
-
-        <div class="rounded-xl border border-surface-300-700 bg-surface-100-900/40 p-4">
-          <h2 class="text-sm font-semibold text-surface-950-50">Catches worth knowing</h2>
-          <ul class="mt-2 list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-surface-600-400">
-            <li>Klarna runs the lease and doesn't take Amex, Chase, or Capital One cards.</li>
-            <li>
-              iPhone leases require AT&amp;T, T-Mobile, or Verizon at signup (the phone itself is
-              unlocked).
-            </li>
-            <li>14-day return window; after that, leaving early costs every remaining payment.</li>
-            <li>
-              Trade-in credit applies to your first lease only — upgrades start at the full payment.
-            </li>
-            <li>
-              Wait out the 6-month decision window and Klarna charges the purchase option fee
-              automatically.
-            </li>
-            <li>
-              Advertised lease payments exclude sales tax — most states add it to each monthly
-              payment.
-            </li>
-          </ul>
-        </div>
 
         <button
           type="button"

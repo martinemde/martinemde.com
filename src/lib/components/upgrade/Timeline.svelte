@@ -119,7 +119,11 @@
             <span class="item">{item.label}<i class="biller">{item.biller}</i></span>
           {/each}
           {#if row.items.length === 0 && row.month > 0}
-            <span class="item quiet">{row.hasPhone ? 'Nothing due' : 'No phone'}</span>
+            {#if row.idleNote}
+              <span class="item pastime">{row.idleNote}</span>
+            {:else}
+              <span class="item quiet">{row.hasPhone ? 'Nothing due' : 'No phone'}</span>
+            {/if}
           {/if}
         </span>
 
@@ -269,8 +273,7 @@
     opacity: 0.5;
   }
   .row.gone .what {
-    text-decoration: line-through;
-    text-decoration-color: var(--faint);
+    color: var(--faint);
   }
 
   .m {
@@ -303,6 +306,10 @@
   }
   .item.quiet {
     color: var(--faint);
+  }
+  .item.pastime {
+    color: var(--faint);
+    font-style: italic;
   }
   .biller {
     border-radius: 4px;

@@ -104,7 +104,25 @@ describe('Apple Upgrade page', () => {
     expect(monthThirty()).toMatch(/Automatic buyout/);
 
     await user.click(screen.getByText('Hand it back'));
-    expect(monthThirty()).toMatch(/No phone/);
+    expect(monthThirty()).toMatch(/You don’t have a phone/);
+  });
+
+  it('fills the phoneless months with something to do', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await user.click(screen.getByText('Hand it back'));
+
+    // Months 25-36 are empty on the return path; each should suggest a pastime,
+    // and no two in a row should suggest the same one.
+    const suggestions = [];
+    for (let m = 25; m <= 36; m++) {
+      const text = container.querySelector(`[data-month="${m}"]`)!.textContent!;
+      const match = text.match(/You don’t have a phone: (.+)/);
+      expect(match).not.toBeNull();
+      suggestions.push(match![1].trim());
+    }
+    expect(new Set(suggestions).size).toBe(suggestions.length);
   });
 
   it('remembers your answers across a reload', async () => {

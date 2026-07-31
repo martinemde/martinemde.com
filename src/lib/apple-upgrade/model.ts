@@ -101,6 +101,8 @@ export interface MonthRow {
   /** Do you own the thing in your pocket? */
   owns: boolean;
   note?: string;
+  /** Shown in place of the line items on months where nothing is due. */
+  idleNote?: string;
 }
 
 export interface Summary {
@@ -141,6 +143,44 @@ export const EXTENSION_MONTHS = 6;
  * collect half the sticker, 24-month leases collect 70% of it.
  */
 export const LEASE_SHARE: Record<Term, number> = { 12: 0.5, 24: 0.7 };
+
+/**
+ * What you do with the months after you hand the phone back. The return path
+ * leaves a long tail of months where nothing is due and nothing happens, and
+ * "No phone" two dozen times in a row undersells it.
+ */
+export const PASTIMES = [
+  'spend some time looking at the trees.',
+  'visit your in-laws and listen to their stories.',
+  'learn which birds live near you, by sound.',
+  'read an entire newspaper, including the part about zoning.',
+  'memorize three phone numbers, like a pioneer.',
+  'get lost on purpose and ask a stranger the way.',
+  'watch a whole sunset without photographing it.',
+  'write a letter. On paper. With a stamp.',
+  'find out what your neighbors are called.',
+  'learn to tell the clouds apart.',
+  'sit in a waiting room and simply wait.',
+  'bake something that takes four hours.',
+  'take up whittling. Everyone needs a spoon.',
+  'reread a book you have claimed to have read.',
+  'attend a town council meeting, recreationally.',
+  'stare out of a bus window like it is 1987.',
+  'have a conversation that ends when it is over.',
+  'learn the constellations you can actually see.',
+  'alphabetize something. Anything.',
+  'walk somewhere without knowing how long it takes.',
+  'teach yourself to fold a fitted sheet.',
+  'nap without setting an alarm.',
+  'grow a tomato from seed and worry about it daily.',
+  'learn the bus timetable by heart.',
+  'eat a meal while looking at the other person.',
+  'get a library card, and then use it.',
+  'practice an instrument badly, in public.',
+  'take the long way home for no reason.',
+  'answer a landline without knowing who it is.',
+  'be genuinely unreachable for one entire afternoon.'
+];
 
 /** Apple prices every lease payment at some x.99. */
 export function roundTo99(value: number): number {
@@ -228,6 +268,7 @@ function assemble(
     hasPhone: boolean;
     owns: boolean;
     note?: string;
+    idleNote?: string;
   }
 ): MonthRow[] {
   const rate = monthlyDiscount(input.discountRate);
@@ -397,7 +438,13 @@ export function appleUpgrade(input: Inputs): Scenario {
     }
     switch (endChoice) {
       case 'return':
-        return { buyout: null, hasPhone: false, owns: false, note: undefined };
+        return {
+          buyout: null,
+          hasPhone: false,
+          owns: false,
+          note: undefined,
+          idleNote: `You don\u2019t have a phone: ${PASTIMES[(month - term - 1) % PASTIMES.length]}`
+        };
       case 'buyout':
         return { buyout: null, hasPhone: true, owns: true, note: undefined };
       case 'upgrade':

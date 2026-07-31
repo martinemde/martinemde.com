@@ -6,6 +6,7 @@ import {
   EXTENSION_MONTHS,
   leasePayment,
   outright,
+  PASTIMES,
   roundTo99,
   usedFraction,
   type Inputs
@@ -294,6 +295,30 @@ describe('usedFraction', () => {
 
   it('interpolates between anchors', () => {
     expect(usedFraction(18)).toBeCloseTo((0.62 + 0.45) / 2, 3);
+  });
+});
+
+describe('pastimes', () => {
+  it('has enough to cover the longest phoneless stretch without repeating', () => {
+    // A 12-month lease handed back leaves months 13-36 empty: 24 of them.
+    expect(PASTIMES.length).toBeGreaterThanOrEqual(36 - 12);
+    expect(new Set(PASTIMES).size).toBe(PASTIMES.length);
+  });
+
+  it('suggests something for every month after you hand the phone back', () => {
+    const scenario = appleUpgrade(inputs({ term: 12, endChoice: 'return' }));
+    const idle = scenario.rows.filter((r) => r.month > 12);
+
+    expect(idle).toHaveLength(24);
+    for (const row of idle) expect(row.idleNote).toMatch(/^You don’t have a phone: \S/);
+    expect(new Set(idle.map((r) => r.idleNote)).size).toBe(idle.length);
+  });
+
+  it('leaves the other endings alone', () => {
+    for (const endChoice of ['buyout', 'nothing', 'upgrade'] as const) {
+      const scenario = appleUpgrade(inputs({ endChoice }));
+      expect(scenario.rows.every((r) => r.idleNote === undefined)).toBe(true);
+    }
   });
 });
 

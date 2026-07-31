@@ -12,6 +12,7 @@ import {
   Ghost,
   FolderOpenDot,
   Shrimp,
+  Smartphone,
   UtensilsCrossed,
   Volleyball,
   type Icon as IconType
@@ -95,6 +96,13 @@ export const projects: Project[] = [
       'Compare loans side by side. Calculate monthly payments, total interest, and grand totals.',
     url: resolve('/loans'),
     icon: Calculator
+  },
+  {
+    name: 'Apple Upgrade Calculator',
+    description:
+      "Should you lease your next iPhone? Walk Apple's new Upgrade program month by month and compare it against buying outright, Apple Card, and carrier financing.",
+    url: resolve('/apple-upgrade'),
+    icon: Smartphone
   },
   {
     name: 'RubyGems & Bundler',

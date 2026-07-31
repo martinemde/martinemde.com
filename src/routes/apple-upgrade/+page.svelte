@@ -312,8 +312,8 @@
 
 <article>
   <header class="hero">
-    <div class="eyebrow">// apple upgrade, decoded</div>
-    <h1>You never pay more than full price</h1>
+    <div class="eyebrow">// you never pay more than full price</div>
+    <h1>Apple Upgrade, decoded</h1>
     <p class="lede">
       Apple Upgrade is Apple&rsquo;s new device lease, underwritten by Klarna. Twelve or twenty-four
       months of low payments, then you hand the phone back &mdash; or don&rsquo;t. This page walks

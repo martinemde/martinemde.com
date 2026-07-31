@@ -75,13 +75,32 @@ describe('12-month lease', () => {
     expect(result.ownsDevice).toBe(true);
   });
 
-  it('lease-then-buyout totals list price even with a trade-in', () => {
-    // You pay 12 x 18.74 = 224.88, then a fee of 1199 - 224.88 = 974.12.
-    // The $375 came out of your old phone's value, not your cash total.
+  it('counts the trade-in toward the phone when you buy out', () => {
+    // You pay 12 x 18.74 = 224.88 cash; the trade-in covered the rest of the
+    // fixed 12 x 49.99 schedule. Fee = 1199 - 599.88 = 599.12.
     const result = buildLeaseFlows(12, 'buyout', bare({ tradeIn: 375 }));
-    expect(nominal(result.flows)).toBe(1199);
     const fee = result.flows.find((f) => f.label === 'Purchase option fee');
-    expect(fee?.amount).toBe(974.12);
+    expect(fee?.amount).toBe(599.12);
+    expect(nominal(result.flows)).toBe(round2(1199 - 375));
+  });
+
+  it('always owes ~50% (12-mo) or ~30% (24-mo) of list at term end', () => {
+    for (const tradeIn of [0, 300, 625]) {
+      const r12 = buildLeaseFlows(12, 'buyout', bare({ tradeIn }));
+      expect(r12.flows.find((f) => f.label === 'Purchase option fee')?.amount).toBe(599.12);
+      const r24 = buildLeaseFlows(24, 'buyout', bare({ tradeIn }));
+      expect(r24.flows.find((f) => f.label === 'Purchase option fee')?.amount).toBe(359.24);
+    }
+  });
+
+  it('returns trade-in overage as a gift card with $0 payments', () => {
+    // $625 trade-in vs a 12 x 49.99 = 599.88 schedule: payments floor at $0
+    // and the 25.12 difference comes back as a gift card.
+    const result = buildLeaseFlows(12, 'buyout', bare({ tradeIn: 625 }));
+    const giftCard = result.flows.find((f) => f.label === 'Trade-in overage (Apple gift card)');
+    expect(giftCard?.amount).toBeCloseTo(-25.12);
+    expect(result.flows.some((f) => f.label.includes('Lease payment'))).toBe(false);
+    expect(nominal(result.flows)).toBe(round2(1199 - 625));
   });
 
   it('returning the device costs less than the list price (per the FAQ)', () => {
@@ -96,8 +115,10 @@ describe('12-month lease', () => {
     const month13 = result.flows.find((f) => f.month === 13 && f.kind === 'cost');
     expect(month13?.label).toContain('Extension');
     expect(month13?.amount).toBe(49.99); // not 18.74 — credit expired
-    // 12 x 18.74 + 6 x 49.99 = 524.82 paid, fee = 1199 - 524.82 = 674.18
-    expect(nominal(result.flows)).toBe(1199);
+    // 6 more payments discharge 6 x 49.99 of the fee: 599.12 - 299.94 = 299.18
+    const fee = result.flows.find((f) => f.label === 'Purchase option fee');
+    expect(fee?.amount).toBe(299.18);
+    expect(nominal(result.flows)).toBe(round2(1199 - 375));
     expect(result.ownsDevice).toBe(true);
   });
 

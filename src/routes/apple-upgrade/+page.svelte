@@ -143,7 +143,8 @@
         <p class="text-sm text-surface-600-400">
           A trade-in lowers every payment of your <em>first</em> lease: Apple spreads the credit
           evenly across the term. A $375 trade-in turns {fmtMoney(49.99)} into
-          {fmtMoney(leasePayment(49.99, 375, 12))} on a 12-month lease. The catch: you can't trade in
+          {fmtMoney(leasePayment(49.99, 375, 12))} on a 12-month lease. Trade-in worth more than the whole
+          term of payments? The extra comes back as an Apple gift card. The catch: you can't trade in
           when you upgrade, so every later lease costs the full payment.
         </p>
         <div class="grid gap-2 sm:grid-cols-2">
@@ -414,10 +415,12 @@
       <em>when</em>. Buying concentrates the cost on day one; the lease and financing spread it out.
     </p>
     <p class="text-sm text-surface-600-400">
-      <strong class="text-surface-950-50">The purchase option fee</strong> is the list price minus what
-      you've already paid, so leasing and then buying never costs more than the phone's price (before
-      tax). What the lease really sells you is the option to hand the phone back: on a 12-month term you
-      pay ~50% of list for a year of use, and Apple keeps the phone's remaining value.
+      <strong class="text-surface-950-50">The purchase option fee</strong> is the list price minus the
+      scheduled lease payments — and a trade-in pays down that same schedule, so at term end you always
+      owe ~50% of list on a 12-month lease or ~30% on a 24-month one, no matter how big your trade-in
+      was. Lease-then-buy therefore costs list minus your trade-in (before tax). What the lease really
+      sells you is the option to hand the phone back: on a 12-month term you pay ~50% of list for a year
+      of use, and Apple keeps the phone's remaining value.
     </p>
     <p class="text-sm text-surface-600-400">
       Payments are Apple's advertised Apple Upgrade amounts; verify your quote at checkout. Owned

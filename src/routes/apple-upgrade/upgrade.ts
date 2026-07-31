@@ -13,8 +13,9 @@
  *   - After the term you get a 6-month decision window. Payments continue,
  *     and they go UP because the trade-in credit no longer applies.
  *   - Taking no action for 6 months = you get charged the purchase option fee.
- *   - Purchase option fee = list price - payments actually made
- *     (so lease + buyout never exceeds list price, before tax/fees).
+ *   - Purchase option fee = list price - SCHEDULED payments made. A trade-in
+ *     pays down that fixed schedule, so the fee is ~50% of list at 12 months
+ *     (~30% at 24) no matter the trade-in; overage returns as a gift card.
  *   - AppleCare is billed separately and avoids return damage fees.
  *
  * Tax treatment: purchases and financing charge sales tax on the full price
@@ -134,7 +135,12 @@ export function leasePayment(base: number, tradeIn: number, term: number): numbe
   return round2(Math.max(0, base - tradeIn / term));
 }
 
-/** The fee to buy the leased device outright: list price minus what you've paid. */
+/**
+ * The fee to buy the leased device outright: list price minus the scheduled
+ * lease payments made so far. Because a trade-in pays down the same fixed
+ * schedule, the fee is always list − base × months — ~50% of list after a
+ * 12-month term, ~30% after 24 — no matter how big the trade-in was.
+ */
 export function purchaseOptionFee(price: number, paymentsMade: number): number {
   return round2(Math.max(0, price - paymentsMade));
 }
@@ -229,12 +235,15 @@ function addLeaseMonth(
   ctx: LeaseContext,
   month: number,
   payment: number,
+  scheduled: number,
   inputs: UpgradeInputs,
   label: string,
   coverageActive: boolean
 ) {
   add(ctx.flows, month, label, payment);
-  ctx.paid = round2(ctx.paid + payment);
+  // The purchase option fee credits the SCHEDULED payment: a trade-in pays
+  // down that fixed schedule, so it shrinks your cash, never the fee.
+  ctx.paid = round2(ctx.paid + scheduled);
   // Lease payments are taxed monthly in most states. The trade-in credit
   // shrinks the payment, so it shrinks the tax too.
   const tax = payment * (inputs.taxRate / 100);
@@ -286,6 +295,13 @@ export function buildLeaseFlows(
   // Checkout day: tax/activation/case land at month 0, first payment ~month 1
   addLeaseCheckout(ctx, 0, inputs, true);
 
+  // A trade-in worth more than the whole term of payments comes back as a
+  // gift card for the difference — payments can't go below $0.
+  const scheduledTotal = base * term;
+  if (inputs.tradeIn > scheduledTotal) {
+    add(ctx.flows, 0, 'Trade-in overage (Apple gift card)', -(inputs.tradeIn - scheduledTotal));
+  }
+
   let leaseStart = 1;
   // Loop over consecutive leases inside the horizon
   for (;;) {
@@ -295,7 +311,7 @@ export function buildLeaseFlows(
       const payment = leasePayment(base, credit, term);
       const label =
         credit > 0 ? `Lease payment ($${base.toFixed(2)} − trade-in credit)` : 'Lease payment';
-      addLeaseMonth(ctx, m, payment, inputs, label, true);
+      addLeaseMonth(ctx, m, payment, base, inputs, label, true);
     }
 
     if (leaseEnd >= HORIZON) {
@@ -325,9 +341,10 @@ export function buildLeaseFlows(
         return { id: term === 12 ? 'lease12' : 'lease24', flows, ownsDevice, note };
       }
       case 'extend': {
-        // 6-month decision window: full base payment, trade-in credit is gone
+        // 6-month decision window: full base payment, trade-in credit is gone.
+        // Each extension payment still discharges base value against the fee.
         for (let m = leaseEnd + 1; m <= leaseEnd + EXTENSION_MONTHS; m++) {
-          addLeaseMonth(ctx, m, base, inputs, 'Extension payment (no trade-in credit)', true);
+          addLeaseMonth(ctx, m, base, base, inputs, 'Extension payment (no trade-in credit)', true);
         }
         addBuyout(ctx, leaseEnd + EXTENSION_MONTHS, price, inputs);
         addResidual(ctx, price, inputs);

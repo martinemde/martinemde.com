@@ -28,10 +28,9 @@
 
   let container: HTMLElement | undefined = $state();
 
-  // The decision numbers depend on what you've paid by the end of the term
+  // The decision numbers depend on the scheduled payments your lease covers
   const base = $derived(term === 12 ? inputs.payment12 : inputs.payment24);
-  const withCredit = $derived(leasePayment(base, inputs.tradeIn, term));
-  const paidAtEnd = $derived(round2(withCredit * term));
+  const paidAtEnd = $derived(round2(base * term));
   const buyoutFee = $derived(purchaseOptionFee(inputs.price, paidAtEnd));
   const buyoutTotal = $derived(round2(buyoutFee * (1 + inputs.taxRate / 100)));
   const extendTotal = $derived(
@@ -95,7 +94,7 @@
       id: 'buyout' as const,
       title: 'Buy it and keep it',
       price: `${fmtMoney(buyoutTotal)} once`,
-      description: `Pay the purchase option fee — list price minus your ${fmtMoney(paidAtEnd)} of payments, plus tax — and the phone is yours.`
+      description: `Pay the purchase option fee — list price minus the ${fmtMoney(paidAtEnd)} of scheduled lease payments, plus tax — and the phone is yours.`
     },
     {
       id: 'extend' as const,

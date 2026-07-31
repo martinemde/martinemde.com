@@ -367,7 +367,7 @@
 
     <!-- Sidebar -->
     <aside class="mt-10 lg:mt-0">
-      <div class="space-y-4 lg:sticky lg:top-4">
+      <div class="space-y-4 lg:sticky lg:top-20">
         <SummaryPanel {scenarios} discountRatePct={inputs.discountRatePct} {throughMonth} />
 
         <div class="rounded-xl border border-surface-300-700 bg-surface-100-900/40 p-4">

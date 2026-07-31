@@ -278,24 +278,36 @@
     net: number;
     cumulative: number;
     cumulativeNpv: number;
-    /** What Klarna would charge to buy the device outright this month, if leased. */
-    buyout: number | null;
+    /** What Klarna would charge to buy the device this month, or where ownership stands. */
+    buyout: string;
+    /**
+     * Set on exactly the months you have no device, which is the walk-away path
+     * after the return. Doubles as the flag for how the buyout column reads.
+     */
+    note: string | null;
     milestone: boolean;
   }
 
-  function buyoutAt(month: number): number | null {
-    if (month <= term) return purchaseOptionFee(assumptions, month);
+  function buyoutAt(month: number): string {
+    if (month <= term) return formatUsd0(purchaseOptionFee(assumptions, month));
     if (fork === 'upgrade') {
       // The old device went back; this is the second lease's buyout.
-      return purchaseOptionFee({ ...assumptions, tradeIn: 0 }, Math.min(month - term, term));
-    }
-    if (fork === 'extend' && month <= term + 6) {
-      return Math.max(
-        0,
-        purchaseOptionFee(assumptions, term) - undiscountedMonthly * (month - term)
+      return formatUsd0(
+        purchaseOptionFee({ ...assumptions, tradeIn: 0 }, Math.min(month - term, term))
       );
     }
-    return null;
+    if (fork === 'extend' && month <= term + 6) {
+      return formatUsd0(
+        Math.max(0, purchaseOptionFee(assumptions, term) - undiscountedMonthly * (month - term))
+      );
+    }
+    // Nothing left to buy: either it's yours, or you handed it back and walked.
+    return fork === 'walk' ? 'no device' : 'owned';
+  }
+
+  function noteAt(month: number): string | null {
+    if (fork !== 'walk' || month <= term) return null;
+    return NO_DEVICE_MONTHS[(month - term - 1) % NO_DEVICE_MONTHS.length];
   }
 
   const timeline = $derived<TimelineRow[]>(
@@ -307,6 +319,7 @@
       cumulative: row.cumulative,
       cumulativeNpv: row.cumulativeNpv,
       buyout: buyoutAt(row.month),
+      note: noteAt(row.month),
       milestone: row.month === 0 || row.month === term || row.month === horizon
     }))
   );
@@ -408,6 +421,54 @@
   ];
 
   const forkLabel = $derived(FORK_OPTIONS.find((o) => o.value === fork)?.name ?? '');
+
+  /**
+   * The walk-away path leaves the second half of the window with no payment and
+   * no device. Blank rows there read like the model gave up, when the honest
+   * answer is that this is what you traded the phone for.
+   */
+  const NO_DEVICE_MONTHS = [
+    'Spend some time looking at the trees.',
+    'Visit your in-laws and listen to their stories.',
+    'Learn the names of the birds in your yard.',
+    'Read a paperback all the way to the end.',
+    'Get lost on purpose and ask someone for directions.',
+    'Write a letter. On paper. With a stamp.',
+    'Memorize three phone numbers.',
+    'Sit on the porch until it gets dark.',
+    'Cook something that takes four hours.',
+    'Learn to play a song badly.',
+    'Take a walk with no route in mind.',
+    'Buy a paper map and fold it wrong forever.',
+    'Wait for a bus without knowing when it comes.',
+    'Do a crossword in pen.',
+    'Repair something instead of replacing it.',
+    'Watch a whole sunset without photographing it.',
+    "Show up at a friend's door unannounced.",
+    'Wear a watch that only tells the time.',
+    'Keep a notebook in your back pocket.',
+    'Get a library card.',
+    'Learn to find one constellation.',
+    'Plant something and wait.',
+    'Bake bread badly, then better.',
+    'Argue about a fact and never look it up.',
+    'Take the long way home.',
+    'Sit through a meal without checking anything.',
+    'Call from a landline and enjoy the novelty.',
+    'Teach a kid to skip a rock.',
+    "Fix the drawer that's been sticking for two years.",
+    'Read the newspaper someone left behind.',
+    "Go to a movie and don't know what time it is.",
+    "Ask a stranger what they're reading.",
+    'Do the dishes by hand and think about nothing.',
+    'Nap without an alarm.',
+    'Draw the thing in front of you.',
+    'Say hello to your neighbors. All of them.',
+    'Miss someone properly, without texting them.',
+    'Learn every trail in the nearest park.',
+    'Sit with a bad mood until it passes.',
+    'Finish the project in the garage.'
+  ];
 
   $effect(() => {
     const state: Saved = {
@@ -1136,24 +1197,25 @@
             <div class="ledger-row" class:milestone={row.milestone}>
               <span class="lr-when">{row.label}</span>
               <span class="lr-what">
-                {#if row.events.length === 0}
+                {#each row.events as event (event.label)}
+                  <span class="event" class:credit={event.amount < 0}>
+                    {event.label}
+                    {#if event.amount !== 0}
+                      <span class="event-amt">{formatUsd(Math.abs(event.amount))}</span>
+                    {/if}
+                  </span>
+                {/each}
+                {#if row.note}
+                  <span class="note">{row.note}</span>
+                {:else if row.events.length === 0}
                   <span class="quiet">&mdash;</span>
-                {:else}
-                  {#each row.events as event (event.label)}
-                    <span class="event" class:credit={event.amount < 0}>
-                      {event.label}
-                      {#if event.amount !== 0}
-                        <span class="event-amt">{formatUsd(Math.abs(event.amount))}</span>
-                      {/if}
-                    </span>
-                  {/each}
                 {/if}
               </span>
               <span class="num lr-out" class:quiet={row.net === 0}>
                 {row.net === 0 ? '—' : formatUsd(row.net)}
               </span>
-              <span class="num lr-buyout">
-                {row.buyout === null ? 'owned' : formatUsd0(row.buyout)}
+              <span class="num lr-buyout" class:quiet={row.note !== null}>
+                {row.buyout}
               </span>
             </div>
           {/each}
@@ -1303,8 +1365,9 @@
           {:else if fork === 'extend'}
             Six more payments, then the automatic buyout. After that it's yours.
           {:else}
-            Nothing leaves your account, because you have no device. Whatever you do about that
-            isn't priced here.
+            Nothing leaves your account, because you have no device. The buyout column says so for
+            {horizon - term} straight months. Whatever you do about that isn't priced here, but the middle
+            column has suggestions.
           {/if}
         </p>
 
@@ -1319,24 +1382,25 @@
             <div class="ledger-row" class:milestone={row.milestone}>
               <span class="lr-when">{row.label}</span>
               <span class="lr-what">
-                {#if row.events.length === 0}
+                {#each row.events as event (event.label)}
+                  <span class="event" class:credit={event.amount < 0}>
+                    {event.label}
+                    {#if event.amount !== 0}
+                      <span class="event-amt">{formatUsd(Math.abs(event.amount))}</span>
+                    {/if}
+                  </span>
+                {/each}
+                {#if row.note}
+                  <span class="note">{row.note}</span>
+                {:else if row.events.length === 0}
                   <span class="quiet">&mdash;</span>
-                {:else}
-                  {#each row.events as event (event.label)}
-                    <span class="event" class:credit={event.amount < 0}>
-                      {event.label}
-                      {#if event.amount !== 0}
-                        <span class="event-amt">{formatUsd(Math.abs(event.amount))}</span>
-                      {/if}
-                    </span>
-                  {/each}
                 {/if}
               </span>
               <span class="num lr-out" class:quiet={row.net === 0}>
                 {row.net === 0 ? '—' : formatUsd(row.net)}
               </span>
-              <span class="num lr-buyout">
-                {row.buyout === null ? 'owned' : formatUsd0(row.buyout)}
+              <span class="num lr-buyout" class:quiet={row.note !== null}>
+                {row.buyout}
               </span>
             </div>
           {/each}
@@ -1917,6 +1981,10 @@
   }
   .event.credit .event-amt::before {
     content: '−';
+  }
+  .note {
+    color: var(--faint);
+    font-style: italic;
   }
   .num {
     text-align: right;

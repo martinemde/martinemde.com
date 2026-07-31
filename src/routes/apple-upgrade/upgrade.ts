@@ -354,8 +354,7 @@ export function buildLeaseFlows(
       }
       case 'return': {
         addDamageFee(ctx, leaseEnd, inputs);
-        note = 'You hand the phone back and walk away with nothing.';
-        return { id: term === 12 ? 'lease12' : 'lease24', flows, ownsDevice: false, note };
+        return { id: term === 12 ? 'lease12' : 'lease24', flows, ownsDevice: false };
       }
     }
   }

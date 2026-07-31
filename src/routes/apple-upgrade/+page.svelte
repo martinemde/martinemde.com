@@ -1,6 +1,7 @@
 <script lang="ts">
   import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
   import ChoiceCard from './ChoiceCard.svelte';
+  import MobileSummaryBar from './MobileSummaryBar.svelte';
   import MoneyInput from './MoneyInput.svelte';
   import SummaryPanel from './SummaryPanel.svelte';
   import Timeline from './Timeline.svelte';
@@ -70,7 +71,7 @@
   />
 </svelte:head>
 
-<div class="mx-auto max-w-6xl space-y-8 p-4 lg:p-8">
+<div class="mx-auto max-w-6xl space-y-8 p-4 pb-24 lg:p-8">
   <Breadcrumbs
     crumbs={[{ label: 'Projects', href: '/projects' }, { label: 'Apple Upgrade Calculator' }]}
   />
@@ -401,7 +402,9 @@
     <!-- Sidebar -->
     <aside class="mt-10 lg:mt-0">
       <div class="space-y-4 lg:sticky lg:top-20">
-        <SummaryPanel {scenarios} discountRatePct={inputs.discountRatePct} {throughMonth} />
+        <div class="hidden lg:block">
+          <SummaryPanel {scenarios} discountRatePct={inputs.discountRatePct} {throughMonth} />
+        </div>
 
         <button
           type="button"
@@ -437,3 +440,5 @@
     </p>
   </footer>
 </div>
+
+<MobileSummaryBar {scenarios} discountRatePct={inputs.discountRatePct} {throughMonth} />

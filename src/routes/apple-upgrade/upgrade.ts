@@ -428,3 +428,26 @@ export const SCENARIO_META: Record<ScenarioId, { name: string; blurb: string }> 
   applecard: { name: 'Apple Card 0% · 24 mo', blurb: '0% installments + 3% Daily Cash' },
   carrier36: { name: 'Carrier · 36 mo', blurb: '0% financing on your phone bill' }
 };
+
+export interface ScenarioSummary {
+  scenario: ScenarioResult;
+  name: string;
+  /** Net present value through the given month */
+  pv: number;
+  /** Undiscounted total through the given month */
+  total: number;
+}
+
+/** Per-scenario totals for display: NPV and nominal through a month cutoff. */
+export function summarize(
+  scenarios: ScenarioResult[],
+  discountRatePct: number,
+  throughMonth = HORIZON
+): ScenarioSummary[] {
+  return scenarios.map((scenario) => ({
+    scenario,
+    name: SCENARIO_META[scenario.id].name,
+    pv: npv(scenario.flows, discountRatePct, throughMonth),
+    total: nominal(scenario.flows, throughMonth)
+  }));
+}

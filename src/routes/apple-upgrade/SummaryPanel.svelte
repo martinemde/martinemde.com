@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fmtMoney, nominal, npv, SCENARIO_META, type ScenarioResult } from './upgrade';
+  import { fmtMoney, summarize, type ScenarioResult } from './upgrade';
 
   interface Props {
     scenarios: ScenarioResult[];
@@ -11,23 +11,7 @@
   let { scenarios, discountRatePct, throughMonth }: Props = $props();
 
   const at = $derived(throughMonth ?? 36);
-
-  interface Row {
-    scenario: ScenarioResult;
-    name: string;
-    pv: number;
-    total: number;
-  }
-
-  const rows = $derived.by<Row[]>(() =>
-    scenarios.map((scenario) => ({
-      scenario,
-      name: SCENARIO_META[scenario.id].name,
-      pv: npv(scenario.flows, discountRatePct, at),
-      total: nominal(scenario.flows, at)
-    }))
-  );
-
+  const rows = $derived(summarize(scenarios, discountRatePct, at));
   const cheapest = $derived(rows.reduce((min, r) => (r.pv < min ? r.pv : min), Infinity));
 </script>
 

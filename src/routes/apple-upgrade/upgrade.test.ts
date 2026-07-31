@@ -10,6 +10,7 @@ import {
   npv,
   purchaseOptionFee,
   round2,
+  summarize,
   HORIZON,
   type UpgradeInputs
 } from './upgrade';
@@ -277,5 +278,25 @@ describe('buildScenarios', () => {
     for (const s of buildScenarios(bare())) {
       expect(Math.max(...s.flows.map((f) => f.month))).toBeLessThanOrEqual(HORIZON);
     }
+  });
+});
+
+describe('summarize', () => {
+  it('labels each scenario and totals it through the month cutoff', () => {
+    const rows = summarize(buildScenarios(bare()), 7, 12);
+    expect(rows.map((r) => r.name)).toEqual([
+      'Apple Lease · 12 mo',
+      'Apple Lease · 24 mo',
+      'Buy outright',
+      'Apple Card 0% · 24 mo',
+      'Carrier · 36 mo'
+    ]);
+    // Buying outright is all at month 0, so the cutoff changes nothing
+    const outright = rows.find((r) => r.scenario.id === 'outright')!;
+    expect(outright.pv).toBe(1199);
+    expect(outright.total).toBe(1199);
+    // The cutoff excludes later flows: only half the installments land by month 12
+    const card = rows.find((r) => r.scenario.id === 'applecard')!;
+    expect(card.total).toBeLessThan(nominal(card.scenario.flows));
   });
 });

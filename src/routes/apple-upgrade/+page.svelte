@@ -286,8 +286,9 @@
           <span class="text-primary-600-400">5.</span> Make it yours
         </h2>
         <p class="text-sm text-surface-600-400">
-          The fine print that changes the answer. Sales tax is charged up front on the full price in
-          every path here — states tax leases differently, but this keeps the comparison honest.
+          The fine print that changes the answer. Sales tax hits the full price up front when you
+          buy or finance, but the lease is taxed on each monthly payment — how most states tax
+          leases — so its tax trickles out over time (and your trade-in credit lowers it).
         </p>
         <div class="grid gap-3 sm:grid-cols-3">
           <MoneyInput label="Sales tax" bind:value={inputs.taxRate} mode="percent" step={0.25} />
@@ -386,7 +387,10 @@
               Wait out the 6-month decision window and Klarna charges the purchase option fee
               automatically.
             </li>
-            <li>Monthly payments shown exclude sales tax, which Apple collects up front.</li>
+            <li>
+              Advertised lease payments exclude sales tax — most states add it to each monthly
+              payment.
+            </li>
           </ul>
         </div>
 

@@ -16,6 +16,10 @@
  *   - Purchase option fee = list price - payments actually made
  *     (so lease + buyout never exceeds list price, before tax/fees).
  *   - AppleCare is billed separately and avoids return damage fees.
+ *
+ * Tax treatment: purchases and financing charge sales tax on the full price
+ * up front; leases are taxed on each monthly payment in most states, so the
+ * lease adds tax to every payment (and to the purchase option fee) instead.
  */
 
 export const HORIZON = 36;
@@ -40,7 +44,7 @@ export interface UpgradeInputs {
   acOneMonthly: number;
   acPlusMonthly: number;
   acPlusAnnual: number;
-  /** Sales tax rate, percent. Charged up front on the full device price. */
+  /** Sales tax rate, percent. Up front on purchases; monthly on lease payments. */
   taxRate: number;
   /** Carrier activation fee per new device */
   activationFee: number;
@@ -207,16 +211,11 @@ interface LeaseContext {
 function addLeaseCheckout(
   ctx: LeaseContext,
   month: number,
-  price: number,
   inputs: UpgradeInputs,
   firstLease: boolean
 ) {
-  add(
-    ctx.flows,
-    month,
-    firstLease ? 'Sales tax' : 'New lease: sales tax',
-    price * (inputs.taxRate / 100)
-  );
+  // No sales tax here: most states tax leases on each monthly payment instead
+  // of the full device price up front (see addLeaseMonth).
   add(
     ctx.flows,
     month,
@@ -236,7 +235,11 @@ function addLeaseMonth(
 ) {
   add(ctx.flows, month, label, payment);
   ctx.paid = round2(ctx.paid + payment);
-  addRewards(ctx.flows, month, payment, inputs);
+  // Lease payments are taxed monthly in most states. The trade-in credit
+  // shrinks the payment, so it shrinks the tax too.
+  const tax = payment * (inputs.taxRate / 100);
+  add(ctx.flows, month, 'Sales tax on payment', tax);
+  addRewards(ctx.flows, month, payment + tax, inputs);
   const ac = appleCareMonthly(inputs);
   if (coverageActive && ac > 0) {
     add(ctx.flows, month, 'AppleCare (billed separately by Apple)', ac);
@@ -281,7 +284,7 @@ export function buildLeaseFlows(
   let note: string | undefined;
 
   // Checkout day: tax/activation/case land at month 0, first payment ~month 1
-  addLeaseCheckout(ctx, 0, price, inputs, true);
+  addLeaseCheckout(ctx, 0, inputs, true);
 
   let leaseStart = 1;
   // Loop over consecutive leases inside the horizon
@@ -310,7 +313,7 @@ export function buildLeaseFlows(
         price = inputs.nextPrice;
         base = round2(base * (inputs.nextPrice / inputs.price));
         ctx.paid = 0;
-        addLeaseCheckout(ctx, leaseEnd, price, inputs, false);
+        addLeaseCheckout(ctx, leaseEnd, inputs, false);
         leaseStart = leaseEnd + 1;
         firstLease = false;
         break;

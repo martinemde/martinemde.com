@@ -210,6 +210,42 @@ describe('npv', () => {
   });
 });
 
+describe('lease sales tax', () => {
+  it('charges no sales tax up front — tax lands on each monthly payment', () => {
+    const result = buildLeaseFlows(12, 'return', bare({ taxRate: 10 }));
+    expect(result.flows.filter((f) => f.month === 0)).toHaveLength(0);
+    const month1Tax = result.flows.find((f) => f.month === 1 && f.label === 'Sales tax on payment');
+    expect(month1Tax?.amount).toBeCloseTo(5.0); // 49.99 x 10%
+    expect(nominal(result.flows)).toBe(round2(12 * 49.99 * 1.1));
+  });
+
+  it('shrinks the tax when a trade-in shrinks the payment', () => {
+    const result = buildLeaseFlows(12, 'return', bare({ taxRate: 10, tradeIn: 375 }));
+    const month1Tax = result.flows.find((f) => f.month === 1 && f.label === 'Sales tax on payment');
+    expect(month1Tax?.amount).toBeCloseTo(1.87); // 18.74 x 10%
+  });
+
+  it('taxes extension payments too', () => {
+    const result = buildLeaseFlows(12, 'extend', bare({ taxRate: 10 }));
+    const month13Tax = result.flows.find(
+      (f) => f.month === 13 && f.label === 'Sales tax on payment'
+    );
+    expect(month13Tax?.amount).toBeCloseTo(5.0);
+  });
+
+  it('lease-then-buyout totals list price plus tax on everything', () => {
+    const result = buildLeaseFlows(12, 'buyout', bare({ taxRate: 10 }));
+    // 599.88 in payments x 1.1 + 599.12 fee x 1.1 = 1199 x 1.1
+    expect(nominal(result.flows)).toBe(round2(1199 * 1.1));
+  });
+
+  it('earns card rewards on the tax-inclusive charge', () => {
+    const result = buildLeaseFlows(12, 'return', bare({ taxRate: 10, cashBackPct: 2 }));
+    const month1Rewards = result.flows.find((f) => f.month === 1 && f.label === 'Card rewards');
+    expect(month1Rewards?.amount).toBeCloseTo(-(49.99 * 1.1) * 0.02);
+  });
+});
+
 describe('buildScenarios', () => {
   it('returns all five approaches', () => {
     const ids = buildScenarios(bare()).map((s) => s.id);

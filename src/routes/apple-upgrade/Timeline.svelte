@@ -43,6 +43,39 @@
     leasePayment(round2(base * (inputs.nextPrice / inputs.price)), 0, term)
   );
 
+  // One per phone-free month after handing the phone back (24 covers the
+  // worst case: a 12-month lease returned at month 12 leaves months 13–36).
+  const PHONE_FREE_ACTIVITIES = [
+    'Spend time looking at the trees',
+    'Visit your in-laws and listen to their stories',
+    'Read a book made of paper',
+    'Stare at the ceiling and have a thought',
+    'Learn which birds live in your neighborhood',
+    "Talk to a stranger on the bus (they're scared too)",
+    'Memorize a poem',
+    'Sit in a café and just... drink the coffee',
+    "Learn your neighbor's dog's name, and use it",
+    'Take a walk without telling anyone your pace',
+    'Write a letter. With a pen',
+    'Learn to juggle',
+    'Cook a recipe from a cookbook, not a video',
+    "People-watch at the airport like it's 1997",
+    'Watch the pre-show trivia at a movie. Really watch it',
+    "Start a garden — the tomatoes don't need firmware updates",
+    'Listen to a whole album, start to finish, doing nothing else',
+    'Learn the constellations visible from your porch',
+    'Call your mom from a landline like a pioneer',
+    'Take up whittling; keep the bandages handy',
+    'Sit on a park bench and become a regular',
+    'Do a 1000-piece puzzle with no timer',
+    'Rediscover the ancient art of being bored',
+    'Wave at boats'
+  ];
+
+  function phoneFreeActivity(month: number): string {
+    return PHONE_FREE_ACTIVITIES[(month - term - 1) % PHONE_FREE_ACTIVITIES.length];
+  }
+
   const months = $derived.by(() => {
     const byMonth: (typeof lease.flows)[] = Array.from({ length: HORIZON + 1 }, () => []);
     for (const f of lease.flows) byMonth[f.month].push(f);
@@ -169,7 +202,13 @@
           {/each}
         </ul>
       {:else}
-        <p class="mt-2 text-sm text-surface-600-400 italic">Nothing due.</p>
+        <p class="mt-2 text-sm text-surface-600-400 italic">
+          {#if decision === 'return' && month > term}
+            You don't have a phone: {phoneFreeActivity(month)}.
+          {:else}
+            Nothing due.
+          {/if}
+        </p>
       {/if}
 
       <div

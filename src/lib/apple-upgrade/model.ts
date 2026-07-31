@@ -33,8 +33,10 @@ export interface Inputs {
   endChoice: EndChoice;
 
   appleCare: AppleCarePlan;
-  /** Billed monthly by Apple, used by the 'monthly' and 'one' plans. */
+  /** AppleCare+ billed monthly by Apple. */
   appleCareMonthly: number;
+  /** AppleCare One, $19.99/mo flat — one subscription covering up to three devices. */
+  appleCareOneMonthly: number;
   /** Billed once a year by Apple, used by the 'annual' plan. */
   appleCareAnnual: number;
   /** What a return inspection costs you if you skipped AppleCare and cracked it. */
@@ -189,7 +191,7 @@ function appleCareItems(input: Inputs, month: number): LineItem[] {
         : [];
     case 'one':
       return month >= 1
-        ? [{ label: 'AppleCare One', amount: taxed(input.appleCareMonthly), biller: 'apple' }]
+        ? [{ label: 'AppleCare One', amount: taxed(input.appleCareOneMonthly), biller: 'apple' }]
         : [];
     case 'annual':
       return month % 12 === 0

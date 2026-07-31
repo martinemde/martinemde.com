@@ -40,6 +40,7 @@
     appleCare: AppleCarePlan | null;
     endChoice: EndChoice;
     appleCareMonthly: number;
+    appleCareOneMonthly: number;
     appleCareAnnual: number;
     damageFee: number;
     damageOdds: number;
@@ -62,6 +63,7 @@
     appleCare: null,
     endChoice: 'nothing',
     appleCareMonthly: 13.49,
+    appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
     damageFee: 250,
     damageOdds: 20,
@@ -99,6 +101,7 @@
 
   // ---- Details ------------------------------------------------------------
   let appleCareMonthly = $state(initial.appleCareMonthly);
+  let appleCareOneMonthly = $state(initial.appleCareOneMonthly);
   let appleCareAnnual = $state(initial.appleCareAnnual);
   let damageFee = $state(initial.damageFee);
   let damageOdds = $state(initial.damageOdds);
@@ -132,6 +135,7 @@
       appleCare,
       endChoice,
       appleCareMonthly,
+      appleCareOneMonthly,
       appleCareAnnual,
       damageFee,
       damageOdds,
@@ -192,6 +196,7 @@
     endChoice,
     appleCare: appleCare ?? 'none',
     appleCareMonthly,
+    appleCareOneMonthly,
     appleCareAnnual,
     damageFee,
     damageOdds,
@@ -248,8 +253,8 @@
     {
       value: 'one' as const,
       label: 'AppleCare One',
-      sub: `${money(appleCareMonthly)}/mo`,
-      note: 'Covers this plus your other devices'
+      sub: `${money(appleCareOneMonthly)}/mo`,
+      note: 'Flat rate, up to three devices'
     }
   ]);
 
@@ -452,8 +457,16 @@
     <Tiles options={careOptions} bind:value={appleCare} name="applecare" min="170px" />
 
     <div class="fields">
-      {#if appleCare === 'monthly' || appleCare === 'one'}
+      {#if appleCare === 'monthly'}
         <Field label="Monthly price" bind:value={appleCareMonthly} step={1} />
+      {/if}
+      {#if appleCare === 'one'}
+        <Field
+          label="Monthly price"
+          bind:value={appleCareOneMonthly}
+          step={1}
+          hint="Already subscribed? Adding this device costs nothing — set it to 0."
+        />
       {/if}
       {#if appleCare === 'annual'}
         <Field label="Yearly price" bind:value={appleCareAnnual} step={10} />
@@ -486,6 +499,12 @@
         AppleCare+ with Theft and Loss also covers the other failure mode. Without it, a stolen
         phone does not end your lease &mdash; you keep paying until you settle the early termination
         fee or the purchase option fee. You have 60 days after enrolling to add coverage.
+      </p>
+      <p>
+        AppleCare One is the one worth checking twice. It is a flat $19.99 a month covering up to
+        three devices, and the FAQ says you can add a leased device to a subscription you already
+        have. If you are already paying it, covering this phone is free, and the honest number to
+        put in the box above is zero.
       </p>
     </div>
   </Step>

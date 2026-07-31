@@ -19,6 +19,7 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     endChoice: 'nothing',
     appleCare: 'none',
     appleCareMonthly: 13.49,
+    appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
     damageFee: 0,
     damageOdds: 0,
@@ -197,6 +198,31 @@ describe('NPV', () => {
     const withBack = outright(inputs({ taxRate: 8.5, appleCardBack: 3 }));
     const without = outright(inputs({ taxRate: 8.5 }));
     expect(without.summary.cash - withBack.summary.cash).toBeCloseTo(1199 * 1.085 * 0.03, 2);
+  });
+});
+
+describe('AppleCare', () => {
+  it('bills AppleCare+ monthly, starting the month after pickup', () => {
+    const scenario = outright(inputs({ appleCare: 'monthly' }));
+    expect(scenario.rows[0].outflow).toBeCloseTo(1199, 2); // device only
+    expect(scenario.rows[1].outflow).toBeCloseTo(13.49, 2);
+  });
+
+  it('charges AppleCare One at its own flat rate, not the AppleCare+ price', () => {
+    const scenario = outright(inputs({ appleCare: 'one' }));
+    expect(scenario.rows[1].outflow).toBeCloseTo(19.99, 2);
+  });
+
+  it('bills the annual plan once a year, up front', () => {
+    const scenario = outright(inputs({ appleCare: 'annual' }));
+    expect(scenario.rows[12].outflow).toBeCloseTo(149, 2);
+    expect(scenario.rows[13].outflow).toBe(0);
+  });
+
+  it('stops billing when you hand the phone back', () => {
+    const scenario = appleUpgrade(inputs({ appleCare: 'monthly', endChoice: 'return' }));
+    expect(scenario.rows[24].outflow).toBeGreaterThan(0);
+    expect(scenario.rows[25].outflow).toBe(0);
   });
 });
 

@@ -181,12 +181,10 @@ const postIndex = buildPostIndex();
  */
 export async function getAllPosts(): Promise<Post[]> {
   // Convert the slug index to an array of posts
-  const allPosts = Array.from(postIndex.values()).map(
-    (entry): Post => ({
-      ...entry.metadata,
-      path: entry.path
-    })
-  );
+  const allPosts = Array.from(postIndex.values()).map((entry): Post => ({
+    ...entry.metadata,
+    path: entry.path
+  }));
 
   // Filter published posts and sort by date (newest first)
   return allPosts

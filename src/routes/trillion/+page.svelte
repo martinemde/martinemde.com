@@ -461,6 +461,20 @@
   }
 
   /* ---- Tiers ----------------------------------------------------------- */
+  /*
+   * --tier is a fill color: it sits at mid lightness so the grid squares and
+   * button fills read on either background. That same value fails as small
+   * text — 2:1 on a light card. --tier-ink is the same hue re-lit per theme
+   * for anything type-sized; fills keep --tier, text uses --tier-ink.
+   */
+  .tier,
+  .ledger li {
+    --tier-ink: light-dark(
+      color-mix(in oklch, var(--tier) 55%, black),
+      color-mix(in oklch, var(--tier) 92%, white)
+    );
+  }
+
   .tier {
     border-top: 1px solid var(--border);
     padding: 40px 0 8px;
@@ -470,7 +484,7 @@
     font-size: 11.5px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--tier);
+    color: var(--tier-ink);
   }
   .tier-head h2 {
     margin: 10px 0 12px;
@@ -508,8 +522,11 @@
     border-left-color: var(--tier);
     background: color-mix(in oklch, var(--tier) 7%, var(--surface));
   }
+  /* Out of reach reads as a dashed edge and a disabled button, not as dimmed
+     text — the note and the shortfall are content people still need to read. */
   .card.broke {
-    opacity: 0.62;
+    border-style: dashed;
+    background: none;
   }
   .card-top {
     display: flex;
@@ -531,7 +548,7 @@
     font-family: var(--font-mono);
     font-weight: 500;
     font-size: 16px;
-    color: var(--tier);
+    color: var(--tier-ink);
     white-space: nowrap;
   }
   .per {
@@ -562,25 +579,36 @@
     cursor: pointer;
   }
   .fund {
-    border: 1px solid var(--tier);
+    border: 1px solid var(--tier-ink);
     border-radius: 7px;
     background: transparent;
     padding: 8px 15px;
-    color: var(--tier);
+    color: var(--tier-ink);
     min-height: 38px;
   }
-  .fund:hover:not(:disabled) {
-    background: color-mix(in oklch, var(--tier) 14%, transparent);
+  .fund:not(.on):hover:not(:disabled) {
+    background: color-mix(in oklch, var(--tier) 16%, transparent);
   }
-  .fund.on {
+  .fund.on,
+  .fund.on:hover {
     background: var(--tier);
     border-color: var(--tier);
-    color: oklch(0.18 0.02 264);
+    color: oklch(0.16 0.02 264); /* fill is opaque and theme-independent, so ink is too */
+  }
+  .fund.on:hover {
+    background: color-mix(in oklch, var(--tier) 86%, white);
   }
   .fund:disabled {
     border-color: var(--border);
-    color: var(--faint);
+    color: var(--muted); /* "Short $895B" is information, not decoration */
     cursor: not-allowed;
+  }
+  .fund:focus-visible,
+  .stepper button:focus-visible,
+  .next:focus-visible,
+  .reset:focus-visible {
+    outline: 2px solid var(--tier-ink, var(--accent));
+    outline-offset: 2px;
   }
 
   .stepper {
@@ -592,7 +620,7 @@
     padding: 3px;
   }
   .stepper.on {
-    border-color: var(--tier);
+    border-color: var(--tier-ink);
   }
   .stepper button {
     width: 32px;
@@ -600,15 +628,16 @@
     border: 0;
     border-radius: 5px;
     background: transparent;
-    color: var(--tier);
+    color: var(--tier-ink);
     font-size: 16px;
     line-height: 1;
   }
   .stepper button:hover:not(:disabled) {
-    background: color-mix(in oklch, var(--tier) 14%, transparent);
+    background: color-mix(in oklch, var(--tier) 16%, transparent);
   }
   .stepper button:disabled {
-    color: var(--faint);
+    color: var(--muted); /* --faint lands near 3:1 on both surfaces; still reads as off */
+    opacity: 0.75;
     cursor: not-allowed;
   }
   .years {
@@ -641,7 +670,7 @@
     text-decoration: none;
   }
   .sources a:hover {
-    color: var(--tier);
+    color: var(--tier-ink);
   }
 
   .tier-foot {
@@ -658,18 +687,18 @@
     color: var(--muted);
   }
   .tally strong {
-    color: var(--tier);
+    color: var(--tier-ink);
     font-weight: 500;
   }
   .dim {
     color: var(--faint);
   }
   .next {
-    border: 1px solid var(--tier);
+    border: 1px solid var(--tier-ink);
     border-radius: 7px;
     background: color-mix(in oklch, var(--tier) 12%, transparent);
     padding: 10px 16px;
-    color: var(--tier);
+    color: var(--tier-ink);
   }
   .next:hover {
     background: color-mix(in oklch, var(--tier) 22%, transparent);
@@ -715,7 +744,7 @@
     flex: none;
     font-family: var(--font-mono);
     font-size: 13px;
-    color: var(--tier);
+    color: var(--tier-ink);
   }
 
   .totals {

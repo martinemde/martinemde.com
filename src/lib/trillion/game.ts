@@ -10,12 +10,13 @@
 export const FORTUNE = 1_000_000_000_000;
 
 /**
- * The hero grid is always 1,000 squares. At the starting bankroll each square
- * is a billion dollars; unlock a bigger bankroll and the squares get bigger
- * rather than more numerous, which is its own comment on the numbers.
+ * A square is a billion dollars and stays a billion dollars. Take a bigger
+ * bankroll and the grid grows squares rather than rescaling the ones already
+ * on the board, so Musk's trillion is still the same thousand squares it was
+ * when it was the whole game.
  */
-export const BLOCKS = 1000;
-export const BLOCK_VALUE = FORTUNE / BLOCKS;
+export const BLOCK_VALUE = 1_000_000_000;
+export const BLOCKS = FORTUNE / BLOCK_VALUE;
 
 export interface Source {
   label: string;
@@ -120,27 +121,70 @@ export function remaining(tiers: Tier[], funded: Funded): number {
   return FORTUNE - totalSpent(tiers, funded);
 }
 
-/** What one square is worth at a given bankroll. */
-export function blockValue(pot: number): number {
-  return pot / BLOCKS;
+/** How many squares a pile of money is worth. */
+export function blockCount(pot: number): number {
+  return Math.max(0, Math.round(pot / BLOCK_VALUE));
 }
 
 /**
- * Paints the 1,000-square grid. Squares are handed out in ledger order, which
- * means anything under one square's worth can fail to color a single square —
- * that is the point of the grid, not a rounding bug.
+ * Paints `count` squares. Squares are handed out in ledger order, which means
+ * anything under a billion dollars can fail to color a single square — that is
+ * the point of the grid, not a rounding bug.
  */
-export function blockOwners(allocs: Allocation[], pot: number = FORTUNE): (string | null)[] {
-  const owners: (string | null)[] = new Array(BLOCKS).fill(null);
-  const per = blockValue(pot);
+export function blockOwners(allocs: Allocation[], count: number = BLOCKS): (string | null)[] {
+  const owners: (string | null)[] = new Array(Math.max(0, count)).fill(null);
   let spent = 0;
   for (const alloc of allocs) {
-    const start = Math.floor(spent / per);
+    const start = Math.floor(spent / BLOCK_VALUE);
     spent += alloc.amount;
-    const end = Math.min(Math.floor(spent / per), BLOCKS);
+    const end = Math.min(Math.floor(spent / BLOCK_VALUE), owners.length);
     for (let i = Math.max(start, 0); i < end; i++) owners[i] = alloc.tierId;
   }
   return owners;
+}
+
+/** A run of squares in the grid and whose money put them there. */
+export interface Band {
+  /** Bankroll id, or 'red' for the squares nobody is paying for. */
+  id: string;
+  label: string;
+  /** Index into the owners array where this band starts. */
+  start: number;
+  count: number;
+}
+
+/**
+ * Splits the grid by whose money it is: Musk's original thousand squares, then
+ * one band per bankroll taken after that, then the invented money if you have
+ * overdrawn. The rules drawn between bands are the whole reason this exists —
+ * without them the trillion you started with disappears into the wall.
+ */
+export function bands(bankrolls: Bankroll[], level: number, total: number): Band[] {
+  const out: Band[] = [];
+  let start = 0;
+  for (let i = 0; i <= Math.min(level, bankrolls.length - 1); i++) {
+    const end = blockCount(bankrolls[i].amount);
+    // The last rung is the same money as the one below it — it only lifts the
+    // ceiling — so it contributes no band of its own.
+    if (end <= start) continue;
+    out.push({ id: bankrolls[i].id, label: bankrolls[i].short, start, count: end - start });
+    start = end;
+  }
+  if (total > start) {
+    out.push({ id: 'red', label: 'money that does not exist', start, count: total - start });
+  }
+  return out;
+}
+
+/**
+ * How many columns to lay the grid out in. The grid is width-bound, so height
+ * only grows if the columns grow slower than the squares do. At this exponent
+ * twenty times the money is a grid a bit under twice as tall — big enough to
+ * feel it, short enough to stay on a screen. The rules between bands do the
+ * rest of the work of showing the ratio.
+ */
+export function gridColumns(base: number, count: number): number {
+  return Math.max(base, Math.round(base * Math.pow(Math.max(count, BLOCKS) / BLOCKS, 0.4)));
 }
 
 /** Rounds to a sensible number of digits for its size: 228, 6.9, 0.45. */

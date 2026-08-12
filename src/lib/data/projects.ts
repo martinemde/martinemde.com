@@ -5,6 +5,7 @@
 import { resolve } from '$app/paths';
 import {
   Armchair,
+  Banknote,
   Calculator,
   Cat,
   Code,
@@ -89,6 +90,13 @@ export const projects: Project[] = [
       'Score tracker for Sushi Go! Spin Some for Dim Sum. Supports 2-6 players with automatic scoring for all dim sum cards.',
     url: resolve('/dimsum'),
     icon: UtensilsCrossed
+  },
+  {
+    name: "Give Away Elon's Money",
+    description:
+      'A trillion dollars, a thousand squares, and a list of real sourced prices for fixing things. Fund what you like and watch how little the pile moves.',
+    url: resolve('/trillion'),
+    icon: Banknote
   },
   {
     name: 'Loan Calculator',

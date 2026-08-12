@@ -1,0 +1,919 @@
+<script lang="ts">
+  import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+  import { allItems, tiers } from '$lib/trillion/items';
+  import {
+    FORTUNE,
+    allocations,
+    blockOwners,
+    canAfford,
+    clampUnits,
+    formatExact,
+    formatMoney,
+    formatShare,
+    itemTotal,
+    maxUnits,
+    receipt,
+    shortfall,
+    spentFraction,
+    type Item,
+    type Tier
+  } from '$lib/trillion/game';
+
+  const STORAGE_KEY = 'trillion-game';
+
+  /** One hue per tier, mid-lightness so it reads on both themes. */
+  const TIER_COLOR: Record<string, string> = {
+    toys: 'oklch(0.74 0.12 85)',
+    cheap: 'oklch(0.72 0.13 160)',
+    trophies: 'oklch(0.70 0.13 305)',
+    country: 'oklch(0.70 0.12 250)',
+    planet: 'oklch(0.74 0.11 195)',
+    moonshots: 'oklch(0.68 0.15 30)',
+    wall: 'oklch(0.62 0.03 264)'
+  };
+
+  interface Saved {
+    funded: Record<string, number>;
+    revealed: number;
+  }
+
+  const DEFAULTS: Saved = { funded: {}, revealed: 1 };
+
+  // Restored at init like the other calculators on this site, so a reload
+  // doesn't wipe out a ledger someone spent ten minutes building.
+  function restore(): Saved {
+    if (typeof window === 'undefined') return DEFAULTS;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return DEFAULTS;
+      const parsed = JSON.parse(raw) as Partial<Saved>;
+      return {
+        funded: parsed.funded ?? {},
+        revealed: Math.min(Math.max(parsed.revealed ?? 1, 1), tiers.length)
+      };
+    } catch {
+      return DEFAULTS;
+    }
+  }
+
+  const initial = restore();
+
+  let funded = $state<Record<string, number>>(initial.funded);
+  let revealed = $state(initial.revealed);
+
+  const allocs = $derived(allocations(tiers, funded));
+  const spent = $derived(allocs.reduce((sum, a) => sum + a.amount, 0));
+  const left = $derived(FORTUNE - spent);
+  const owners = $derived(blockOwners(allocs));
+  const ledger = $derived(receipt(allocs));
+  const visibleTiers = $derived(tiers.slice(0, revealed));
+  const allRevealed = $derived(revealed >= tiers.length);
+
+  /** The most expensive thing still within reach — the receipt's parting shot. */
+  const biggestLeft = $derived(
+    allItems
+      .filter((item) => (funded[item.id] ?? 0) === 0 && item.cost <= left)
+      .sort((a, b) => b.cost - a.cost)[0]
+  );
+
+  $effect(() => {
+    const saved: Saved = { funded, revealed };
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+    } catch {
+      // Private mode, quota, whatever — the page still works, it just forgets.
+    }
+  });
+
+  function units(item: Item): number {
+    return clampUnits(item, funded[item.id] ?? 0);
+  }
+
+  function isFunded(item: Item): boolean {
+    return units(item) > 0;
+  }
+
+  /** Money already committed to this item, which is available to re-spend on it. */
+  function budgetFor(item: Item): number {
+    return left + itemTotal(item, units(item));
+  }
+
+  function tierSpend(tier: Tier): number {
+    return tier.items.reduce((sum, item) => sum + itemTotal(item, units(item)), 0);
+  }
+
+  /** Funding anything in the last visible tier opens the next one. */
+  function revealNext(tierIndex: number) {
+    if (revealed === tierIndex + 1 && revealed < tiers.length) revealed = tierIndex + 2;
+  }
+
+  function toggle(item: Item, tierIndex: number) {
+    if (isFunded(item)) {
+      const { [item.id]: _dropped, ...rest } = funded;
+      funded = rest;
+      return;
+    }
+    if (!canAfford(item.cost, left)) return;
+    funded = { ...funded, [item.id]: 1 };
+    revealNext(tierIndex);
+  }
+
+  function bump(item: Item, delta: number, tierIndex: number) {
+    const next = clampUnits(item, units(item) + delta);
+    if (next > 0 && itemTotal(item, next) > budgetFor(item)) return;
+    if (next === 0) {
+      const { [item.id]: _dropped, ...rest } = funded;
+      funded = rest;
+      return;
+    }
+    funded = { ...funded, [item.id]: next };
+    revealNext(tierIndex);
+  }
+
+  function reset() {
+    funded = {};
+    revealed = 1;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+
+<svelte:head>
+  <title>Give Away Elon's Money - Martin Emde</title>
+  <meta
+    name="description"
+    content="A trillion dollars, one thousand squares, and a list of real, sourced prices for fixing things. Spend it all and watch how little moves."
+  />
+</svelte:head>
+
+<div class="page">
+  <Breadcrumbs
+    crumbs={[{ label: 'Projects', href: '/projects' }, { label: "Give Away Elon's Money" }]}
+  />
+
+  <header class="hero">
+    <div class="eyebrow">// a spending experiment</div>
+    <h1>Give Away Elon's Money</h1>
+    <p class="lede">
+      In June 2026 Elon Musk became the first person on Earth to be worth a trillion dollars. So
+      here is a trillion dollars. Your job is to get rid of it.
+    </p>
+    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+    <p class="credit">
+      <a
+        href="https://www.forbes.com/sites/tylerroush/2026/06/29/musk-is-a-trillionaire-again-spacex-and-tesla-boost-net-worth-by-50-billion/"
+        rel="external noopener"
+        target="_blank">Forbes, June 2026 ↗</a
+      >
+    </p>
+    <p class="sub">
+      Every price below is a real, published number with a link to where it came from. This is not a
+      scoreboard for anyone's politics and nobody here owes anybody anything — it is a ruler. Most
+      people, including me, have no working intuition for what a trillion dollars is. Spend it and
+      find out.
+    </p>
+
+    <figure class="gridwrap">
+      <div class="grid" aria-hidden="true">
+        {#each owners as owner, i (i)}
+          <span class="blk" style:background={owner ? TIER_COLOR[owner] : undefined}></span>
+        {/each}
+      </div>
+      <figcaption>
+        1,000 squares. Each one is <strong>$1,000,000,000</strong> — a billion dollars. You have
+        filled
+        <strong>{Math.round(spentFraction(spent) * 1000)}</strong> of them.
+      </figcaption>
+    </figure>
+  </header>
+
+  {#each visibleTiers as tier, tierIndex (tier.id)}
+    <section class="tier" style:--tier={TIER_COLOR[tier.id]}>
+      <div class="tier-head">
+        <div class="tier-kicker">{tier.kicker}</div>
+        <h2>{tier.title}</h2>
+        <p>{tier.lede}</p>
+      </div>
+
+      <div class="cards">
+        {#each tier.items as item (item.id)}
+          {@const n = units(item)}
+          {@const committed = itemTotal(item, n)}
+          {@const affordable = canAfford(item.cost, budgetFor(item))}
+          {@const short = shortfall(item.cost, budgetFor(item))}
+          <article class="card" class:funded={n > 0} class:broke={!affordable && n === 0}>
+            <div class="card-top">
+              <h3>{item.label}</h3>
+              <div class="price">
+                {formatMoney(item.cost)}{#if item.per}<span class="per">/yr</span>{/if}
+              </div>
+            </div>
+
+            <p class="why">{item.note}</p>
+
+            <div class="card-foot">
+              {#if item.per}
+                <div class="stepper" class:on={n > 0}>
+                  <button
+                    type="button"
+                    onclick={() => bump(item, -1, tierIndex)}
+                    disabled={n === 0}
+                    aria-label="Fund {item.label} for one year less">−</button
+                  >
+                  <span class="years">
+                    {#if n === 0}
+                      Fund by the year
+                    {:else}
+                      {n}
+                      {n === 1 ? 'year' : 'years'} · {formatMoney(committed)}
+                    {/if}
+                  </span>
+                  <button
+                    type="button"
+                    onclick={() => bump(item, 1, tierIndex)}
+                    disabled={n >= maxUnits(item) || itemTotal(item, n + 1) > budgetFor(item)}
+                    aria-label="Fund {item.label} for one more year">+</button
+                  >
+                </div>
+              {:else}
+                <button
+                  type="button"
+                  class="fund"
+                  class:on={n > 0}
+                  disabled={!affordable && n === 0}
+                  onclick={() => toggle(item, tierIndex)}
+                >
+                  {#if n > 0}
+                    Funded — undo
+                  {:else if affordable}
+                    Fund it
+                  {:else}
+                    Short {formatMoney(short)}
+                  {/if}
+                </button>
+              {/if}
+
+              <div class="share">
+                {#if n > 0}
+                  {formatShare(committed)} of the fortune
+                {:else}
+                  {formatShare(item.cost)}{#if item.per}&nbsp;a year{/if}
+                {/if}
+              </div>
+            </div>
+
+            <!-- Prices come from the linked sources; the rule can't see that these are external. -->
+            <!-- eslint-disable svelte/no-navigation-without-resolve -->
+            <div class="sources">
+              {#each item.sources as source (source.url)}
+                <a href={source.url} rel="external noopener" target="_blank">{source.label} ↗</a>
+              {/each}
+            </div>
+            <!-- eslint-enable svelte/no-navigation-without-resolve -->
+          </article>
+        {/each}
+      </div>
+
+      <div class="tier-foot">
+        <span class="tally">
+          This tier: <strong>{formatMoney(tierSpend(tier))}</strong>
+          <span class="dim">· {formatShare(tierSpend(tier))} of the trillion</span>
+        </span>
+        {#if tierIndex === revealed - 1 && !allRevealed}
+          <button type="button" class="next" onclick={() => (revealed += 1)}>
+            Next: {tiers[tierIndex + 1].title} ↓
+          </button>
+        {/if}
+      </div>
+    </section>
+  {/each}
+
+  {#if allRevealed}
+    <section class="finale">
+      <h2>The receipt</h2>
+
+      {#if ledger.length === 0}
+        <p class="empty">
+          You haven't spent a dollar yet. The whole trillion is still sitting up there.
+        </p>
+      {:else}
+        <ol class="ledger">
+          {#each ledger as alloc (alloc.item.id)}
+            <li style:--tier={TIER_COLOR[alloc.tierId]}>
+              <span class="l-name">
+                {alloc.item.label}{#if alloc.units > 1}
+                  <span class="dim"> × {alloc.units} years</span>{/if}
+              </span>
+              <span class="l-amount">{formatMoney(alloc.amount)}</span>
+            </li>
+          {/each}
+        </ol>
+
+        <div class="totals">
+          <div>
+            <span class="t-label">Allocated</span>
+            <span class="t-value">{formatExact(spent)}</span>
+            <span class="t-note"
+              >{formatShare(spent)} of the fortune, across {ledger.length}
+              {ledger.length === 1 ? 'line' : 'lines'}</span
+            >
+          </div>
+          <div>
+            <span class="t-label">Still in the pile</span>
+            <span class="t-value">{formatExact(left)}</span>
+            <span class="t-note">
+              {#if left <= 0}
+                Gone. Every square is full.
+              {:else if biggestLeft}
+                Still enough for: {biggestLeft.label.toLowerCase()} ({formatMoney(
+                  biggestLeft.cost
+                )}{#if biggestLeft.per}/yr{/if})
+              {:else}
+                Not enough left for anything else on this list.
+              {/if}
+            </span>
+          </div>
+        </div>
+      {/if}
+
+      <div class="closers">
+        <h3>Three ways to hold the number</h3>
+        <p>
+          <strong>Spend a million dollars a day.</strong> Start the day Julius Caesar was assassinated
+          and keep going, weekends included, for 2,070 years. You would be about $240 billion short of
+          a trillion.
+        </p>
+        <p>
+          <strong>Count to a trillion out loud</strong>, one number a second, without sleeping. You
+          finish in roughly 31,700 years.
+        </p>
+        <p>
+          <strong>It moves faster than you can spend it.</strong> Forbes clocked this particular fortune
+          gaining about $60 billion in a single week in June 2026 — enough, in seven days, to end polio,
+          immunize half a billion children, fully fund the global fight against AIDS, TB and malaria,
+          replace every lead pipe in America, and still have $4 billion left over.
+        </p>
+      </div>
+
+      <div class="fineprint">
+        <p>
+          Every figure links to its source. Global estimates are estimates: the underlying research
+          usually gives a range, and where it does, these prices use a number the cited source
+          itself leads with. Sports valuations are Forbes' 2025 marks, not offers — nobody has to
+          sell. Recurring costs are shown per year because that is how their budgets are actually
+          written.
+        </p>
+        <button type="button" class="reset" onclick={reset}>Put it all back</button>
+      </div>
+    </section>
+  {/if}
+
+  <!-- Sticky rather than fixed: it rides the viewport bottom while you spend,
+       then settles at the end of the page instead of sitting on the footer. -->
+  <aside class="hud" aria-live="polite">
+    <div class="hud-inner">
+      <div class="hud-main">
+        <span class="hud-label">Still to spend</span>
+        <span class="hud-amount">{formatExact(left)}</span>
+      </div>
+      <div class="hud-bar">
+        <div class="hud-fill" style:width="{spentFraction(spent) * 100}%"></div>
+      </div>
+      <div class="hud-meta">
+        <span>{formatShare(spent)} allocated</span>
+        <span>{ledger.length} funded</span>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<style>
+  .page {
+    padding-bottom: 8px;
+  }
+
+  /* ---- Hero ------------------------------------------------------------ */
+  .hero {
+    padding: 8px 0 40px;
+  }
+  h1 {
+    margin: 14px 0 18px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 40px;
+    line-height: 1.03;
+    letter-spacing: -0.03em;
+    color: var(--text); /* Skeleton's h1 preset tints headings; the page wants ink */
+  }
+  .lede {
+    margin: 0 0 14px;
+    max-width: 620px;
+    font-size: 18px;
+    line-height: 1.6;
+    text-wrap: pretty;
+  }
+  .credit {
+    margin: 0 0 16px;
+  }
+  .credit a {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+    text-decoration: none;
+  }
+  .credit a:hover {
+    color: var(--accent);
+  }
+  .sub {
+    margin: 0;
+    max-width: 620px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+
+  .gridwrap {
+    margin: 32px 0 0;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(25, 1fr);
+    gap: 2px;
+    max-width: 520px;
+  }
+  .blk {
+    aspect-ratio: 1;
+    border-radius: 1px;
+    background: color-mix(in oklch, var(--border) 70%, transparent);
+    transition: background 180ms ease;
+  }
+  .gridwrap figcaption {
+    margin-top: 14px;
+    max-width: 520px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--faint);
+  }
+  .gridwrap strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ---- Tiers ----------------------------------------------------------- */
+  .tier {
+    border-top: 1px solid var(--border);
+    padding: 40px 0 8px;
+  }
+  .tier-kicker {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tier);
+  }
+  .tier-head h2 {
+    margin: 10px 0 12px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--text);
+  }
+  .tier-head p {
+    margin: 0 0 26px;
+    max-width: 620px;
+    font-size: 15.5px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+
+  .cards {
+    display: grid;
+    gap: 12px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid var(--border);
+    border-left: 3px solid color-mix(in oklch, var(--border) 80%, transparent);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 16px;
+  }
+  .card.funded {
+    border-left-color: var(--tier);
+    background: color-mix(in oklch, var(--tier) 7%, var(--surface));
+  }
+  .card.broke {
+    opacity: 0.62;
+  }
+  .card-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+  }
+  .card-top h3 {
+    margin: 0;
+    font-family: var(--font-body);
+    font-weight: 560;
+    font-size: 16.5px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .price {
+    flex: none;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 16px;
+    color: var(--tier);
+    white-space: nowrap;
+  }
+  .per {
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .why {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+
+  .card-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .fund,
+  .stepper button,
+  .next,
+  .reset {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .fund {
+    border: 1px solid var(--tier);
+    border-radius: 7px;
+    background: transparent;
+    padding: 8px 15px;
+    color: var(--tier);
+    min-height: 38px;
+  }
+  .fund:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--tier) 14%, transparent);
+  }
+  .fund.on {
+    background: var(--tier);
+    border-color: var(--tier);
+    color: oklch(0.18 0.02 264);
+  }
+  .fund:disabled {
+    border-color: var(--border);
+    color: var(--faint);
+    cursor: not-allowed;
+  }
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 3px;
+  }
+  .stepper.on {
+    border-color: var(--tier);
+  }
+  .stepper button {
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--tier);
+    font-size: 16px;
+    line-height: 1;
+  }
+  .stepper button:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--tier) 14%, transparent);
+  }
+  .stepper button:disabled {
+    color: var(--faint);
+    cursor: not-allowed;
+  }
+  .years {
+    min-width: 128px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .stepper.on .years {
+    color: var(--text);
+  }
+
+  .share {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--faint);
+  }
+  .sources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-top: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+    padding-top: 10px;
+  }
+  .sources a {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+    text-decoration: none;
+  }
+  .sources a:hover {
+    color: var(--tier);
+  }
+
+  .tier-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 22px 2px 8px;
+  }
+  .tally {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tally strong {
+    color: var(--tier);
+    font-weight: 500;
+  }
+  .dim {
+    color: var(--faint);
+  }
+  .next {
+    border: 1px solid var(--tier);
+    border-radius: 7px;
+    background: color-mix(in oklch, var(--tier) 12%, transparent);
+    padding: 10px 16px;
+    color: var(--tier);
+  }
+  .next:hover {
+    background: color-mix(in oklch, var(--tier) 22%, transparent);
+  }
+
+  /* ---- Finale ---------------------------------------------------------- */
+  .finale {
+    border-top: 1px solid var(--border);
+    padding: 40px 0 0;
+  }
+  .finale h2 {
+    margin: 0 0 20px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .empty {
+    font-size: 15px;
+    color: var(--muted);
+  }
+  .ledger {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--border);
+  }
+  .ledger li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    border-left: 3px solid var(--tier);
+    padding: 11px 12px;
+  }
+  .l-name {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .l-amount {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--tier);
+  }
+
+  .totals {
+    display: grid;
+    gap: 12px;
+    margin-top: 22px;
+  }
+  .totals > div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 16px;
+  }
+  .t-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .t-value {
+    font-family: var(--font-mono);
+    font-size: clamp(19px, 5.4vw, 27px);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .t-note {
+    font-size: 12.5px;
+    color: var(--muted);
+  }
+
+  .closers {
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+    padding-top: 28px;
+  }
+  .closers h3 {
+    margin: 0 0 16px;
+    font-family: var(--font-body);
+    font-weight: 560;
+    font-size: 19px;
+    color: var(--text);
+  }
+  .closers p {
+    margin: 0 0 16px;
+    max-width: 640px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .closers strong {
+    color: var(--text);
+    font-weight: 560;
+  }
+
+  .fineprint {
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    padding: 22px 0 8px;
+  }
+  .fineprint p {
+    margin: 0 0 20px;
+    max-width: 640px;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--faint);
+  }
+  .reset {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: transparent;
+    padding: 10px 16px;
+    color: var(--muted);
+  }
+  .reset:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ---- The wallet ------------------------------------------------------ */
+  .hud {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 28px -20px 0;
+    border-top: 1px solid var(--border);
+    background: color-mix(in oklch, var(--bg) 92%, transparent);
+    backdrop-filter: saturate(1.2) blur(10px);
+  }
+  .hud-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 11px 20px calc(11px + env(safe-area-inset-bottom));
+  }
+  .hud-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .hud-label {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .hud-amount {
+    font-family: var(--font-mono);
+    font-size: clamp(17px, 5.2vw, 26px);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .hud-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: color-mix(in oklch, var(--border) 80%, transparent);
+    overflow: hidden;
+  }
+  .hud-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 260ms ease;
+  }
+  .hud-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--faint);
+  }
+
+  /* ---- Wider screens --------------------------------------------------- */
+  @media (min-width: 720px) {
+    .hero {
+      padding-top: 24px;
+    }
+    h1 {
+      font-size: 54px;
+    }
+    .lede {
+      font-size: 20px;
+    }
+    .grid {
+      grid-template-columns: repeat(50, 1fr);
+      gap: 3px;
+      max-width: 100%;
+    }
+    .gridwrap figcaption {
+      max-width: 100%;
+      font-size: 12px;
+    }
+    .cards {
+      grid-template-columns: 1fr 1fr;
+    }
+    .card {
+      padding: 18px;
+    }
+    .tier-head h2,
+    .finale h2 {
+      font-size: 34px;
+    }
+    .totals {
+      grid-template-columns: 1fr 1fr;
+    }
+    .hud {
+      margin: 32px -32px 0;
+    }
+    .hud-inner {
+      flex-direction: row;
+      align-items: center;
+      gap: 20px;
+      padding: 13px 32px;
+    }
+    .hud-main {
+      flex: none;
+    }
+    .hud-bar {
+      flex: 1;
+    }
+    .hud-meta {
+      flex: none;
+      gap: 18px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .blk,
+    .hud-fill {
+      transition: none;
+    }
+  }
+</style>

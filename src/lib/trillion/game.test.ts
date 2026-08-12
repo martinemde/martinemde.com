@@ -3,7 +3,9 @@ import {
   BLOCKS,
   FORTUNE,
   allocations,
+  bankrollAt,
   blockOwners,
+  blockValue,
   canAfford,
   clampUnits,
   formatExact,
@@ -11,15 +13,20 @@ import {
   formatShare,
   itemTotal,
   maxUnits,
+  needsUpgrade,
+  nextBankroll,
+  overdraft,
+  rungFor,
   receipt,
   remaining,
   shortfall,
   spentFraction,
   totalSpent,
+  type Bankroll,
   type Item,
   type Tier
 } from './game';
-import { allItems, tiers } from './items';
+import { allItems, bankrolls, tiers } from './items';
 
 const oneTime: Item = {
   id: 'one',
@@ -102,9 +109,107 @@ describe('affordability', () => {
     expect(canAfford(101, 100)).toBe(false);
   });
 
+  it('lets the last bankroll buy anything at all', () => {
+    expect(canAfford(1e15, 100, true)).toBe(true);
+  });
+
   it('reports how far short you are, never negative', () => {
     expect(shortfall(1_866_000_000_000, FORTUNE)).toBe(866_000_000_000);
     expect(shortfall(10, 100)).toBe(0);
+  });
+});
+
+describe('bankrolls', () => {
+  const ladder: Bankroll[] = [
+    {
+      id: 'a',
+      label: 'A',
+      short: 'A',
+      people: '1',
+      exhausted: 'x',
+      amount: 100,
+      note: '',
+      sources: []
+    },
+    {
+      id: 'b',
+      label: 'B',
+      short: 'B',
+      people: '2',
+      exhausted: 'x',
+      amount: 500,
+      note: '',
+      sources: []
+    },
+    {
+      id: 'red',
+      label: 'red',
+      short: 'red',
+      people: 'nobody',
+      exhausted: 'x',
+      amount: 500,
+      unlimited: true,
+      note: '',
+      sources: []
+    }
+  ];
+
+  it('walks up the ladder and stops at the top', () => {
+    expect(bankrollAt(ladder, 0).id).toBe('a');
+    expect(nextBankroll(ladder, 0)?.id).toBe('b');
+    expect(nextBankroll(ladder, 2)).toBeUndefined();
+  });
+
+  it('clamps a saved level that no longer exists', () => {
+    expect(bankrollAt(ladder, 99).id).toBe('red');
+    expect(bankrollAt(ladder, -3).id).toBe('a');
+    expect(bankrollAt(ladder, NaN).id).toBe('a');
+  });
+
+  it('asks for an upgrade only when one exists and the money does not', () => {
+    expect(needsUpgrade(50, 100, ladder, 0)).toBe(false); // affordable
+    expect(needsUpgrade(150, 100, ladder, 0)).toBe(true); // too big, rung above
+    expect(needsUpgrade(1e9, 100, ladder, 2)).toBe(false); // last rung: just go red
+  });
+
+  it('offers the lowest rung that actually covers the purchase', () => {
+    expect(rungFor(ladder, 0, 90)).toBe(1); // fits in B
+    expect(rungFor(ladder, 0, 400)).toBe(1); // still fits in B
+    expect(rungFor(ladder, 0, 900)).toBe(2); // nothing covers it: the red
+    expect(rungFor(ladder, 1, 900)).toBe(2);
+  });
+
+  it('never lands you in the red by accepting a survivable offer', () => {
+    // Accepting an offer for a purchase a real rung can hold must leave >= 0.
+    for (const needed of [50, 120, 300, 500]) {
+      const rung = ladder[rungFor(ladder, 0, needed)];
+      expect(rung.unlimited || rung.amount >= needed).toBe(true);
+    }
+  });
+
+  it('reports the overdraft only once you are past the pot', () => {
+    expect(overdraft(400, 500)).toBe(0);
+    expect(overdraft(500, 500)).toBe(0);
+    expect(overdraft(700, 500)).toBe(200);
+  });
+
+  it('ships a ladder that climbs, ending somewhere nobody can be billed', () => {
+    expect(bankrolls[0].amount).toBe(FORTUNE);
+    const amounts = bankrolls.map((b) => b.amount);
+    for (let i = 1; i < amounts.length; i++)
+      expect(amounts[i]).toBeGreaterThanOrEqual(amounts[i - 1]);
+    expect(bankrolls.at(-1)?.unlimited).toBe(true);
+    for (const b of bankrolls) {
+      expect(b.sources.length, `${b.id} has no source`).toBeGreaterThan(0);
+      expect(b.note.length, `${b.id} has no note`).toBeGreaterThan(20);
+      expect(b.exhausted.length, `${b.id} has no out-of-money line`).toBeGreaterThan(10);
+    }
+  });
+
+  it('cannot buy the whole catalog even with every billionaire on Earth', () => {
+    const everything = Object.fromEntries(allItems.map((item) => [item.id, maxUnits(item)]));
+    const richest = bankrolls.filter((b) => !b.unlimited).at(-1)!;
+    expect(totalSpent(tiers, everything)).toBeGreaterThan(richest.amount);
   });
 });
 
@@ -113,6 +218,15 @@ describe('the block grid', () => {
     expect(BLOCKS).toBe(1000);
     expect(blockOwners([])).toHaveLength(BLOCKS);
     expect(blockOwners([]).every((owner) => owner === null)).toBe(true);
+  });
+
+  it('rescales the squares to the open bankroll', () => {
+    expect(blockValue(FORTUNE)).toBe(1_000_000_000);
+    expect(blockValue(20_100_000_000_000)).toBe(20_100_000_000);
+    // The same purchase fills fewer squares once a bigger bankroll is open.
+    const allocs = allocations(testTiers, { one: 1 });
+    expect(blockOwners(allocs, FORTUNE).filter(Boolean)).toHaveLength(10);
+    expect(blockOwners(allocs, FORTUNE * 10).filter(Boolean)).toHaveLength(1);
   });
 
   it('colors one square per billion spent', () => {
@@ -160,6 +274,11 @@ describe('formatting', () => {
   it('writes the counter out in full', () => {
     expect(formatExact(FORTUNE)).toBe('$1,000,000,000,000');
     expect(formatExact(941_300_000_000)).toBe('$941,300,000,000');
+  });
+
+  it('takes shares against whichever bankroll is open', () => {
+    expect(formatShare(FORTUNE, FORTUNE)).toBe('100%');
+    expect(formatShare(FORTUNE, 20_100_000_000_000)).toBe('5.0%');
   });
 
   it('keeps small shares legible instead of rounding them to zero', () => {

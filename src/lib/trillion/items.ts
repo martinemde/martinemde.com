@@ -13,7 +13,91 @@
  * these use a figure the cited source itself headlines.
  */
 
-import type { Tier } from './game';
+import type { Bankroll, Tier } from './game';
+
+/**
+ * The ladder of whose money is on the table. Each amount is a total rather than
+ * an increment — the ten richest people's $2.6 trillion already contains Musk's
+ * share — so unlocking a rung replaces the pot instead of adding to it.
+ */
+export const bankrolls: Bankroll[] = [
+  {
+    id: 'musk',
+    label: 'Elon Musk',
+    short: 'Elon',
+    people: '1 person',
+    exhausted: "That's more than even Elon has.",
+    amount: 1_000_000_000_000,
+    note: 'In June 2026 he became the first person ever to be worth a trillion dollars, on the back of the SpaceX listing. A round trillion is the starting pot.',
+    sources: [
+      {
+        label: 'Forbes, June 2026',
+        url: 'https://www.forbes.com/sites/tylerroush/2026/06/29/musk-is-a-trillionaire-again-spacex-and-tesla-boost-net-worth-by-50-billion/'
+      }
+    ]
+  },
+  {
+    id: 'top10',
+    label: 'the ten richest people on Earth',
+    short: 'the top 10',
+    people: '10 people',
+    exhausted: "That's more than the ten richest people on Earth have.",
+    amount: 2_600_000_000_000,
+    note: 'Musk, Page, Brin, Bezos, Zuckerberg, Ellison, Arnault, Huang, Buffett, Ortega. Everyone in the top ten is worth over $140 billion; together they hold $2.6 trillion.',
+    sources: [
+      {
+        label: 'Forbes, August 2026',
+        url: 'https://www.forbes.com/sites/forbeswealthteam/article/the-top-ten-richest-people-in-the-world/'
+      }
+    ]
+  },
+  {
+    id: 'usa',
+    label: 'every billionaire in America',
+    short: 'US billionaires',
+    people: '989 people',
+    exhausted: "That's more than every billionaire in America has.",
+    amount: 8_400_000_000_000,
+    note: 'The United States holds 989 billionaires worth $8.4 trillion between them — more than a third of all billionaire wealth on the planet.',
+    sources: [
+      {
+        label: 'Forbes 2026 list',
+        url: 'https://www.forbes.com/sites/chasewithorn/2026/03/10/2026-worlds-billionaires-list-facts-and-figures/'
+      }
+    ]
+  },
+  {
+    id: 'world',
+    label: 'every billionaire on Earth',
+    short: 'all billionaires',
+    people: '3,428 people',
+    exhausted: "That's more than every billionaire on Earth has.",
+    amount: 20_100_000_000_000,
+    note: 'A record 3,428 billionaires worth a combined $20.1 trillion — a group that got $4 trillion richer in a single year. This is the last real money on the board.',
+    sources: [
+      {
+        label: 'Forbes 2026 list',
+        url: 'https://www.forbes.com/sites/chasewithorn/2026/03/10/2026-worlds-billionaires-list-facts-and-figures/'
+      }
+    ]
+  },
+  {
+    id: 'red',
+    label: 'money that does not exist',
+    short: 'the red',
+    people: 'nobody',
+    exhausted: 'There is nobody left to bill.',
+    amount: 20_100_000_000_000,
+    unlimited: true,
+    note: 'There is nobody left to bill. Past this point the balance just goes negative and you are inventing the money, which is worth knowing about a list where everything is real.',
+    sources: [
+      {
+        label: 'Forbes 2026 list',
+        url: 'https://www.forbes.com/sites/chasewithorn/2026/03/10/2026-worlds-billionaires-list-facts-and-figures/'
+      }
+    ]
+  }
+];
 
 export const tiers: Tier[] = [
   {

@@ -1,10 +1,11 @@
 <script lang="ts">
   import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-  import { allItems, tiers } from '$lib/trillion/items';
+  import { allItems, bankrolls, tiers } from '$lib/trillion/items';
   import {
-    FORTUNE,
     allocations,
+    bankrollAt,
     blockOwners,
+    blockValue,
     canAfford,
     clampUnits,
     formatExact,
@@ -12,6 +13,9 @@
     formatShare,
     itemTotal,
     maxUnits,
+    needsUpgrade,
+    overdraft,
+    rungFor,
     receipt,
     shortfall,
     spentFraction,
@@ -35,9 +39,11 @@
   interface Saved {
     funded: Record<string, number>;
     revealed: number;
+    /** Which bankroll is open: 0 is Musk alone, the last rung is the red. */
+    level: number;
   }
 
-  const DEFAULTS: Saved = { funded: {}, revealed: 1 };
+  const DEFAULTS: Saved = { funded: {}, revealed: 1, level: 0 };
 
   // Restored at init like the other calculators on this site, so a reload
   // doesn't wipe out a ledger someone spent ten minutes building.
@@ -49,7 +55,8 @@
       const parsed = JSON.parse(raw) as Partial<Saved>;
       return {
         funded: parsed.funded ?? {},
-        revealed: Math.min(Math.max(parsed.revealed ?? 1, 1), tiers.length)
+        revealed: Math.min(Math.max(parsed.revealed ?? 1, 1), tiers.length),
+        level: Math.min(Math.max(parsed.level ?? 0, 0), bankrolls.length - 1)
       };
     } catch {
       return DEFAULTS;
@@ -60,14 +67,37 @@
 
   let funded = $state<Record<string, number>>(initial.funded);
   let revealed = $state(initial.revealed);
+  let level = $state(initial.level);
+
+  /** The item waiting on an upgrade, and how many years of it. Drives the modal. */
+  let pending = $state<{ item: Item; units: number; tierIndex: number } | null>(null);
+  let modal = $state<HTMLDialogElement | null>(null);
+
+  const bankroll = $derived(bankrollAt(bankrolls, level));
+  const pot = $derived(bankroll.amount);
 
   const allocs = $derived(allocations(tiers, funded));
   const spent = $derived(allocs.reduce((sum, a) => sum + a.amount, 0));
-  const left = $derived(FORTUNE - spent);
-  const owners = $derived(blockOwners(allocs));
+  const left = $derived(pot - spent);
+  const inTheRed = $derived(overdraft(spent, pot));
+  const owners = $derived(blockOwners(allocs, pot));
   const ledger = $derived(receipt(allocs));
   const visibleTiers = $derived(tiers.slice(0, revealed));
   const allRevealed = $derived(revealed >= tiers.length);
+
+  /** Which rung the parked purchase actually needs, not merely the next one up. */
+  const upgradeLevel = $derived(
+    pending
+      ? rungFor(
+          bankrolls,
+          level,
+          spent -
+            itemTotal(pending.item, units(pending.item)) +
+            itemTotal(pending.item, pending.units)
+        )
+      : level + 1
+  );
+  const upgrade = $derived(bankrolls[upgradeLevel]);
 
   /** The most expensive thing still within reach — the receipt's parting shot. */
   const biggestLeft = $derived(
@@ -77,7 +107,7 @@
   );
 
   $effect(() => {
-    const saved: Saved = { funded, revealed };
+    const saved: Saved = { funded, revealed, level };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     } catch {
@@ -107,32 +137,58 @@
     if (revealed === tierIndex + 1 && revealed < tiers.length) revealed = tierIndex + 2;
   }
 
+  /** Commits a purchase, or parks it and asks for a bigger bankroll first. */
+  function spend(item: Item, nextUnits: number, tierIndex: number) {
+    const cost = itemTotal(item, nextUnits) - itemTotal(item, units(item));
+    if (needsUpgrade(cost, left, bankrolls, level)) {
+      pending = { item, units: nextUnits, tierIndex };
+      modal?.showModal();
+      return;
+    }
+    if (!canAfford(cost, left, bankroll.unlimited)) return;
+    funded = { ...funded, [item.id]: nextUnits };
+    revealNext(tierIndex);
+  }
+
   function toggle(item: Item, tierIndex: number) {
     if (isFunded(item)) {
       const { [item.id]: _dropped, ...rest } = funded;
       funded = rest;
       return;
     }
-    if (!canAfford(item.cost, left)) return;
-    funded = { ...funded, [item.id]: 1 };
-    revealNext(tierIndex);
+    spend(item, 1, tierIndex);
   }
 
   function bump(item: Item, delta: number, tierIndex: number) {
     const next = clampUnits(item, units(item) + delta);
-    if (next > 0 && itemTotal(item, next) > budgetFor(item)) return;
     if (next === 0) {
       const { [item.id]: _dropped, ...rest } = funded;
       funded = rest;
       return;
     }
-    funded = { ...funded, [item.id]: next };
-    revealNext(tierIndex);
+    spend(item, next, tierIndex);
+  }
+
+  /** Take the bankroll the purchase needs and put it through. */
+  function acceptUpgrade() {
+    level = Math.min(Math.max(upgradeLevel, level), bankrolls.length - 1);
+    if (pending) {
+      funded = { ...funded, [pending.item.id]: pending.units };
+      revealNext(pending.tierIndex);
+    }
+    closeModal();
+  }
+
+  function closeModal() {
+    pending = null;
+    modal?.close();
   }
 
   function reset() {
     funded = {};
     revealed = 1;
+    level = 0;
+    closeModal();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 </script>
@@ -169,7 +225,7 @@
       Every price below is a real, published number with a link to where it came from. This is not a
       scoreboard for anyone's politics and nobody here owes anybody anything — it is a ruler. Most
       people, including me, have no working intuition for what a trillion dollars is. Spend it and
-      find out.
+      find out. Run out, and you'll be offered somebody else's money.
     </p>
 
     <figure class="gridwrap">
@@ -179,9 +235,13 @@
         {/each}
       </div>
       <figcaption>
-        1,000 squares. Each one is <strong>$1,000,000,000</strong> — a billion dollars. You have
-        filled
-        <strong>{Math.round(spentFraction(spent) * 1000)}</strong> of them.
+        1,000 squares. Each one is <strong>{formatExact(blockValue(pot))}</strong>. You have filled
+        <strong>{Math.round(spentFraction(spent, pot) * 1000)}</strong> of them.
+        {#if level > 0}
+          <span class="rescaled">
+            The grid did not get bigger when you took {bankroll.label} — the squares did.
+          </span>
+        {/if}
       </figcaption>
     </figure>
   </header>
@@ -198,8 +258,9 @@
         {#each tier.items as item (item.id)}
           {@const n = units(item)}
           {@const committed = itemTotal(item, n)}
-          {@const affordable = canAfford(item.cost, budgetFor(item))}
+          {@const affordable = canAfford(item.cost, budgetFor(item), bankroll.unlimited)}
           {@const short = shortfall(item.cost, budgetFor(item))}
+          {@const askable = needsUpgrade(item.cost, budgetFor(item), bankrolls, level)}
           <article class="card" class:funded={n > 0} class:broke={!affordable && n === 0}>
             <div class="card-top">
               <h3>{item.label}</h3>
@@ -230,7 +291,10 @@
                   <button
                     type="button"
                     onclick={() => bump(item, 1, tierIndex)}
-                    disabled={n >= maxUnits(item) || itemTotal(item, n + 1) > budgetFor(item)}
+                    disabled={n >= maxUnits(item) ||
+                      (itemTotal(item, n + 1) > budgetFor(item) &&
+                        !bankroll.unlimited &&
+                        !needsUpgrade(itemTotal(item, n + 1) - committed, left, bankrolls, level))}
                     aria-label="Fund {item.label} for one more year">+</button
                   >
                 </div>
@@ -239,13 +303,16 @@
                   type="button"
                   class="fund"
                   class:on={n > 0}
-                  disabled={!affordable && n === 0}
+                  class:ask={askable && n === 0}
+                  disabled={!affordable && !askable && n === 0}
                   onclick={() => toggle(item, tierIndex)}
                 >
                   {#if n > 0}
                     Funded — undo
                   {:else if affordable}
                     Fund it
+                  {:else if askable}
+                    Needs {formatMoney(short)} more →
                   {:else}
                     Short {formatMoney(short)}
                   {/if}
@@ -254,9 +321,9 @@
 
               <div class="share">
                 {#if n > 0}
-                  {formatShare(committed)} of the fortune
+                  {formatShare(committed, pot)} of the pot
                 {:else}
-                  {formatShare(item.cost)}{#if item.per}&nbsp;a year{/if}
+                  {formatShare(item.cost, pot)}{#if item.per}&nbsp;a year{/if}
                 {/if}
               </div>
             </div>
@@ -276,7 +343,7 @@
       <div class="tier-foot">
         <span class="tally">
           This tier: <strong>{formatMoney(tierSpend(tier))}</strong>
-          <span class="dim">· {formatShare(tierSpend(tier))} of the trillion</span>
+          <span class="dim">· {formatShare(tierSpend(tier), pot)} of the pot</span>
         </span>
         {#if tierIndex === revealed - 1 && !allRevealed}
           <button type="button" class="next" onclick={() => (revealed += 1)}>
@@ -318,10 +385,12 @@
             >
           </div>
           <div>
-            <span class="t-label">Still in the pile</span>
-            <span class="t-value">{formatExact(left)}</span>
+            <span class="t-label">{inTheRed > 0 ? 'Overdrawn by' : 'Still in the pile'}</span>
+            <span class="t-value" class:red={inTheRed > 0}>{formatExact(Math.abs(left))}</span>
             <span class="t-note">
-              {#if left <= 0}
+              {#if inTheRed > 0}
+                Past every billionaire on Earth. This money does not exist.
+              {:else if left <= 0}
                 Gone. Every square is full.
               {:else if biggestLeft}
                 Still enough for: {biggestLeft.label.toLowerCase()} ({formatMoney(
@@ -372,19 +441,73 @@
   <aside class="hud" aria-live="polite">
     <div class="hud-inner">
       <div class="hud-main">
-        <span class="hud-label">Still to spend</span>
-        <span class="hud-amount">{formatExact(left)}</span>
+        <span class="hud-label">{inTheRed > 0 ? 'Overdrawn' : 'Still to spend'}</span>
+        <span class="hud-amount" class:red={inTheRed > 0}
+          >{inTheRed > 0 ? '−' : ''}{formatExact(Math.abs(left))}</span
+        >
       </div>
       <div class="hud-bar">
-        <div class="hud-fill" style:width="{spentFraction(spent) * 100}%"></div>
+        <div
+          class="hud-fill"
+          class:red={inTheRed > 0}
+          style:width="{spentFraction(spent, pot) * 100}%"
+        ></div>
       </div>
       <div class="hud-meta">
-        <span>{formatShare(spent)} allocated</span>
+        <span>bankroll: {bankroll.short}</span>
         <span>{ledger.length} funded</span>
       </div>
     </div>
   </aside>
 </div>
+
+<!-- Native <dialog> so focus trapping, Escape and the backdrop come for free. -->
+<dialog bind:this={modal} class="ask-modal" onclose={() => (pending = null)}>
+  {#if pending && upgrade}
+    {@const cost = itemTotal(pending.item, pending.units)}
+    <h2>{bankroll.exhausted}</h2>
+    <p class="ask-lede">
+      <strong>{pending.item.label}</strong>
+      {#if pending.units > 1}for {pending.units} years{/if}
+      costs {formatMoney(cost)} — {formatMoney(shortfall(cost, left))} more than is left in the pot.
+    </p>
+
+    <div class="ask-next">
+      <div class="ask-next-head">
+        <span class="ask-next-label">Next up: {upgrade.label}</span>
+        <span class="ask-next-amount">
+          {upgrade.unlimited ? 'no limit' : formatMoney(upgrade.amount)}
+        </span>
+      </div>
+      <p class="ask-note">{upgrade.note}</p>
+      {#if !upgrade.unlimited}
+        <p class="ask-people">
+          {upgrade.people} · each square in the grid becomes {formatMoney(
+            blockValue(upgrade.amount)
+          )}
+        </p>
+      {/if}
+      <!-- eslint-disable svelte/no-navigation-without-resolve -->
+      <div class="ask-sources">
+        {#each upgrade.sources as source (source.url)}
+          <a href={source.url} rel="external noopener" target="_blank">{source.label} ↗</a>
+        {/each}
+      </div>
+      <!-- eslint-enable svelte/no-navigation-without-resolve -->
+    </div>
+
+    <div class="ask-actions">
+      <button type="button" class="ask-yes" onclick={acceptUpgrade}>
+        {#if upgrade.unlimited}
+          Go into the red
+        {:else}
+          Spend theirs too
+        {/if}
+      </button>
+      <button type="button" class="ask-no" onclick={closeModal}>Never mind</button>
+    </div>
+  {/if}
+</dialog>
 
 <style>
   .page {
@@ -458,6 +581,11 @@
   .gridwrap strong {
     color: var(--text);
     font-weight: 500;
+  }
+  .rescaled {
+    display: block;
+    margin-top: 4px;
+    color: var(--accent2);
   }
 
   /* ---- Tiers ----------------------------------------------------------- */
@@ -597,6 +725,16 @@
   }
   .fund.on:hover {
     background: color-mix(in oklch, var(--tier) 86%, white);
+  }
+  /* An unaffordable price is an invitation to open a bigger bankroll, so it
+     reads as an action rather than a dead control. */
+  .fund.ask {
+    border-style: dashed;
+    color: var(--tier-ink);
+  }
+  .fund.ask:hover {
+    background: color-mix(in oklch, var(--tier) 16%, transparent);
+    border-style: solid;
   }
   .fund:disabled {
     border-color: var(--border);
@@ -877,12 +1015,138 @@
     background: var(--accent);
     transition: width 260ms ease;
   }
+  .hud-amount.red,
+  .t-value.red {
+    color: light-dark(oklch(0.5 0.2 25), oklch(0.75 0.17 25));
+  }
+  .hud-fill.red {
+    background: light-dark(oklch(0.5 0.2 25), oklch(0.75 0.17 25));
+  }
   .hud-meta {
     display: flex;
     justify-content: space-between;
     font-family: var(--font-mono);
     font-size: 10.5px;
     color: var(--faint);
+  }
+
+  /* ---- The bigger-bankroll modal --------------------------------------- */
+  .ask-modal {
+    width: min(520px, calc(100vw - 32px));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--bg);
+    padding: 24px 20px 20px;
+    color: var(--text);
+  }
+  .ask-modal::backdrop {
+    background: oklch(0.12 0.02 264 / 0.66);
+    backdrop-filter: blur(3px);
+  }
+  .ask-modal h2 {
+    margin: 0 0 12px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 23px;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-wrap: balance;
+  }
+  .ask-lede {
+    margin: 0 0 18px;
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .ask-lede strong {
+    color: var(--text);
+    font-weight: 560;
+  }
+  .ask-next {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    padding: 14px;
+  }
+  .ask-next-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .ask-next-label {
+    font-family: var(--font-body);
+    font-weight: 560;
+    font-size: 15px;
+  }
+  .ask-next-amount {
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--accent);
+  }
+  .ask-note {
+    margin: 0 0 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .ask-people {
+    margin: 0 0 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+  }
+  .ask-sources a {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+    text-decoration: none;
+  }
+  .ask-sources a:hover {
+    color: var(--accent);
+  }
+  .ask-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .ask-yes,
+  .ask-no {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .ask-yes {
+    flex: 1;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: light-dark(oklch(0.99 0 0), oklch(0.16 0.02 264));
+  }
+  .ask-yes:hover {
+    background: color-mix(in oklch, var(--accent) 86%, white);
+  }
+  .ask-no {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+  }
+  .ask-no:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .ask-yes:focus-visible,
+  .ask-no:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   /* ---- Wider screens --------------------------------------------------- */

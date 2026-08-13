@@ -8,6 +8,8 @@ import {
   blockValue,
   canAfford,
   clampUnits,
+  decodeSpend,
+  encodeSpend,
   formatExact,
   formatMoney,
   formatShare,
@@ -16,9 +18,12 @@ import {
   needsUpgrade,
   nextBankroll,
   overdraft,
+  refund,
   rungFor,
+  rungForTotal,
   receipt,
   remaining,
+  shareText,
   shortfall,
   spentFraction,
   totalSpent,
@@ -26,7 +31,7 @@ import {
   type Item,
   type Tier
 } from './game';
-import { allItems, bankrolls, tiers } from './items';
+import { allItems, bankrolls, tierColors, tiers } from './items';
 
 const oneTime: Item = {
   id: 'one',
@@ -126,6 +131,8 @@ describe('bankrolls', () => {
       label: 'A',
       short: 'A',
       people: '1',
+      count: 1,
+      each: 'A',
       exhausted: 'x',
       amount: 100,
       note: '',
@@ -136,6 +143,8 @@ describe('bankrolls', () => {
       label: 'B',
       short: 'B',
       people: '2',
+      count: 2,
+      each: 'each of the two',
       exhausted: 'x',
       amount: 500,
       note: '',
@@ -146,6 +155,8 @@ describe('bankrolls', () => {
       label: 'red',
       short: 'red',
       people: 'nobody',
+      count: 0,
+      each: 'nobody',
       exhausted: 'x',
       amount: 500,
       unlimited: true,
@@ -185,6 +196,13 @@ describe('bankrolls', () => {
       const rung = ladder[rungFor(ladder, 0, needed)];
       expect(rung.unlimited || rung.amount >= needed).toBe(true);
     }
+  });
+
+  it('works out which bankroll a shared total must have had open', () => {
+    expect(rungForTotal(ladder, 0)).toBe(0);
+    expect(rungForTotal(ladder, 100)).toBe(0);
+    expect(rungForTotal(ladder, 101)).toBe(1);
+    expect(rungForTotal(ladder, 5000)).toBe(2); // nothing covers it: the red
   });
 
   it('reports the overdraft only once you are past the pot', () => {
@@ -297,6 +315,111 @@ describe('formatting', () => {
   });
 });
 
+describe('money back', () => {
+  it('splits what is left among the people it came from', () => {
+    expect(refund(989_000_000_000, 989)).toBe(1_000_000_000);
+    expect(refund(370_000_000_000, 1)).toBe(370_000_000_000);
+  });
+
+  it('has nothing to hand back when the pot is empty or nobody was billed', () => {
+    expect(refund(0, 989)).toBe(0);
+    expect(refund(-5, 989)).toBe(0);
+    expect(refund(100, 0)).toBe(0);
+  });
+
+  it('leaves every real bankroll able to answer the question', () => {
+    for (const b of bankrolls) {
+      if (b.unlimited) continue;
+      expect(b.count, `${b.id} has no headcount`).toBeGreaterThan(0);
+      expect(b.each.length, `${b.id} has nobody to give it back to`).toBeGreaterThan(2);
+    }
+  });
+});
+
+describe('sharing', () => {
+  it('round-trips a ledger through a link', () => {
+    const funded = { one: 1, yearly: 3 };
+    const code = encodeSpend([oneTime, yearly], funded);
+    expect(code).toBe('one,yearly:3');
+    expect(decodeSpend([oneTime, yearly], code)).toEqual(funded);
+  });
+
+  it('writes ids in catalog order so the same spending makes the same link', () => {
+    const forwards = encodeSpend([oneTime, yearly], { one: 1, yearly: 2 });
+    const backwards = encodeSpend([oneTime, yearly], { yearly: 2, one: 1 });
+    expect(forwards).toBe(backwards);
+  });
+
+  it('drops unfunded items instead of writing zeroes', () => {
+    expect(encodeSpend([oneTime, yearly], { one: 0, yearly: 1 })).toBe('yearly');
+    expect(encodeSpend([oneTime, yearly], {})).toBe('');
+  });
+
+  it('survives links that are empty, stale or nonsense', () => {
+    expect(decodeSpend([oneTime, yearly], null)).toEqual({});
+    expect(decodeSpend([oneTime, yearly], '')).toEqual({});
+    expect(decodeSpend([oneTime, yearly], 'ghost,one')).toEqual({ one: 1 });
+    expect(decodeSpend([oneTime, yearly], 'yearly:nope')).toEqual({});
+    expect(decodeSpend([oneTime, yearly], 'yearly:99')).toEqual({ yearly: 4 });
+  });
+
+  it('lays the receipt out for pasting, with the link at the end', () => {
+    const allocs = receipt(allocations(testTiers, { one: 1, yearly: 4 }));
+    const text = shareText({
+      ledger: allocs,
+      spent: 30_000_000_000,
+      pot: FORTUNE,
+      left: FORTUNE - 30_000_000_000,
+      url: 'https://example.com/trillion?s=one,yearly:4'
+    });
+    expect(text).toContain('I gave away $30B of $1T');
+    expect(text).toContain('$20B · Yearly × 4 years');
+    expect(text).toContain('$10B · One time');
+    expect(text).toContain('$970B still in the pile.');
+    expect(text.endsWith('https://example.com/trillion?s=one,yearly:4')).toBe(true);
+  });
+
+  it('collapses long ledgers instead of pasting all of them', () => {
+    const many = Array.from({ length: 9 }, (_, i) => ({
+      item: { ...oneTime, id: `i${i}`, label: `Item ${i}` },
+      tierId: 'a',
+      units: 1,
+      amount: 10_000_000_000
+    }));
+    const text = shareText({
+      ledger: many,
+      spent: 90_000_000_000,
+      pot: FORTUNE,
+      left: FORTUNE - 90_000_000_000,
+      url: 'https://example.com/trillion',
+      limit: 4
+    });
+    expect(text).toContain('…and 5 more');
+    expect(text).not.toContain('Item 8');
+  });
+
+  it('says so when the money does not exist, or was never spent', () => {
+    const allocs = allocations(testTiers, { one: 1 });
+    expect(
+      shareText({
+        ledger: allocs,
+        spent: 10_000_000_000,
+        pot: 1_000_000_000,
+        left: -9_000_000_000,
+        url: 'u'
+      })
+    ).toContain('Overdrawn by $9B');
+    expect(shareText({ ledger: [], spent: 0, pot: FORTUNE, left: FORTUNE, url: 'u' })).toContain(
+      "haven't spent a cent"
+    );
+  });
+
+  it('round-trips the real catalog', () => {
+    const funded = { painting: 1, homeless: 5, nfl: 1, 'debt-interest': 2 };
+    expect(decodeSpend(allItems, encodeSpend(allItems, funded))).toEqual(funded);
+  });
+});
+
 describe('the catalog', () => {
   it('gives every item a unique id', () => {
     const ids = allItems.map((item) => item.id);
@@ -315,6 +438,12 @@ describe('the catalog', () => {
   it('explains every price', () => {
     for (const item of allItems) {
       expect(item.note.length, `${item.id} has no note`).toBeGreaterThan(20);
+    }
+  });
+
+  it('gives every tier a hue, so a new tier cannot paint blank squares', () => {
+    for (const tier of tiers) {
+      expect(tierColors[tier.id], `${tier.id} has no color`).toMatch(/^oklch\(/);
     }
   });
 

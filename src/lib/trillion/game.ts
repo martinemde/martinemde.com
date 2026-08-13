@@ -47,6 +47,10 @@ export interface Bankroll {
   short: string;
   /** How many people are being emptied out. */
   people: string;
+  /** The same headcount as a number, for the money-back-each math. */
+  count: number;
+  /** Reads after "give": "Elon", "each of America's 989 billionaires". */
+  each: string;
   /**
    * The modal headline when this bankroll runs dry. Written out per rung rather
    * than assembled, because "the top 10 has" and "US billionaires's money" is
@@ -203,6 +207,18 @@ export function nextBankroll(bankrolls: Bankroll[], level: number): Bankroll | u
 }
 
 /**
+ * The cheapest rung that can hold `total`, counting from the bottom. A shared
+ * ledger arrives as a pile of numbers with no history, so this works out which
+ * bankroll the sender must have had open.
+ */
+export function rungForTotal(bankrolls: Bankroll[], total: number): number {
+  for (let i = 0; i < bankrolls.length; i++) {
+    if (bankrolls[i].unlimited || bankrolls[i].amount >= total) return i;
+  }
+  return bankrolls.length - 1;
+}
+
+/**
  * The lowest rung that actually covers `needed` (total committed after the
  * purchase), or the last rung if nothing does. Offering merely the next rung up
  * would let you accept an upgrade and still land in the red — buying a $5.3T
@@ -238,4 +254,86 @@ export function overdraft(spent: number, pot: number): number {
 /** Everything you funded, cheapest last — the receipt reads better big-first. */
 export function receipt(allocs: Allocation[]): Allocation[] {
   return [...allocs].sort((a, b) => b.amount - a.amount);
+}
+
+/**
+ * What is left over, split back among the people it was taken from. The whole
+ * point of the line it feeds: after buying every fix on the list, everybody you
+ * billed can still be handed a fortune back.
+ */
+export function refund(left: number, count: number): number {
+  if (left <= 0 || count <= 0) return 0;
+  return left / count;
+}
+
+/**
+ * A ledger as a query string: `painting,homeless:5,nfl`. Ids are written in
+ * catalog order so the same spending always produces the same link, and years
+ * are only spelled out when there is more than one.
+ */
+export function encodeSpend(items: Item[], funded: Funded): string {
+  return items
+    .map((item) => ({ item, units: clampUnits(item, funded[item.id] ?? 0) }))
+    .filter(({ units }) => units > 0)
+    .map(({ item, units }) => (units > 1 ? `${item.id}:${units}` : item.id))
+    .join(',');
+}
+
+/**
+ * The other direction. Anything that is not a live item id is dropped, so an
+ * old link keeps working after the catalog changes instead of erroring.
+ */
+export function decodeSpend(items: Item[], code: string | null | undefined): Funded {
+  if (!code) return {};
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const funded: Funded = {};
+  for (const part of code.split(',')) {
+    const [id, years] = part.split(':');
+    const item = byId.get(id);
+    if (!item) continue;
+    const units = clampUnits(item, years === undefined ? 1 : Number(years));
+    if (units > 0) funded[item.id] = units;
+  }
+  return funded;
+}
+
+export interface ShareArgs {
+  ledger: Allocation[];
+  spent: number;
+  pot: number;
+  left: number;
+  url: string;
+  /** Lines to print before the rest get collapsed into a count. */
+  limit?: number;
+}
+
+/**
+ * The receipt as something you can paste anywhere. Long ledgers get truncated
+ * rather than pasted in full: the top few lines are the priorities, which is
+ * the part worth sharing.
+ */
+export function shareText({ ledger, spent, pot, left, url, limit = 6 }: ShareArgs): string {
+  if (ledger.length === 0) {
+    return `A trillion dollars to give away and I haven't spent a cent of it.\n\n${url}`;
+  }
+
+  const lines = ledger
+    .slice(0, limit)
+    .map(
+      (alloc) =>
+        `${formatMoney(alloc.amount)} · ${alloc.item.label}${
+          alloc.units > 1 ? ` × ${alloc.units} years` : ''
+        }`
+    );
+  const rest = ledger.length - lines.length;
+  if (rest > 0) lines.push(`…and ${rest} more`);
+
+  const tail =
+    left >= 0
+      ? `${formatMoney(left)} still in the pile.`
+      : `Overdrawn by ${formatMoney(-left)} — that money does not exist.`;
+
+  return `I gave away ${formatMoney(spent)} of ${formatMoney(pot)}:\n\n${lines.join(
+    '\n'
+  )}\n\n${tail}\n\nSpend yours: ${url}`;
 }

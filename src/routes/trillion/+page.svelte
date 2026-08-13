@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { replaceState } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-  import { allItems, bankrolls, tiers } from '$lib/trillion/items';
+  import { allItems, bankrolls, tierColors, tiers } from '$lib/trillion/items';
   import {
     allocations,
     bankrollAt,
@@ -8,6 +10,8 @@
     blockValue,
     canAfford,
     clampUnits,
+    decodeSpend,
+    encodeSpend,
     formatExact,
     formatMoney,
     formatShare,
@@ -15,26 +19,19 @@
     maxUnits,
     needsUpgrade,
     overdraft,
+    refund,
     rungFor,
+    rungForTotal,
     receipt,
+    shareText,
     shortfall,
     spentFraction,
+    totalSpent,
     type Item,
     type Tier
   } from '$lib/trillion/game';
 
   const STORAGE_KEY = 'trillion-game';
-
-  /** One hue per tier, mid-lightness so it reads on both themes. */
-  const TIER_COLOR: Record<string, string> = {
-    toys: 'oklch(0.74 0.12 85)',
-    cheap: 'oklch(0.72 0.13 160)',
-    trophies: 'oklch(0.70 0.13 305)',
-    country: 'oklch(0.70 0.12 250)',
-    planet: 'oklch(0.74 0.11 195)',
-    moonshots: 'oklch(0.68 0.15 30)',
-    wall: 'oklch(0.62 0.03 264)'
-  };
 
   interface Saved {
     funded: Record<string, number>;
@@ -43,20 +40,42 @@
     level: number;
   }
 
-  const DEFAULTS: Saved = { funded: {}, revealed: 1, level: 0 };
+  /** A restored board, plus whether it came off somebody else's shared link. */
+  type Restored = Saved & { borrowed: boolean };
+
+  const DEFAULTS: Restored = { funded: {}, revealed: 1, level: 0, borrowed: false };
+
+  /**
+   * A shared ledger beats a saved one: someone followed a link to see a
+   * particular split, so show them that split, with every tier open — they are
+   * arriving at a finished receipt rather than starting a game.
+   */
+  function fromLink(): Restored | null {
+    const shared = decodeSpend(allItems, new URLSearchParams(window.location.search).get('s'));
+    if (Object.keys(shared).length === 0) return null;
+    return {
+      funded: shared,
+      revealed: tiers.length,
+      level: rungForTotal(bankrolls, totalSpent(tiers, shared)),
+      borrowed: true
+    };
+  }
 
   // Restored at init like the other calculators on this site, so a reload
   // doesn't wipe out a ledger someone spent ten minutes building.
-  function restore(): Saved {
+  function restore(): Restored {
     if (typeof window === 'undefined') return DEFAULTS;
     try {
+      const shared = fromLink();
+      if (shared) return shared;
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return DEFAULTS;
       const parsed = JSON.parse(raw) as Partial<Saved>;
       return {
         funded: parsed.funded ?? {},
         revealed: Math.min(Math.max(parsed.revealed ?? 1, 1), tiers.length),
-        level: Math.min(Math.max(parsed.level ?? 0, 0), bankrolls.length - 1)
+        level: Math.min(Math.max(parsed.level ?? 0, 0), bankrolls.length - 1),
+        borrowed: false
       };
     } catch {
       return DEFAULTS;
@@ -68,10 +87,18 @@
   let funded = $state<Record<string, number>>(initial.funded);
   let revealed = $state(initial.revealed);
   let level = $state(initial.level);
+  /** Somebody else's ledger, on loan until this visitor changes something. */
+  let borrowed = $state(initial.borrowed);
 
   /** The item waiting on an upgrade, and how many years of it. Drives the modal. */
   let pending = $state<{ item: Item; units: number; tierIndex: number } | null>(null);
   let modal = $state<HTMLDialogElement | null>(null);
+
+  let sheet = $state<HTMLDialogElement | null>(null);
+  let sheetOpen = $state(false);
+  /** Which button just copied something, so it can say so for a moment. */
+  let copied = $state<'text' | 'link' | null>(null);
+  let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
   const bankroll = $derived(bankrollAt(bankrolls, level));
   const pot = $derived(bankroll.amount);
@@ -108,6 +135,10 @@
 
   $effect(() => {
     const saved: Saved = { funded, revealed, level };
+    // Reading the board first keeps this subscribed while the ledger is on loan
+    // from a shared link. Nothing is written until the visitor makes it theirs,
+    // so following somebody's link cannot overwrite their own spending.
+    if (borrowed) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
     } catch {
@@ -150,7 +181,18 @@
     revealNext(tierIndex);
   }
 
+  /**
+   * The first change to a borrowed ledger makes it this visitor's own: it starts
+   * saving, and the sender's code comes off the URL so a reload keeps the edits.
+   */
+  function claim() {
+    if (!borrowed) return;
+    borrowed = false;
+    replaceState(resolve('/trillion'), {});
+  }
+
   function toggle(item: Item, tierIndex: number) {
+    claim();
     if (isFunded(item)) {
       const { [item.id]: _dropped, ...rest } = funded;
       funded = rest;
@@ -160,6 +202,7 @@
   }
 
   function bump(item: Item, delta: number, tierIndex: number) {
+    claim();
     const next = clampUnits(item, units(item) + delta);
     if (next === 0) {
       const { [item.id]: _dropped, ...rest } = funded;
@@ -171,6 +214,7 @@
 
   /** Take the bankroll the purchase needs and put it through. */
   function acceptUpgrade() {
+    claim();
     level = Math.min(Math.max(upgradeLevel, level), bankrolls.length - 1);
     if (pending) {
       funded = { ...funded, [pending.item.id]: pending.units };
@@ -185,11 +229,69 @@
   }
 
   function reset() {
+    claim();
     funded = {};
     revealed = 1;
     level = 0;
     closeModal();
+    hideSheet();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ---- The receipt sheet ------------------------------------------------- */
+
+  function showSheet() {
+    copied = null;
+    sheet?.showModal();
+    sheetOpen = true;
+  }
+
+  function hideSheet() {
+    sheet?.close();
+  }
+
+  /** Clicks land on the dialog itself only when they land on the backdrop. */
+  function backdropClick(event: MouseEvent) {
+    if (event.target === sheet) hideSheet();
+  }
+
+  /** The page, plus this ledger, so a link opens somebody else's priorities. */
+  function shareUrl(): string {
+    const code = encodeSpend(allItems, funded);
+    const base = `${window.location.origin}${resolve('/trillion')}`;
+    return code ? `${base}?s=${code}` : base;
+  }
+
+  function flash(which: 'text' | 'link') {
+    copied = which;
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => (copied = null), 2200);
+  }
+
+  async function copyToClipboard(value: string, which: 'text' | 'link') {
+    try {
+      await navigator.clipboard.writeText(value);
+      flash(which);
+    } catch {
+      // No clipboard access. Nothing useful to say about it in the UI.
+    }
+  }
+
+  /**
+   * The native share sheet where there is one — phones, mostly — and the
+   * clipboard everywhere else, so the button does something on every machine.
+   */
+  async function shareReceipt() {
+    const text = shareText({ ledger, spent, pot, left, url: shareUrl() });
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Give Away Elon's Money", text });
+      } catch {
+        // Dismissed the share sheet, or the target refused it. Either way, done.
+      }
+      return;
+    }
+    await copyToClipboard(text, 'text');
   }
 </script>
 
@@ -200,6 +302,65 @@
     content="A trillion dollars, one thousand squares, and a list of real, sourced prices for fixing things. Spend it all and watch how little moves."
   />
 </svelte:head>
+
+<!--
+  The ledger and the two totals, rendered both at the end of the page and inside
+  the share sheet, so the receipt says exactly the same thing in both places.
+-->
+{#snippet receiptBody(empty: string)}
+  {#if ledger.length === 0}
+    <p class="empty">{empty}</p>
+  {:else}
+    <ol class="ledger">
+      {#each ledger as alloc (alloc.item.id)}
+        <li style:--tier={tierColors[alloc.tierId]}>
+          <span class="l-name">
+            <!-- Non-breaking space: a plain one gets trimmed at the block edge. -->
+            {alloc.item.label}{#if alloc.units > 1}<span class="dim"
+                >&nbsp;× {alloc.units} years</span
+              >{/if}
+          </span>
+          <span class="l-amount">{formatMoney(alloc.amount)}</span>
+        </li>
+      {/each}
+    </ol>
+
+    <div class="totals">
+      <div>
+        <span class="t-label">Allocated</span>
+        <span class="t-value">{formatExact(spent)}</span>
+        <span class="t-note"
+          >{formatShare(spent)} of the fortune, across {ledger.length}
+          {ledger.length === 1 ? 'line' : 'lines'}</span
+        >
+      </div>
+      <div>
+        <span class="t-label">{inTheRed > 0 ? 'Overdrawn by' : 'Still in the pile'}</span>
+        <span class="t-value" class:red={inTheRed > 0}>{formatExact(Math.abs(left))}</span>
+        <span class="t-note">
+          {#if inTheRed > 0}
+            Past every billionaire on Earth. This money does not exist.
+          {:else if left <= 0}
+            Gone. Every square is full.
+          {:else if biggestLeft}
+            Still enough for: {biggestLeft.label.toLowerCase()} ({formatMoney(
+              biggestLeft.cost
+            )}{#if biggestLeft.per}/yr{/if})
+          {:else}
+            Not enough left for anything else on this list.
+          {/if}
+        </span>
+        <!-- The kicker: the leftovers, handed back to the people you billed. -->
+        {#if left > 0 && bankroll.count > 0}
+          <span class="t-sub">
+            Enough to give {bankroll.each}
+            {formatMoney(refund(left, bankroll.count))} back.
+          </span>
+        {/if}
+      </div>
+    </div>
+  {/if}
+{/snippet}
 
 <div class="page">
   <Breadcrumbs
@@ -231,7 +392,7 @@
     <figure class="gridwrap">
       <div class="grid" aria-hidden="true">
         {#each owners as owner, i (i)}
-          <span class="blk" style:background={owner ? TIER_COLOR[owner] : undefined}></span>
+          <span class="blk" style:background={owner ? tierColors[owner] : undefined}></span>
         {/each}
       </div>
       <figcaption>
@@ -247,7 +408,7 @@
   </header>
 
   {#each visibleTiers as tier, tierIndex (tier.id)}
-    <section class="tier" style:--tier={TIER_COLOR[tier.id]}>
+    <section class="tier" style:--tier={tierColors[tier.id]}>
       <div class="tier-head">
         <div class="tier-kicker">{tier.kicker}</div>
         <h2>{tier.title}</h2>
@@ -358,51 +519,9 @@
     <section class="finale">
       <h2>The receipt</h2>
 
-      {#if ledger.length === 0}
-        <p class="empty">
-          You haven't spent a dollar yet. The whole trillion is still sitting up there.
-        </p>
-      {:else}
-        <ol class="ledger">
-          {#each ledger as alloc (alloc.item.id)}
-            <li style:--tier={TIER_COLOR[alloc.tierId]}>
-              <span class="l-name">
-                {alloc.item.label}{#if alloc.units > 1}
-                  <span class="dim"> × {alloc.units} years</span>{/if}
-              </span>
-              <span class="l-amount">{formatMoney(alloc.amount)}</span>
-            </li>
-          {/each}
-        </ol>
-
-        <div class="totals">
-          <div>
-            <span class="t-label">Allocated</span>
-            <span class="t-value">{formatExact(spent)}</span>
-            <span class="t-note"
-              >{formatShare(spent)} of the fortune, across {ledger.length}
-              {ledger.length === 1 ? 'line' : 'lines'}</span
-            >
-          </div>
-          <div>
-            <span class="t-label">{inTheRed > 0 ? 'Overdrawn by' : 'Still in the pile'}</span>
-            <span class="t-value" class:red={inTheRed > 0}>{formatExact(Math.abs(left))}</span>
-            <span class="t-note">
-              {#if inTheRed > 0}
-                Past every billionaire on Earth. This money does not exist.
-              {:else if left <= 0}
-                Gone. Every square is full.
-              {:else if biggestLeft}
-                Still enough for: {biggestLeft.label.toLowerCase()} ({formatMoney(
-                  biggestLeft.cost
-                )}{#if biggestLeft.per}/yr{/if})
-              {:else}
-                Not enough left for anything else on this list.
-              {/if}
-            </span>
-          </div>
-        </div>
-      {/if}
+      {@render receiptBody(
+        "You haven't spent a dollar yet. The whole trillion is still sitting up there."
+      )}
 
       <div class="closers">
         <h3>Three ways to hold the number</h3>
@@ -437,9 +556,17 @@
   {/if}
 
   <!-- Sticky rather than fixed: it rides the viewport bottom while you spend,
-       then settles at the end of the page instead of sitting on the footer. -->
+       then settles at the end of the page instead of sitting on the footer.
+       The whole bar is the handle for the receipt — it is the one control that
+       is always on screen, and the running total is what you want to open. -->
   <aside class="hud" aria-live="polite">
-    <div class="hud-inner">
+    <button
+      type="button"
+      class="hud-inner"
+      onclick={showSheet}
+      aria-haspopup="dialog"
+      aria-expanded={sheetOpen}
+    >
       <div class="hud-main">
         <span class="hud-label">{inTheRed > 0 ? 'Overdrawn' : 'Still to spend'}</span>
         <span class="hud-amount" class:red={inTheRed > 0}
@@ -456,10 +583,60 @@
       <div class="hud-meta">
         <span>bankroll: {bankroll.short}</span>
         <span>{ledger.length} funded</span>
+        <span class="hud-cta">Receipt &amp; share ↑</span>
       </div>
-    </div>
+    </button>
   </aside>
 </div>
+
+<!-- Bottom sheet on a phone, a card parked at the bottom edge on a desktop.
+     A <dialog> gives Escape, focus trapping and the top layer; the backdrop
+     click, the grip and the × are all there to make closing obvious. -->
+<dialog
+  bind:this={sheet}
+  class="sheet"
+  aria-label="Your receipt"
+  onclick={backdropClick}
+  onclose={() => {
+    sheetOpen = false;
+    copied = null;
+  }}
+>
+  <div class="sheet-grip" aria-hidden="true"></div>
+
+  <div class="sheet-head">
+    <div>
+      <h2>The receipt</h2>
+      <p class="sheet-sub">
+        {formatExact(spent)} of {formatMoney(pot)} · {ledger.length}
+        {ledger.length === 1 ? 'line' : 'lines'}
+      </p>
+    </div>
+    <button type="button" class="sheet-x" onclick={hideSheet} aria-label="Close the receipt"
+      >×</button
+    >
+  </div>
+
+  <div class="sheet-body">
+    {@render receiptBody('Nothing on it yet. Fund something and it turns up here.')}
+  </div>
+
+  <div class="sheet-foot">
+    <div class="sheet-actions">
+      <button type="button" class="sheet-share" onclick={shareReceipt}>
+        {copied === 'text' ? 'Copied your receipt' : 'Share my receipt'}
+      </button>
+      <button type="button" class="sheet-copy" onclick={() => copyToClipboard(shareUrl(), 'link')}>
+        {copied === 'link' ? 'Link copied' : 'Copy link'}
+      </button>
+      <button type="button" class="sheet-close" onclick={hideSheet}>Close</button>
+    </div>
+    <p class="sheet-note">
+      The link opens this page with your split already loaded, so whoever you send it to sees what
+      you picked — then spends the trillion their own way.
+    </p>
+  </div>
+</dialog>
 
 <!-- Native <dialog> so focus trapping, Escape and the backdrop come for free. -->
 <dialog bind:this={modal} class="ask-modal" onclose={() => (pending = null)}>
@@ -917,6 +1094,13 @@
     font-size: 12.5px;
     color: var(--muted);
   }
+  /* The money-back line: true at every bankroll, and quieter than the total. */
+  .t-sub {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--faint);
+  }
 
   .closers {
     margin-top: 40px;
@@ -977,11 +1161,26 @@
     background: color-mix(in oklch, var(--bg) 92%, transparent);
     backdrop-filter: saturate(1.2) blur(10px);
   }
+  /* A button, but it has to look like the bar it replaced. */
   .hud-inner {
     display: flex;
     flex-direction: column;
     gap: 7px;
+    width: 100%;
+    border: 0;
+    background: transparent;
     padding: 11px 20px calc(11px + env(safe-area-inset-bottom));
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .hud-inner:hover .hud-cta {
+    color: var(--accent);
+  }
+  .hud-inner:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -3px;
   }
   .hud-main {
     display: flex;
@@ -1028,6 +1227,181 @@
     font-family: var(--font-mono);
     font-size: 10.5px;
     color: var(--faint);
+  }
+  .hud-cta {
+    color: var(--accent);
+  }
+
+  /* ---- The receipt sheet ------------------------------------------------ */
+  /*
+   * Anchored to the bottom edge and animated up from it, the way a share sheet
+   * behaves on a phone. On a desktop it is the same object, floated off the
+   * bottom edge and capped at a readable width, so the interaction is one
+   * thing to learn rather than two.
+   */
+  .sheet {
+    display: none;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: min(660px, 100%);
+    max-width: 100%;
+    max-height: 88svh;
+    margin: auto auto 0;
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 16px 16px 0 0;
+    background: var(--bg);
+    padding: 0;
+    color: var(--text);
+    opacity: 0;
+    transform: translateY(101%);
+    transition:
+      transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 200ms ease,
+      overlay 300ms allow-discrete,
+      display 300ms allow-discrete;
+  }
+  .sheet[open] {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+  }
+  @starting-style {
+    .sheet[open] {
+      opacity: 0;
+      transform: translateY(101%);
+    }
+  }
+  .sheet::backdrop {
+    background: oklch(0.12 0.02 264 / 0);
+    transition:
+      background 300ms ease,
+      overlay 300ms allow-discrete,
+      display 300ms allow-discrete;
+  }
+  .sheet[open]::backdrop {
+    background: oklch(0.12 0.02 264 / 0.66);
+    backdrop-filter: blur(3px);
+  }
+  @starting-style {
+    .sheet[open]::backdrop {
+      background: oklch(0.12 0.02 264 / 0);
+    }
+  }
+
+  .sheet-grip {
+    flex: none;
+    width: 44px;
+    height: 4px;
+    margin: 8px auto 0;
+    border-radius: 2px;
+    background: var(--border);
+  }
+  .sheet-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex: none;
+    padding: 12px 18px 14px;
+  }
+  .sheet-head h2 {
+    margin: 0;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 21px;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .sheet-sub {
+    margin: 4px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--faint);
+  }
+  .sheet-x {
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .sheet-x:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  /* The ledger scrolls; the header and the buttons stay put. */
+  .sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 18px 4px;
+  }
+  .sheet-foot {
+    flex: none;
+    border-top: 1px solid var(--border);
+    padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  }
+  .sheet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sheet-share,
+  .sheet-copy,
+  .sheet-close {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .sheet-share {
+    flex: 1 1 11rem;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: light-dark(oklch(0.99 0 0), oklch(0.16 0.02 264));
+  }
+  .sheet-share:hover {
+    background: color-mix(in oklch, var(--accent) 86%, white);
+  }
+  .sheet-copy,
+  .sheet-close {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+  }
+  .sheet-copy:hover,
+  .sheet-close:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .sheet-share:focus-visible,
+  .sheet-copy:focus-visible,
+  .sheet-close:focus-visible,
+  .sheet-x:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .sheet-note {
+    margin: 12px 0 0;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--faint);
+    text-wrap: pretty;
+  }
+  .sheet .empty {
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+  .sheet .totals {
+    margin-top: 14px;
   }
 
   /* ---- The bigger-bankroll modal --------------------------------------- */
@@ -1201,12 +1575,44 @@
       flex: none;
       gap: 18px;
     }
+    /* Off the bottom edge, so it reads as a panel rather than a browser chrome. */
+    .sheet {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      border-radius: 16px;
+      max-height: 80svh;
+    }
+    .sheet-grip {
+      display: none;
+    }
+    .sheet-head {
+      padding: 18px 22px 14px;
+    }
+    .sheet-body {
+      padding: 0 22px 4px;
+    }
+    .sheet-foot {
+      padding: 16px 22px;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .blk,
     .hud-fill {
       transition: none;
+    }
+    /* Keep the discrete transitions so the dialog still leaves the top layer. */
+    .sheet {
+      transition:
+        overlay 1ms allow-discrete,
+        display 1ms allow-discrete;
+      transform: none;
+      opacity: 1;
+    }
+    .sheet::backdrop {
+      transition:
+        overlay 1ms allow-discrete,
+        display 1ms allow-discrete;
     }
   }
 </style>

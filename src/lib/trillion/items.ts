@@ -26,6 +26,8 @@ export const bankrolls: Bankroll[] = [
     label: 'Elon Musk',
     short: 'Elon',
     people: '1 person',
+    count: 1,
+    each: 'Elon',
     exhausted: "That's more than even Elon has.",
     amount: 1_000_000_000_000,
     note: 'In June 2026 he became the first person ever to be worth a trillion dollars, on the back of the SpaceX listing. A round trillion is the starting pot.',
@@ -41,6 +43,8 @@ export const bankrolls: Bankroll[] = [
     label: 'the ten richest people on Earth',
     short: 'the top 10',
     people: '10 people',
+    count: 10,
+    each: 'each of the ten richest people alive',
     exhausted: "That's more than the ten richest people on Earth have.",
     amount: 2_600_000_000_000,
     note: 'Musk, Page, Brin, Bezos, Zuckerberg, Ellison, Arnault, Huang, Buffett, Ortega. Everyone in the top ten is worth over $140 billion; together they hold $2.6 trillion.',
@@ -56,6 +60,8 @@ export const bankrolls: Bankroll[] = [
     label: 'every billionaire in America',
     short: 'US billionaires',
     people: '989 people',
+    count: 989,
+    each: "each of America's 989 billionaires",
     exhausted: "That's more than every billionaire in America has.",
     amount: 8_400_000_000_000,
     note: 'The United States holds 989 billionaires worth $8.4 trillion between them — more than a third of all billionaire wealth on the planet.',
@@ -71,6 +77,8 @@ export const bankrolls: Bankroll[] = [
     label: 'every billionaire on Earth',
     short: 'all billionaires',
     people: '3,428 people',
+    count: 3428,
+    each: "each of the world's 3,428 billionaires",
     exhausted: "That's more than every billionaire on Earth has.",
     amount: 20_100_000_000_000,
     note: 'A record 3,428 billionaires worth a combined $20.1 trillion — a group that got $4 trillion richer in a single year. This is the last real money on the board.',
@@ -86,6 +94,8 @@ export const bankrolls: Bankroll[] = [
     label: 'money that does not exist',
     short: 'the red',
     people: 'nobody',
+    count: 0,
+    each: 'nobody',
     exhausted: 'There is nobody left to bill.',
     amount: 20_100_000_000_000,
     unlimited: true,
@@ -404,9 +414,89 @@ export const tiers: Tier[] = [
     ]
   },
   {
+    id: 'commons',
+    title: 'The commons',
+    kicker: 'Tier five',
+    lede: 'The shared plumbing: the things nobody owns, everybody uses, and no single buyer has ever had the balance sheet to fix. Every item in this tier put together still fits inside the fortune.',
+    items: [
+      {
+        id: 'broadband',
+        label: 'High-speed internet to every American home',
+        cost: 42_450_000_000,
+        note: 'BEAD is the largest federal broadband program ever written: $42.45 billion to wire the 25 million Americans who still have no high-speed service. You are covering the entire program in one payment.',
+        sources: [
+          {
+            label: 'NTIA BEAD program',
+            url: 'https://www.ntia.gov/funding-programs/high-speed-internet-programs/broadband-equity-access-and-deployment-bead-program'
+          }
+        ]
+      },
+      {
+        id: 'ports',
+        label: 'Fix every port, lock and shipping channel in America',
+        cost: 45_000_000_000,
+        note: 'ASCE puts ten years of water transportation needs at about $45 billion — nearly $38 billion of it at the ports themselves, the rest on the inland waterways every barge of grain and gravel has to pass through. Ports graded a B in 2025; the waterways a C−.',
+        sources: [
+          {
+            label: 'ASCE 2025: Ports',
+            url: 'https://infrastructurereportcard.org/cat-item/ports-infrastructure/'
+          },
+          {
+            label: 'ASCE 2025: Inland Waterways',
+            url: 'https://infrastructurereportcard.org/cat-item/inland-waterways-infrastructure/'
+          }
+        ]
+      },
+      {
+        id: 'transit',
+        label: 'Close the repair gap on every bus and train in America',
+        cost: 152_000_000_000,
+        note: 'Transit graded a D. ASCE counts $618 billion of needs through 2033 against $466 billion of expected funding, leaving a $152 billion hole. This is the hole, filled.',
+        sources: [
+          {
+            label: 'ASCE 2025: Transit',
+            url: 'https://infrastructurereportcard.org/cat-item/transit-infrastructure/'
+          }
+        ]
+      },
+      {
+        id: 'hsr',
+        label: 'Build high-speed rail across America',
+        cost: 205_000_000_000,
+        note: 'The American High-Speed Rail Act asks for $41 billion a year for five years — $205 billion — for corridor construction, planning and safety rules for a national network. The ask has never been appropriated.',
+        sources: [
+          {
+            label: 'High Speed Rail Alliance',
+            url: 'https://www.hsrail.org/blog/205b-american-high-speed-rail-act-introduced/'
+          },
+          {
+            label: 'Sponsor’s summary',
+            url: 'https://moulton.house.gov/news/press-releases/moulton-re-introduces-american-high-speed-rail-act-calling-41-billion-annual'
+          }
+        ]
+      },
+      {
+        id: 'storage',
+        label: 'Put a terawatt-hour of batteries on the grid',
+        cost: 334_000_000_000,
+        note: 'NREL benchmarks four-hour utility-scale lithium-ion storage at $334 per kilowatt-hour, so a terawatt-hour — a thousand gigawatt-hours, enough to hold the output of a thousand large power plants for an hour — runs $334 billion. America’s record year, 2025, added 58 gigawatt-hours. This is seventeen of those, at once.',
+        sources: [
+          {
+            label: 'NREL storage cost projections, 2025',
+            url: 'https://www.osti.gov/biblio/2583471'
+          },
+          {
+            label: 'SEIA: 2025 storage installations',
+            url: 'https://seia.org/news/united-states-installs-58-gwh-of-new-energy-storage-in-2025/'
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'planet',
     title: 'One planet',
-    kicker: 'Tier five',
+    kicker: 'Tier six',
     lede: 'The whole world now, priced by the year. These are the headline numbers of global development — the ones usually described as impossible to raise.',
     items: [
       {
@@ -526,7 +616,7 @@ export const tiers: Tier[] = [
   {
     id: 'moonshots',
     title: 'Moonshots',
-    kicker: 'Tier six',
+    kicker: 'Tier seven',
     lede: 'Fine. Buy the biggest things our species has ever attempted.',
     items: [
       {
@@ -568,9 +658,83 @@ export const tiers: Tier[] = [
     ]
   },
   {
+    id: 'money',
+    title: 'Just move the money',
+    kicker: 'Tier eight',
+    lede: 'Nothing to build here and nobody to hire. These are numbers that already exist somewhere in the economy, moved from one column into another — which turns out to be the most expensive thing on the board.',
+    items: [
+      {
+        id: 'tariffs',
+        label: 'Refund every tariff Americans paid in 2025',
+        cost: 287_000_000_000,
+        note: 'Daily Treasury data has $287 billion in customs duties, taxes and fees collected in calendar 2025, up 192% in a single year. US importers write those checks, and most of the cost turns up downstream in prices. This hands the whole year back.',
+        sources: [
+          {
+            label: 'Richmond Fed on Treasury data',
+            url: 'https://www.richmondfed.org/research/national_economy/macro_minute/2026/how_much_revenue_raised_by_tariffs_so_far'
+          }
+        ]
+      },
+      {
+        id: 'small-business',
+        label: 'Triple the number of American businesses that have employees',
+        cost: 315_000_000_000,
+        note: 'The SBA counts 6.3 million small businesses with anyone at all on the payroll, out of 36.2 million total. A $25,000 launch grant for 12.6 million more — three times as many employers as the country has now — is $315 billion.',
+        sources: [
+          {
+            label: 'SBA Office of Advocacy, 2025',
+            url: 'https://advocacy.sba.gov/2025/06/30/new-advocacy-report-shows-the-number-of-small-businesses-in-the-u-s-exceeds-36-million/'
+          }
+        ]
+      },
+      {
+        id: 'dividend',
+        label: 'Send every American a $2,000 check',
+        cost: 600_000_000_000,
+        note: 'One round of $2,000 per person — adults and children, the way the pandemic payments were written — costs about $600 billion, roughly twice what a year of the new tariffs brings in. Three fifths of the fortune, gone in one mailing.',
+        sources: [
+          {
+            label: 'CRFB estimate',
+            url: 'https://www.crfb.org/blogs/tariff-dividends-could-cost-600-billion-year'
+          }
+        ]
+      },
+      {
+        id: 'debt-interest',
+        label: 'Cover a year of interest on the national debt',
+        cost: 970_000_000_000,
+        per: 'year',
+        maxUnits: 5,
+        note: 'The federal government paid $970 billion in interest in FY2025 — up $89 billion in a year, and the third-largest line in the budget behind Social Security and Medicare. One year of it is almost exactly the fortune you started with.',
+        sources: [
+          {
+            label: 'Peterson Foundation tracker',
+            url: 'https://www.pgpf.org/programs-and-projects/fiscal-policy/monthly-interest-tracker-national-debt/'
+          },
+          {
+            label: 'CRFB on interest costs',
+            url: 'https://www.crfb.org/blogs/net-interest-costs-will-double-again-over-next-decade'
+          }
+        ]
+      },
+      {
+        id: 'credit-cards',
+        label: 'Erase every credit card balance in America',
+        cost: 1_260_000_000_000,
+        note: 'The New York Fed put card balances at $1.26 trillion in June 2026, just under the record set six months earlier. Clearing all of it costs more than the whole fortune — one household bill, larger than a trillion dollars.',
+        sources: [
+          {
+            label: 'NY Fed household debt, Q2 2026',
+            url: 'https://www.newyorkfed.org/newsevents/news/research/2026/20260811'
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'wall',
     title: 'The wall',
-    kicker: 'Tier seven',
+    kicker: 'Tier nine',
     lede: 'And here is the other edge of it. These are the numbers that do not care how rich anyone is.',
     items: [
       {
@@ -591,6 +755,18 @@ export const tiers: Tier[] = [
           {
             label: 'Federal Reserve G.19',
             url: 'https://www.federalreserve.gov/releases/g19/current/'
+          }
+        ]
+      },
+      {
+        id: 'infra-gap',
+        label: 'Fix everything in America at once',
+        cost: 3_700_000_000_000,
+        note: 'ASCE prices a state of good repair across all eighteen categories it grades — roads, bridges, dams, levees, the grid, drinking water, transit, ports — at $9.1 trillion through 2033. Current funding trends cover $5.4 trillion of that. The hole is $3.7 trillion.',
+        sources: [
+          {
+            label: 'ASCE 2025 Report Card',
+            url: 'https://infrastructurereportcard.org/making-the-grade/'
           }
         ]
       },
@@ -624,3 +800,20 @@ export const tiers: Tier[] = [
 
 /** Every item, flat, in page order. */
 export const allItems = tiers.flatMap((tier) => tier.items);
+
+/**
+ * One hue per tier at mid lightness, so the same value works as a grid square
+ * and as a card's edge on either theme. Lives next to the tiers because a tier
+ * added without a color paints nothing at all in the hero grid.
+ */
+export const tierColors: Record<string, string> = {
+  toys: 'oklch(0.74 0.12 85)',
+  cheap: 'oklch(0.72 0.13 160)',
+  trophies: 'oklch(0.70 0.13 305)',
+  country: 'oklch(0.70 0.12 250)',
+  commons: 'oklch(0.73 0.13 122)',
+  planet: 'oklch(0.74 0.11 195)',
+  moonshots: 'oklch(0.68 0.15 30)',
+  money: 'oklch(0.70 0.13 345)',
+  wall: 'oklch(0.62 0.03 264)'
+};

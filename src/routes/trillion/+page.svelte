@@ -3,14 +3,18 @@
   import { allItems, bankrolls, tiers } from '$lib/trillion/items';
   import {
     allocations,
+    bands,
     bankrollAt,
+    blockCount,
     blockOwners,
-    blockValue,
+    BLOCKS,
+    BLOCK_VALUE,
     canAfford,
     clampUnits,
     formatExact,
     formatMoney,
     formatShare,
+    gridColumns,
     itemTotal,
     maxUnits,
     needsUpgrade,
@@ -80,8 +84,20 @@
   const spent = $derived(allocs.reduce((sum, a) => sum + a.amount, 0));
   const left = $derived(pot - spent);
   const inTheRed = $derived(overdraft(spent, pot));
-  const owners = $derived(blockOwners(allocs, pot));
   const ledger = $derived(receipt(allocs));
+
+  // The grid is every square the open bankroll buys, plus any square you have
+  // conjured past the last rung.
+  const squares = $derived(blockCount(Math.max(pot, spent)));
+  const owners = $derived(blockOwners(allocs, squares));
+  const gridBands = $derived(bands(bankrolls, level, squares));
+  const cols = $derived(gridColumns(25, squares));
+  const colsWide = $derived(gridColumns(50, squares));
+  // Once the squares are only a few pixels across a fat gutter is most of the
+  // grid, so the gutter thins out with them.
+  const gap = $derived(cols >= 45 ? '1px' : '2px');
+  const gapWide = $derived(colsWide >= 90 ? '1px' : colsWide >= 60 ? '2px' : '3px');
+  const filled = $derived(Math.min(blockCount(spent), squares));
   const visibleTiers = $derived(tiers.slice(0, revealed));
   const allRevealed = $derived(revealed >= tiers.length);
 
@@ -184,10 +200,17 @@
     modal?.close();
   }
 
-  function reset() {
+  /**
+   * Clears the ledger but leaves the bankroll where it is, so you can take a
+   * second run at the list with everybody's money instead of being sent back to
+   * Musk's trillion every time. `toStart` is the full wipe.
+   */
+  function reset(toStart = false) {
     funded = {};
-    revealed = 1;
-    level = 0;
+    if (toStart) {
+      revealed = 1;
+      level = 0;
+    }
     closeModal();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -211,7 +234,7 @@
     <h1>Give Away Elon's Money</h1>
     <p class="lede">
       In June 2026 Elon Musk became the first person on Earth to be worth a trillion dollars. So
-      here is a trillion dollars. Your job is to get rid of it.
+      here is a trillion dollars. Let's spend it.
     </p>
     <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
     <p class="credit">
@@ -222,24 +245,41 @@
       >
     </p>
     <p class="sub">
-      Every price below is a real, published number with a link to where it came from. This is not a
-      scoreboard for anyone's politics and nobody here owes anybody anything — it is a ruler. Most
-      people, including me, have no working intuition for what a trillion dollars is. Spend it and
-      find out. Run out, and you'll be offered somebody else's money.
+      Every price below is a real, published number with a link to where it came from. That doesn't
+      mean these numbers are accurate or realistic, but it gives an idea about the scale of a
+      trillion dollars. This can help you grasp what a trillion dollars actually means, so spend it
+      and find out.
     </p>
 
     <figure class="gridwrap">
-      <div class="grid" aria-hidden="true">
-        {#each owners as owner, i (i)}
-          <span class="blk" style:background={owner ? TIER_COLOR[owner] : undefined}></span>
+      <div
+        class="gridstack"
+        aria-hidden="true"
+        style:--cols={cols}
+        style:--cols-wide={colsWide}
+        style:--gap={gap}
+        style:--gap-wide={gapWide}
+      >
+        {#each gridBands as band, i (band.id)}
+          <div class="band-label" class:red={band.id === 'red'} class:ruled={i > 0}>
+            <span>{i > 0 ? '+ ' : ''}{band.label}</span>
+            <span class="band-amount">{formatMoney(band.count * BLOCK_VALUE)}</span>
+          </div>
+          <div class="grid">
+            {#each owners.slice(band.start, band.start + band.count) as owner, j (j)}
+              <span class="blk" style:background={owner ? TIER_COLOR[owner] : undefined}></span>
+            {/each}
+          </div>
         {/each}
       </div>
       <figcaption>
-        1,000 squares. Each one is <strong>{formatExact(blockValue(pot))}</strong>. You have filled
-        <strong>{Math.round(spentFraction(spent, pot) * 1000)}</strong> of them.
+        <strong>{squares.toLocaleString('en-US')}</strong> squares. Each one is
+        <strong>{formatExact(BLOCK_VALUE)}</strong> and always will be. You have filled
+        <strong>{filled.toLocaleString('en-US')}</strong> of them.
         {#if level > 0}
           <span class="rescaled">
-            The grid did not get bigger when you took {bankroll.label} — the squares did.
+            Taking {bankroll.label} did not shrink the squares — it added
+            {(squares - BLOCKS).toLocaleString('en-US')} more of them under the line.
           </span>
         {/if}
       </figcaption>
@@ -431,7 +471,20 @@
           sell. Recurring costs are shown per year because that is how their budgets are actually
           written.
         </p>
-        <button type="button" class="reset" onclick={reset}>Put it all back</button>
+        <div class="resets">
+          <button type="button" class="reset" onclick={() => reset()}>
+            {#if level > 0}
+              Put it all back, keep {bankroll.short}
+            {:else}
+              Put it all back
+            {/if}
+          </button>
+          {#if level > 0}
+            <button type="button" class="reset ghost" onclick={() => reset(true)}>
+              Start over from Elon's trillion
+            </button>
+          {/if}
+        </div>
       </div>
     </section>
   {/if}
@@ -482,9 +535,9 @@
       <p class="ask-note">{upgrade.note}</p>
       {#if !upgrade.unlimited}
         <p class="ask-people">
-          {upgrade.people} · each square in the grid becomes {formatMoney(
-            blockValue(upgrade.amount)
-          )}
+          {upgrade.people} · adds {(blockCount(upgrade.amount) - blockCount(pot)).toLocaleString(
+            'en-US'
+          )} squares to the grid
         </p>
       {/if}
       <!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -558,17 +611,47 @@
   .gridwrap {
     margin: 32px 0 0;
   }
+  /*
+   * --cols comes from the script and grows sublinearly with the square count:
+   * the squares never change value, so more money can only mean more of them,
+   * and the grid has to get denser as well as taller to stay on one screen.
+   */
+  .gridstack {
+    max-width: 520px;
+  }
   .grid {
     display: grid;
-    grid-template-columns: repeat(25, 1fr);
-    gap: 2px;
-    max-width: 520px;
+    grid-template-columns: repeat(var(--cols, 25), 1fr);
+    gap: var(--gap);
   }
   .blk {
     aspect-ratio: 1;
     border-radius: 1px;
     background: color-mix(in oklch, var(--border) 70%, transparent);
     transition: background 180ms ease;
+  }
+  /* The rule that keeps Musk's thousand squares visible inside the wall. */
+  .band-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 6px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    color: var(--faint);
+  }
+  .band-label.ruled {
+    margin-top: 14px;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .band-label.red {
+    color: var(--accent2);
+    border-top-color: color-mix(in oklch, var(--accent2) 45%, transparent);
+  }
+  .band-amount {
+    margin-left: auto;
   }
   .gridwrap figcaption {
     margin-top: 14px;
@@ -955,6 +1038,11 @@
     line-height: 1.7;
     color: var(--faint);
   }
+  .resets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
   .reset {
     border: 1px solid var(--border);
     border-radius: 7px;
@@ -964,6 +1052,14 @@
   }
   .reset:hover {
     border-color: var(--accent);
+    color: var(--accent);
+  }
+  .reset.ghost {
+    border-color: transparent;
+    color: var(--faint);
+  }
+  .reset.ghost:hover {
+    border-color: var(--border);
     color: var(--accent);
   }
 
@@ -1031,8 +1127,18 @@
   }
 
   /* ---- The bigger-bankroll modal --------------------------------------- */
+  /*
+   * `margin: auto` is the UA default for a modal dialog, but it only centers a
+   * box that fits: once the content is taller than the viewport the dialog
+   * pins to the top and overflows. Capping the height and letting it scroll
+   * keeps it centered on a short window as well as a tall one.
+   */
   .ask-modal {
+    margin: auto;
     width: min(520px, calc(100vw - 32px));
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: var(--bg);
@@ -1160,10 +1266,15 @@
     .lede {
       font-size: 20px;
     }
-    .grid {
-      grid-template-columns: repeat(50, 1fr);
-      gap: 3px;
+    .gridstack {
       max-width: 100%;
+    }
+    .grid {
+      grid-template-columns: repeat(var(--cols-wide, 50), 1fr);
+      gap: var(--gap-wide, 3px);
+    }
+    .band-label {
+      font-size: 11.5px;
     }
     .gridwrap figcaption {
       max-width: 100%;

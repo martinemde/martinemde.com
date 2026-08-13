@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
   BLOCKS,
+  BLOCK_VALUE,
   FORTUNE,
   allocations,
+  bands,
   bankrollAt,
+  blockCount,
   blockOwners,
-  blockValue,
   canAfford,
+  gridColumns,
   clampUnits,
   formatExact,
   formatMoney,
@@ -220,13 +223,15 @@ describe('the block grid', () => {
     expect(blockOwners([]).every((owner) => owner === null)).toBe(true);
   });
 
-  it('rescales the squares to the open bankroll', () => {
-    expect(blockValue(FORTUNE)).toBe(1_000_000_000);
-    expect(blockValue(20_100_000_000_000)).toBe(20_100_000_000);
-    // The same purchase fills fewer squares once a bigger bankroll is open.
+  it('grows the grid rather than the squares when the bankroll grows', () => {
+    expect(BLOCK_VALUE).toBe(1_000_000_000);
+    expect(blockCount(FORTUNE)).toBe(1000);
+    expect(blockCount(20_100_000_000_000)).toBe(20_100);
+    // A purchase fills the same squares no matter whose money is on the board.
     const allocs = allocations(testTiers, { one: 1 });
-    expect(blockOwners(allocs, FORTUNE).filter(Boolean)).toHaveLength(10);
-    expect(blockOwners(allocs, FORTUNE * 10).filter(Boolean)).toHaveLength(1);
+    expect(blockOwners(allocs, blockCount(FORTUNE)).filter(Boolean)).toHaveLength(10);
+    expect(blockOwners(allocs, blockCount(FORTUNE * 10)).filter(Boolean)).toHaveLength(10);
+    expect(blockOwners(allocs, blockCount(FORTUNE * 10))).toHaveLength(10_000);
   });
 
   it('colors one square per billion spent', () => {
@@ -253,6 +258,56 @@ describe('the block grid', () => {
     const owners = blockOwners([{ item: oneTime, tierId: 'a', units: 1, amount: FORTUNE * 3 }]);
     expect(owners).toHaveLength(BLOCKS);
     expect(owners.every((o) => o === 'a')).toBe(true);
+  });
+});
+
+describe('grid bands', () => {
+  it('keeps Musk’s thousand squares as a band of their own', () => {
+    const only = bands(bankrolls, 0, 1000);
+    expect(only).toHaveLength(1);
+    expect(only[0]).toMatchObject({ id: 'musk', start: 0, count: 1000 });
+
+    const two = bands(bankrolls, 1, 2600);
+    expect(two.map((b) => b.count)).toEqual([1000, 1600]);
+    expect(two[1].start).toBe(1000);
+  });
+
+  it('gives the last rung no band of its own, since it is the same money', () => {
+    const all = bands(bankrolls, bankrolls.length - 1, 20_100);
+    expect(all.map((b) => b.id)).toEqual(['musk', 'top10', 'usa', 'world']);
+    expect(all.reduce((sum, b) => sum + b.count, 0)).toBe(20_100);
+  });
+
+  it('puts the invented money in a band of its own', () => {
+    const red = bands(bankrolls, bankrolls.length - 1, 21_000).at(-1)!;
+    expect(red).toMatchObject({ id: 'red', start: 20_100, count: 900 });
+  });
+
+  it('never drops or overlaps a square', () => {
+    for (let level = 0; level < bankrolls.length; level++) {
+      const total = blockCount(bankrolls[level].amount);
+      let next = 0;
+      for (const band of bands(bankrolls, level, total)) {
+        expect(band.start).toBe(next);
+        next += band.count;
+      }
+      expect(next).toBe(total);
+    }
+  });
+});
+
+describe('grid columns', () => {
+  it('never goes below the starting layout', () => {
+    expect(gridColumns(50, 1000)).toBe(50);
+    expect(gridColumns(50, 10)).toBe(50);
+  });
+
+  it('grows slower than the grid, so the grid gets taller as well as denser', () => {
+    const rows = (count: number) => count / gridColumns(50, count);
+    expect(gridColumns(50, 20_100)).toBeGreaterThan(50);
+    expect(rows(20_100)).toBeGreaterThan(rows(1000));
+    // Twenty times the money must not mean twenty times the height.
+    expect(rows(20_100)).toBeLessThan(rows(1000) * 8);
   });
 });
 

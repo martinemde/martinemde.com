@@ -158,18 +158,6 @@ export const tiers: Tier[] = [
             url: 'https://en.wikipedia.org/wiki/Shohei_Ohtani'
           }
         ]
-      },
-      {
-        id: 'tesla-bonus',
-        label: 'A $50,000 bonus for every Tesla employee',
-        cost: 6_739_250_000,
-        note: 'Tesla reported 134,785 employees worldwide at the end of 2025. At $50,000 each that is $6.74 billion — three and a half times the painting, the car, the yacht and the contract put together.',
-        sources: [
-          {
-            label: 'Tesla FY2025 Form 10-K',
-            url: 'https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm'
-          }
-        ]
       }
     ]
   },
@@ -242,18 +230,6 @@ export const tiers: Tier[] = [
           {
             label: 'Gavi 2026–2030',
             url: 'https://www.gavi.org/news/media-room/protecting-more-children-gavi-vaccine-alliance-plans-next-5-year-period'
-          }
-        ]
-      },
-      {
-        id: 'lead-pipes',
-        label: 'Rip out every lead pipe in America',
-        cost: 18_800_000_000,
-        note: 'The EPA counts about 4 million lead service lines still in the ground at an average replacement cost of $4,700 each.',
-        sources: [
-          {
-            label: 'Brookings on EPA estimates',
-            url: 'https://www.brookings.edu/articles/what-would-it-cost-to-replace-all-the-nations-lead-water-pipes/'
           }
         ]
       },
@@ -343,7 +319,7 @@ export const tiers: Tier[] = [
     id: 'country',
     title: 'One country',
     kicker: 'Tier four',
-    lede: 'Back to work. These are the line items of a single nation — the ones that show up in budget fights every year.',
+    lede: 'Back to work. These are the line items of a single nation: four programs that come up for renewal every year, then two things the country has been arguing about building for a decade.',
     items: [
       {
         id: 'school-meals',
@@ -379,6 +355,20 @@ export const tiers: Tier[] = [
         ]
       },
       {
+        id: 'usaid',
+        label: 'Cover the entire USAID budget',
+        cost: 40_000_000_000,
+        per: 'year',
+        maxUnits: 25,
+        note: 'Congress appropriated roughly $39.6 billion for foreign assistance managed by USAID and the State Department in FY2024, the agency’s last full year before it was folded into State. Every year you fund here is one full year of that work.',
+        sources: [
+          {
+            label: 'CRS: USAID overview',
+            url: 'https://www.congress.gov/crs-product/IF10261'
+          }
+        ]
+      },
+      {
         id: 'nih',
         label: 'Run the entire NIH for a year',
         cost: 47_000_000_000,
@@ -393,33 +383,6 @@ export const tiers: Tier[] = [
         ]
       },
       {
-        id: 'bridges',
-        label: 'Repair every deficient bridge in America',
-        cost: 467_000_000_000,
-        note: 'ARTBA counts 42,067 US bridges rated in poor condition, with an estimated $467 billion repair bill. One in three bridges needs work.',
-        sources: [{ label: 'ARTBA Bridge Report', url: 'https://artbabridgereport.org/' }]
-      },
-      {
-        id: 'interstate',
-        label: 'Build the Interstate Highway System from scratch',
-        cost: 500_000_000_000,
-        note: 'Almost 48,000 miles, finished in 1992 at $129 billion of the day’s money — north of half a trillion in today’s.',
-        sources: [
-          {
-            label: 'FHWA highway history',
-            url: 'https://www.fhwa.dot.gov/highwayhistory/data/page03.cfm'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'commons',
-    title: 'The commons',
-    kicker: 'Tier five',
-    lede: 'The shared plumbing: the things nobody owns, everybody uses, and no single buyer has ever had the balance sheet to fix. Every item in this tier put together still fits inside the fortune.',
-    items: [
-      {
         id: 'broadband',
         label: 'High-speed internet to every American home',
         cost: 42_450_000_000,
@@ -428,6 +391,42 @@ export const tiers: Tier[] = [
           {
             label: 'NTIA BEAD program',
             url: 'https://www.ntia.gov/funding-programs/high-speed-internet-programs/broadband-equity-access-and-deployment-bead-program'
+          }
+        ]
+      },
+      {
+        id: 'hsr',
+        label: 'Build high-speed rail across America',
+        cost: 205_000_000_000,
+        note: 'The American High-Speed Rail Act asks for $41 billion a year for five years — $205 billion — for corridor construction, planning and safety rules for a national network. The ask has never been appropriated.',
+        sources: [
+          {
+            label: 'High Speed Rail Alliance',
+            url: 'https://www.hsrail.org/blog/205b-american-high-speed-rail-act-introduced/'
+          },
+          {
+            label: 'Sponsor’s summary',
+            url: 'https://moulton.house.gov/news/press-releases/moulton-re-introduces-american-high-speed-rail-act-calling-41-billion-annual'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'repairs',
+    title: 'The repair bill',
+    kicker: 'Tier five',
+    lede: 'Nothing new gets built in this tier. This is the tab for what America already built and then stopped maintaining — pipes, bridges, locks, rail — where the price is a bill that grows every year nobody pays it. All four of these together still fit inside the fortune.',
+    items: [
+      {
+        id: 'lead-pipes',
+        label: 'Rip out every lead pipe in America',
+        cost: 18_800_000_000,
+        note: 'The EPA counts about 4 million lead service lines still in the ground at an average replacement cost of $4,700 each.',
+        sources: [
+          {
+            label: 'Brookings on EPA estimates',
+            url: 'https://www.brookings.edu/articles/what-would-it-cost-to-replace-all-the-nations-lead-water-pipes/'
           }
         ]
       },
@@ -460,36 +459,11 @@ export const tiers: Tier[] = [
         ]
       },
       {
-        id: 'hsr',
-        label: 'Build high-speed rail across America',
-        cost: 205_000_000_000,
-        note: 'The American High-Speed Rail Act asks for $41 billion a year for five years — $205 billion — for corridor construction, planning and safety rules for a national network. The ask has never been appropriated.',
-        sources: [
-          {
-            label: 'High Speed Rail Alliance',
-            url: 'https://www.hsrail.org/blog/205b-american-high-speed-rail-act-introduced/'
-          },
-          {
-            label: 'Sponsor’s summary',
-            url: 'https://moulton.house.gov/news/press-releases/moulton-re-introduces-american-high-speed-rail-act-calling-41-billion-annual'
-          }
-        ]
-      },
-      {
-        id: 'storage',
-        label: 'Put a terawatt-hour of batteries on the grid',
-        cost: 334_000_000_000,
-        note: 'NREL benchmarks four-hour utility-scale lithium-ion storage at $334 per kilowatt-hour, so a terawatt-hour — a thousand gigawatt-hours, enough to hold the output of a thousand large power plants for an hour — runs $334 billion. America’s record year, 2025, added 58 gigawatt-hours. This is seventeen of those, at once.',
-        sources: [
-          {
-            label: 'NREL storage cost projections, 2025',
-            url: 'https://www.osti.gov/biblio/2583471'
-          },
-          {
-            label: 'SEIA: 2025 storage installations',
-            url: 'https://seia.org/news/united-states-installs-58-gwh-of-new-energy-storage-in-2025/'
-          }
-        ]
+        id: 'bridges',
+        label: 'Repair every deficient bridge in America',
+        cost: 467_000_000_000,
+        note: 'ARTBA counts 42,067 US bridges rated in poor condition, with an estimated $467 billion repair bill. One in three bridges needs work.',
+        sources: [{ label: 'ARTBA Bridge Report', url: 'https://artbabridgereport.org/' }]
       }
     ]
   },
@@ -524,20 +498,6 @@ export const tiers: Tier[] = [
           {
             label: 'Ceres2030 / IISD',
             url: 'https://www.iisd.org/articles/iisd-news/ending-world-hunger-2030-would-cost-330bn-study-finds'
-          }
-        ]
-      },
-      {
-        id: 'usaid',
-        label: 'Cover the entire USAID budget',
-        cost: 40_000_000_000,
-        per: 'year',
-        maxUnits: 25,
-        note: 'Congress appropriated roughly $39.6 billion for foreign assistance managed by USAID and the State Department in FY2024, the agency’s last full year before it was folded into State. Every year you fund here is one full year of that work.',
-        sources: [
-          {
-            label: 'CRS: USAID overview',
-            url: 'https://www.congress.gov/crs-product/IF10261'
           }
         ]
       },
@@ -617,7 +577,7 @@ export const tiers: Tier[] = [
     id: 'moonshots',
     title: 'Moonshots',
     kicker: 'Tier seven',
-    lede: 'Fine. Buy the biggest things our species has ever attempted.',
+    lede: 'Fine. The biggest things our species has ever attempted: two we actually finished, then the machine that would have to replace the power plants — generation, and somewhere to put it until the evening.',
     items: [
       {
         id: 'apollo',
@@ -632,6 +592,18 @@ export const tiers: Tier[] = [
         ]
       },
       {
+        id: 'interstate',
+        label: 'Build the Interstate Highway System from scratch',
+        cost: 500_000_000_000,
+        note: 'Almost 48,000 miles, finished in 1992 at $129 billion of the day’s money — north of half a trillion in today’s. The largest public works project in American history, and the one everybody drives on without thinking about it.',
+        sources: [
+          {
+            label: 'FHWA highway history',
+            url: 'https://www.fhwa.dot.gov/highwayhistory/data/page03.cfm'
+          }
+        ]
+      },
+      {
         id: 'nuclear',
         label: 'Build ten Vogtle-sized nuclear plants',
         cost: 315_000_000_000,
@@ -640,6 +612,22 @@ export const tiers: Tier[] = [
           {
             label: 'Lazard LCOE+ 2025',
             url: 'https://www.lazard.com/media/eijnqja3/lazards-lcoeplus-june-2025.pdf'
+          }
+        ]
+      },
+      {
+        id: 'storage',
+        label: 'Put a terawatt-hour of batteries on the grid',
+        cost: 334_000_000_000,
+        note: 'NREL benchmarks four-hour utility-scale lithium-ion storage at $334 per kilowatt-hour, so a terawatt-hour — a thousand gigawatt-hours, enough to hold an hour of output from a thousand large power plants — runs $334 billion. America’s record year, 2025, added 58 gigawatt-hours. This is seventeen of those, at once, and it is what makes the solar below worth building.',
+        sources: [
+          {
+            label: 'NREL storage cost projections, 2025',
+            url: 'https://www.osti.gov/biblio/2583471'
+          },
+          {
+            label: 'SEIA: 2025 storage installations',
+            url: 'https://seia.org/news/united-states-installs-58-gwh-of-new-energy-storage-in-2025/'
           }
         ]
       },
@@ -661,8 +649,20 @@ export const tiers: Tier[] = [
     id: 'money',
     title: 'Just move the money',
     kicker: 'Tier eight',
-    lede: 'Nothing to build here and nobody to hire. These are numbers that already exist somewhere in the economy, moved from one column into another — which turns out to be the most expensive thing on the board.',
+    lede: 'Nothing to build here, nothing to dig up, nobody new to hire. These are transfers: numbers that already exist somewhere in the economy, moved from one column into another. The cheapest one is the most personal, and the last one is a bill the country is already paying.',
     items: [
+      {
+        id: 'tesla-bonus',
+        label: 'A $50,000 bonus for every Tesla employee',
+        cost: 6_739_250_000,
+        note: 'Tesla reported 134,785 employees worldwide at the end of 2025. At $50,000 each that is $6.74 billion — three and a half times the painting, the car, the yacht and the record contract put together, and the smallest transfer on this list.',
+        sources: [
+          {
+            label: 'Tesla FY2025 Form 10-K',
+            url: 'https://www.sec.gov/Archives/edgar/data/1318605/000162828026003952/tsla-20251231.htm'
+          }
+        ]
+      },
       {
         id: 'tariffs',
         label: 'Refund every tariff Americans paid in 2025',
@@ -716,6 +716,23 @@ export const tiers: Tier[] = [
             url: 'https://www.crfb.org/blogs/net-interest-costs-will-double-again-over-next-decade'
           }
         ]
+      }
+    ]
+  },
+  {
+    id: 'wall',
+    title: 'The wall',
+    kicker: 'Tier nine',
+    lede: 'And here is the other edge of it. These are the numbers that do not care how rich anyone is: what households owe, what a country owes itself, and what a year of running things actually costs.',
+    items: [
+      {
+        id: 'everyone',
+        label: 'Hand every person on Earth $120',
+        cost: 996_000_000_000,
+        note: 'There are about 8.3 billion of us. Split the entire fortune evenly and everyone alive gets $120 — one tank of gas, one week of groceries. That is what a trillion dollars is, spread across the species.',
+        sources: [
+          { label: 'World population', url: 'https://www.worldometers.info/world-population/' }
+        ]
       },
       {
         id: 'credit-cards',
@@ -727,23 +744,6 @@ export const tiers: Tier[] = [
             label: 'NY Fed household debt, Q2 2026',
             url: 'https://www.newyorkfed.org/newsevents/news/research/2026/20260811'
           }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'wall',
-    title: 'The wall',
-    kicker: 'Tier nine',
-    lede: 'And here is the other edge of it. These are the numbers that do not care how rich anyone is.',
-    items: [
-      {
-        id: 'everyone',
-        label: 'Hand every person on Earth $120',
-        cost: 996_000_000_000,
-        note: 'There are about 8.3 billion of us. Split the entire fortune evenly and everyone alive gets $120 — one tank of gas, one week of groceries. That is what a trillion dollars is, spread across the species.',
-        sources: [
-          { label: 'World population', url: 'https://www.worldometers.info/world-population/' }
         ]
       },
       {
@@ -762,7 +762,7 @@ export const tiers: Tier[] = [
         id: 'infra-gap',
         label: 'Fix everything in America at once',
         cost: 3_700_000_000_000,
-        note: 'ASCE prices a state of good repair across all eighteen categories it grades — roads, bridges, dams, levees, the grid, drinking water, transit, ports — at $9.1 trillion through 2033. Current funding trends cover $5.4 trillion of that. The hole is $3.7 trillion.',
+        note: 'ASCE prices a state of good repair across all eighteen categories it grades — roads, bridges, dams, levees, the grid, drinking water, transit, ports — at $9.1 trillion through 2033. Current funding trends cover $5.4 trillion of that. The hole is $3.7 trillion, and the pipes, ports, transit and bridges you were offered earlier are four line items inside it.',
         sources: [
           {
             label: 'ASCE 2025 Report Card',
@@ -811,7 +811,7 @@ export const tierColors: Record<string, string> = {
   cheap: 'oklch(0.72 0.13 160)',
   trophies: 'oklch(0.70 0.13 305)',
   country: 'oklch(0.70 0.12 250)',
-  commons: 'oklch(0.73 0.13 122)',
+  repairs: 'oklch(0.73 0.13 122)',
   planet: 'oklch(0.74 0.11 195)',
   moonshots: 'oklch(0.68 0.15 30)',
   money: 'oklch(0.70 0.13 345)',

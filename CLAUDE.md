@@ -53,7 +53,7 @@ If you need to install packages and bun is not available in your environment:
 - **Testing**: Vitest with @testing-library/svelte and jsdom
 - **Deployment**: Cloudflare Pages with Workers adapter
 - **Package Manager**: Bun
-- **TypeScript**: 5.9 with strict mode
+- **TypeScript**: 6.x with strict mode (type checking runs on the TypeScript 7 native compiler via `--tsgo`)
 
 ## Project Structure
 
@@ -333,7 +333,7 @@ The site provides special endpoints for LLM consumption:
 
 - Node.js 20+ (for Cloudflare Pages)
 - Bun for local development
-- TypeScript 5.9+
+- TypeScript 6.x (plus `@typescript/native` 7.x, used by `bun run check`)
 
 ## Code Quality
 
@@ -357,6 +357,17 @@ The site provides special endpoints for LLM consumption:
 - Run with: `bun run check` or `bun run check:watch`
 - Uses `svelte-check` for Svelte-specific type checking
 - Module resolution: `bundler`
+
+#### Why two TypeScript packages are installed
+
+`package.json` intentionally depends on **both** TypeScript versions:
+
+- `typescript` (6.x) — required by `typescript-eslint`, which peer-caps at `<6.1.0`, and by editors/`tsserver`
+- `@typescript/native` (`npm:typescript@7`) — the TypeScript 7 native compiler, used by `svelte-check --tsgo`
+
+This is the setup `svelte-check` itself prescribes for TypeScript 7; it refuses to run on TS 7 alone.
+Both compilers report identical diagnostics on this codebase, and `--tsgo` is roughly twice as fast.
+Do not remove either package, and do not bump `typescript` to 7.x until `typescript-eslint` supports it.
 
 ## Important Conventions
 

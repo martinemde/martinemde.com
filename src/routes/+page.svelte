@@ -92,6 +92,7 @@
   <span class="else-label">elsewhere:</span>
   <a href="https://github.com/martinemde" rel="external">github/@martinemde ↗</a>
   <a href="https://bsky.app/profile/martinemde.com" rel="external">bsky/@martinemde.com ↗</a>
+  <a href={resolve('/deadhtml')}>dead html webring ↝</a>
 </section>
 
 <style>

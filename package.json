@@ -5,7 +5,7 @@
     "@eslint/compat": "^2.1.0",
     "@eslint/js": "^10.0.1",
     "@neoconfetti/svelte": "^2.2.2",
-    "@skeletonlabs/skeleton": "4.15.2",
+    "@skeletonlabs/skeleton": "5.0.1",
     "@skeletonlabs/skeleton-svelte": "^4.15.2",
     "@sveltejs/adapter-auto": "^7.0.1",
     "@sveltejs/adapter-cloudflare": "^7.2.8",

@@ -8,6 +8,7 @@ import type { Component } from 'svelte';
 export interface PostMetadata {
   title: string;
   date: Date; // Normalized to Date object at load time
+  updated?: Date; // Optional revision date, normalized alongside `date`
   author?: string;
   description?: string;
   published?: boolean;
@@ -130,6 +131,7 @@ function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
   return {
     title: typeof meta.title === 'string' ? meta.title : `Draft: ${basename}`,
     date: isValidDate(meta.date) ? parseToDate(meta.date) : getTodayDate(),
+    updated: isValidDate(meta.updated) ? parseToDate(meta.updated) : undefined,
     slug: typeof meta.slug === 'string' ? meta.slug : basename,
     author: typeof meta.author === 'string' ? meta.author : 'Martin Emde',
     description: typeof meta.description === 'string' ? meta.description : `Draft: ${basename}`,

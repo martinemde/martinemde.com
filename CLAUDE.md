@@ -194,6 +194,7 @@ getRawPostBySlug(slug); // Get raw markdown (for RSS/text endpoints)
 - Root layout sets `prerender = true` in `+layout.ts`
 - Homepage, about page, and blog listing are all static
 - Catch-all redirect route uses `prerender = false` for dynamic redirects
+- Blog articles (`/blog/[slug]`) use `prerender = false` so the Worker can run Accept negotiation (see below); a prerendered page is served straight off Cloudflare's asset store and never reaches `hooks.server.ts`
 - Some pages use `csr = dev` to avoid JavaScript in production builds
 
 ### URL Redirects
@@ -295,9 +296,33 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 
 The site provides special endpoints for LLM consumption:
 
-- **`/blog/[slug].txt`**: Individual posts as plain text markdown
+- **`/blog/[slug].txt`** and **`/blog/[slug].md`**: Individual posts as raw markdown
 - **`/llms.txt`**: Index of all posts with links to `.txt` versions
 - **ShareButtons**: Include "LLM" button to copy `.txt` URL
+
+#### Accept negotiation
+
+Every response that can be served as more than one media type picks it from the
+request's `Accept` header and sends `Vary: Accept, Accept-Encoding`. Without the
+`Vary`, a shared cache would hand whichever variant it stored first to every
+later client — the HTML page to an agent asking for markdown, or the reverse.
+
+`negotiateContentType()` in `src/lib/utils/content-negotiation.ts` implements
+the RFC 9110 §12.5.1 rules. It takes the offers in server-preference order: the
+first is used when the client states no preference (including `*/*`) and wins
+ties, so existing clients keep the behavior they had.
+
+| URL                       | Offers                                     | No match           |
+| ------------------------- | ------------------------------------------ | ------------------ |
+| `/blog/[slug]`            | `text/html`, `text/markdown`, `text/plain` | falls back to HTML |
+| `/blog/[slug].md`, `.txt` | `text/plain`, `text/markdown`              | `406`              |
+| `/llms.txt`               | `text/plain`, `text/markdown`              | `406`              |
+
+Article negotiation lives in the `handleArticleNegotiation` handle in
+`src/hooks.server.ts`, because a page route cannot return a raw `Response` from
+`load`. It deliberately sets no `Cache-Control`: Cloudflare's edge cache keys
+only on `Accept-Encoding` and ignores `Vary: Accept`, so a shared `s-maxage`
+here would reintroduce the cross-serving bug the `Vary` exists to prevent.
 
 ### 2. RSS Feed (`/rss.xml`)
 

@@ -1,24 +1,11 @@
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getRawPostBySlug } from '$lib/utils/posts';
+import { rawPostResponse } from '$lib/utils/raw-post-response';
 
 /**
- * API endpoint for serving raw markdown content as text/plain
+ * API endpoint for serving raw markdown content.
  * Uses +server.ts (not +page.ts) because this returns raw text with custom
- * Content-Type headers, not an HTML page
+ * Content-Type headers, not an HTML page. The exact type is negotiated from
+ * Accept, so the response carries Vary: Accept.
  */
-export const GET: RequestHandler = async ({ params }) => {
-  const { slug } = params;
-
-  const content = getRawPostBySlug(slug);
-
-  if (!content) {
-    throw error(404, `Post not found: ${slug}`);
-  }
-
-  return new Response(content, {
-    headers: {
-      'Content-Type': 'text/plain; charset=utf-8'
-    }
-  });
-};
+export const GET: RequestHandler = async ({ params, request }) =>
+  rawPostResponse(params.slug, request.headers.get('accept'));

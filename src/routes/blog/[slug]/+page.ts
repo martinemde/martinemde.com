@@ -13,3 +13,8 @@ export const load: PageLoad = async ({ params }) => {
 
   return post;
 };
+
+// Rendered by the Worker rather than prerendered, so that the request's Accept
+// header can pick between the HTML page and the raw markdown of the same post.
+// See the article negotiation handle in src/hooks.server.ts.
+export const prerender = false;

@@ -76,6 +76,8 @@ martinemde.com/
 │   │   ├── [...segments]/        # Catch-all for old URL redirects
 │   │   ├── rss.xml/              # RSS feed endpoint
 │   │   │   └── +server.ts        # Generate RSS XML
+│   │   ├── sitemap.xml/          # XML sitemap endpoint
+│   │   │   └── +server.ts        # Generate sitemap XML
 │   │   └── llms.txt/             # LLM-friendly post index
 │   │       └── +server.ts        # Plain text post listing
 │   ├── content/
@@ -158,6 +160,7 @@ image: /images/blog/header.jpg
 
 - `title` (required): Post title displayed in listings and on the post page
 - `date` (required): Publication date in YYYY-MM-DD format or ISO8601 datetime (e.g., `2025-10-25T14:30:00`). If only a date is provided, defaults to 12:00 noon local time.
+- `updated` (optional): Date of the last substantive revision, same format as `date`. Set it when editing a published post so `/sitemap.xml` reports an accurate `lastmod`; leave it off and `date` is used.
 - `slug` (required): URL-friendly identifier used in `/blog/[slug]`
 - `published` (optional, default: true): Set to false to hide drafts
 - `description` (optional): Preview text shown on listing pages and in RSS
@@ -309,6 +312,19 @@ The site provides special endpoints for LLM consumption:
 - Catch-all route handles legacy URLs: `/YYYY/MM/DD/slug`
 - Validates date matches post metadata
 - Returns 301 permanent redirects to `/blog/slug`
+
+### 4. XML Sitemap (`/sitemap.xml`)
+
+- Sitemap 0.9 document, referenced from `static/robots.txt`
+- Entries are built in `src/lib/utils/sitemap.ts`
+- Static pages are **discovered automatically** from the route tree, so a new
+  page is listed without touching the sitemap. A page that must stay out of the
+  index has to be added to `EXCLUDED_PREFIXES` (currently `/auth` and `/editor`)
+- `lastmod` is only emitted where a real date exists: posts use
+  `updated ?? date` from frontmatter, and `/` and `/blog` use the newest post
+  date. Hand-written pages omit `lastmod` rather than report the build time,
+  which would mark every page as modified on every deploy
+- Cache control: 1 hour (`max-age=0, s-maxage=3600`)
 
 ## Build and Deployment
 

@@ -1,6 +1,8 @@
 import { getSession } from '$lib/server/auth';
 import { sequence } from '@sveltejs/kit/hooks';
 import { json, text, type Handle } from '@sveltejs/kit';
+import { getRawPostBySlug } from '$lib/utils/posts';
+import { VARY_ACCEPT, negotiateContentType } from '$lib/utils/content-negotiation';
 
 /**
  * Helper to check content type
@@ -83,6 +85,54 @@ const handleCors: Handle = async ({ event, resolve }) => {
 };
 
 /**
+ * Media types a blog article can be served as, in server-preference order.
+ * HTML leads, so browsers and anything sending a bare wildcard keep getting
+ * the page.
+ */
+const ARTICLE_MEDIA_TYPES = ['text/html', 'text/markdown', 'text/plain'] as const;
+
+/**
+ * Accept negotiation for blog articles.
+ *
+ * One article URL has two representations: the rendered page, and the raw
+ * markdown an agent is usually after. Both answers carry `Vary: Accept` so a
+ * shared cache keys them apart rather than handing whichever variant it stored
+ * first to every later client. This is also why the route is not prerendered —
+ * a prerendered page is served straight off Cloudflare's asset store and never
+ * reaches this hook.
+ */
+export const handleArticleNegotiation: Handle = async ({ event, resolve }) => {
+  const slug = event.params.slug;
+
+  // Data requests belong to client-side navigation and are always JSON.
+  if (event.route.id !== '/blog/[slug]' || event.isDataRequest || !slug) {
+    return resolve(event);
+  }
+
+  // Unlike /blog/[slug].md and .txt, an Accept header matching nothing falls
+  // back to HTML instead of 406: HTML is the article's canonical form, and
+  // RFC 9110 lets a server answer with it regardless.
+  const contentType =
+    negotiateContentType(event.request.headers.get('accept'), ARTICLE_MEDIA_TYPES) ?? 'text/html';
+  const markdown = contentType === 'text/html' ? null : getRawPostBySlug(slug);
+
+  // An unknown slug falls through so SvelteKit renders its usual 404.
+  if (markdown) {
+    return new Response(markdown, {
+      headers: {
+        'Content-Type': `${contentType}; charset=utf-8`,
+        Vary: VARY_ACCEPT
+      }
+    });
+  }
+
+  const response = await resolve(event);
+  response.headers.set('Vary', VARY_ACCEPT);
+
+  return response;
+};
+
+/**
  * Session handler
  * Loads session data and exposes to event.locals
  */
@@ -96,5 +146,11 @@ const handleSession: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-// Combine handlers in sequence: CSRF with allowlist, CORS, then session
-export const handle = sequence(csrf(['/auth/indieauth/token']), handleCors, handleSession);
+// Combine handlers in sequence: CSRF with allowlist, CORS, article Accept
+// negotiation (which can answer before a session is ever loaded), then session
+export const handle = sequence(
+  csrf(['/auth/indieauth/token']),
+  handleCors,
+  handleArticleNegotiation,
+  handleSession
+);

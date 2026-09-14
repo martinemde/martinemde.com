@@ -1,6 +1,20 @@
 import { getSession } from '$lib/server/auth';
 import { sequence } from '@sveltejs/kit/hooks';
-import { json, text, type Handle } from '@sveltejs/kit';
+import { json, text, type Handle, type RequestEvent } from '@sveltejs/kit';
+
+/**
+ * API endpoints that accept cross-site form submissions.
+ *
+ * IndieAuth and Micropub clients are third-party applications: they POST
+ * form-encoded (or multipart) bodies from their own origin, or with no Origin
+ * header at all, and authenticate with a bearer token rather than the session
+ * cookie. Applying CSRF protection here rejects every conforming client.
+ *
+ * The exemption is safe because `handleSession` withholds the session from
+ * cross-site submissions to these paths, so an exempt endpoint can never act
+ * on ambient browser credentials.
+ */
+const CSRF_EXEMPT_PATHS = ['/auth/indieauth/token', '/micropub', '/micropub/media'];
 
 /**
  * Helper to check content type
@@ -23,6 +37,21 @@ function isFormContentType(request: Request) {
 }
 
 /**
+ * A form submission from another origin: the shape of request that CSRF
+ * protection exists to block.
+ */
+function isCrossSiteFormSubmission({ request, url }: Pick<RequestEvent, 'request' | 'url'>) {
+  return (
+    isFormContentType(request) &&
+    (request.method === 'POST' ||
+      request.method === 'PUT' ||
+      request.method === 'PATCH' ||
+      request.method === 'DELETE') &&
+    request.headers.get('origin') !== url.origin
+  );
+}
+
+/**
  * CSRF protection copied from SvelteKit but with the ability to turn it off for specific routes.
  * Logic duplicated from `src/runtime/respond#respond` as of commit
  * `008056b6ef33b554f8b03131c2635cc14b677ff1`
@@ -30,14 +59,7 @@ function isFormContentType(request: Request) {
 function csrf(allowedPaths: string[]): Handle {
   return async ({ event, resolve }) => {
     const { request, url } = event;
-    const forbidden =
-      isFormContentType(request) &&
-      (request.method === 'POST' ||
-        request.method === 'PUT' ||
-        request.method === 'PATCH' ||
-        request.method === 'DELETE') &&
-      request.headers.get('origin') !== url.origin &&
-      !allowedPaths.includes(url.pathname);
+    const forbidden = isCrossSiteFormSubmission(event) && !allowedPaths.includes(url.pathname);
 
     if (forbidden) {
       const message = `Cross-site ${request.method} form submissions are forbidden`;
@@ -50,6 +72,9 @@ function csrf(allowedPaths: string[]): Handle {
     return resolve(event);
   };
 }
+
+/** CSRF protection with the Micropub/IndieAuth endpoints exempted. Exported for tests. */
+export const handleCsrf = csrf(CSRF_EXEMPT_PATHS);
 
 /**
  * CORS handler for IndieAuth token endpoint
@@ -84,9 +109,16 @@ const handleCors: Handle = async ({ event, resolve }) => {
 
 /**
  * Session handler
- * Loads session data and exposes to event.locals
+ * Loads session data and exposes to event.locals. Exported for tests.
  */
-const handleSession: Handle = async ({ event, resolve }) => {
+export const handleSession: Handle = async ({ event, resolve }) => {
+  // A cross-site submission that CSRF protection waved through must not pick
+  // up the session cookie: those endpoints authenticate with a bearer token,
+  // and honouring ambient credentials here would reopen the CSRF hole.
+  if (CSRF_EXEMPT_PATHS.includes(event.url.pathname) && isCrossSiteFormSubmission(event)) {
+    return resolve(event);
+  }
+
   // Load session data and expose to event.locals
   const session = await getSession(event);
 
@@ -97,4 +129,4 @@ const handleSession: Handle = async ({ event, resolve }) => {
 };
 
 // Combine handlers in sequence: CSRF with allowlist, CORS, then session
-export const handle = sequence(csrf(['/auth/indieauth/token']), handleCors, handleSession);
+export const handle = sequence(handleCsrf, handleCors, handleSession);

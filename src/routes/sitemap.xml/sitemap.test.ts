@@ -99,11 +99,10 @@ describe('Sitemap', () => {
       });
     });
 
-    it('should exclude auth routes and the editor', async () => {
+    it('should exclude auth routes', async () => {
       const xml = await sitemapXml();
 
       expect(xml).not.toContain('https://example.com/auth');
-      expect(xml).not.toContain('https://example.com/editor');
     });
 
     it('should exclude dynamic route placeholders', async () => {

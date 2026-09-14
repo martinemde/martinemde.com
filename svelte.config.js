@@ -37,12 +37,7 @@ const config = {
   ],
   kit: {
     // adapter-cloudflare for Cloudflare Workers deployment
-    adapter: adapter({}),
-    // CSRF protection is handled via custom implementation in hooks.server.ts
-    // This allows us to allowlist specific routes like /auth/indieauth/token
-    csrf: {
-      trustedOrigins: ['*']
-    }
+    adapter: adapter({})
   },
   extensions: ['.svelte', '.md', '.svx']
 };

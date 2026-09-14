@@ -55,10 +55,6 @@
     type="application/rss+xml"
     title="Martin Emde"
   />
-  <link rel="authorization_endpoint" href="{PUBLIC_APP_URL}/auth/indieauth/authorize" />
-  <link rel="token_endpoint" href="{PUBLIC_APP_URL}/auth/indieauth/token" />
-  <link rel="micropub" href="{PUBLIC_APP_URL}/micropub" />
-
   <meta property="og:title" content={pageTitle} />
   <meta property="og:url" content={pageUrl} />
   <meta property="og:type" content={contentType} />

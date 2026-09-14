@@ -20,8 +20,7 @@ export interface SitemapEntry {
  * A prefix matches the path itself and everything below it.
  */
 const EXCLUDED_PREFIXES = [
-  '/auth', // OAuth and IndieAuth flows
-  '/editor' // authenticated blog editor
+  '/auth' // OAuth callback routes
 ];
 
 /**

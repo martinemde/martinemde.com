@@ -319,7 +319,7 @@ The site provides special endpoints for LLM consumption:
 - Entries are built in `src/lib/utils/sitemap.ts`
 - Static pages are **discovered automatically** from the route tree, so a new
   page is listed without touching the sitemap. A page that must stay out of the
-  index has to be added to `EXCLUDED_PREFIXES` (currently `/auth` and `/editor`)
+  index has to be added to `EXCLUDED_PREFIXES` (currently `/auth`)
 - `lastmod` is only emitted where a real date exists: posts use
   `updated ?? date` from frontmatter, and `/` and `/blog` use the newest post
   date. Hand-written pages omit `lastmod` rather than report the build time,

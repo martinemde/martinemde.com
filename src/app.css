@@ -81,11 +81,11 @@ body {
 .preset-typo-caption,
 .preset-typo-menu,
 .preset-typo-button {
-  color: var(--heading-font-color);
-  font-family: var(--heading-font-family);
-  font-weight: var(--heading-font-weight);
+  color: var(--typo-heading--color-light);
+  font-family: var(--typo-heading--font-family);
+  font-weight: var(--typo-heading--font-weight);
   @variant dark {
-    color: var(--heading-font-color-dark);
+    color: var(--typo-heading--color-dark);
   }
 }
 
@@ -95,9 +95,9 @@ body {
 .preset-typo-caption,
 .preset-typo-menu,
 .preset-typo-button {
-  color: var(--heading-font-color);
+  color: var(--typo-heading--color-light);
   @variant dark {
-    color: var(--heading-font-color-dark);
+    color: var(--typo-heading--color-dark);
   }
 }
 
@@ -140,7 +140,7 @@ body {
 }
 .preset-typo-subtitle {
   font-size: var(--text-base);
-  font-family: var(--heading-font-family);
+  font-family: var(--typo-heading--font-family);
   color: var(--color-surface-700-300);
   @variant lg {
     font-size: var(--text-xl);
@@ -194,8 +194,16 @@ a {
 blockquote {
   @apply blockquote;
 }
-code {
-  @apply code;
+code:not(pre code, .ec-line code) {
+  overflow-x: auto;
+  border-radius: var(--radius-base);
+  background-color: var(--color-primary-100-900);
+  padding-block: calc(var(--spacing) * 0.75);
+  padding-inline: calc(var(--spacing) * 1.5);
+  color: var(--color-primary-contrast-50-950);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
 }
 kbd {
   @apply kbd;

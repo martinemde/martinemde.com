@@ -434,10 +434,10 @@
 
   <!-- Prompt -->
   <footer class="border-surface-300-600 border-t p-4">
-    <div class="input-group-divider rounded-container-token input-group grid-cols-[auto_1fr_auto]">
+    <div class="field-group grid-cols-[auto_1fr_auto]">
       {#if speechSupported}
         <button
-          class="input-group-shim {isListening ? 'preset-filled-primary-500' : ''}"
+          class="btn {isListening ? 'preset-filled-primary-500' : 'preset-tonal-surface'}"
           onclick={isListening ? stopListening : startListening}
           title={isListening ? 'Click to stop listening' : 'Click to speak'}
         >
@@ -452,7 +452,7 @@
         placeholder="Say something..."
       />
       <button
-        class={userInput.trim() ? 'preset-filled-primary-500' : 'preset-tonal-surface'}
+        class="btn {userInput.trim() ? 'preset-filled-primary-500' : 'preset-tonal-surface'}"
         onclick={sendMessage}
         disabled={!userInput.trim()}
       >

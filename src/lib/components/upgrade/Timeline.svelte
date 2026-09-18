@@ -127,7 +127,7 @@
           {/if}
         </span>
 
-        <span class="n pay">{row.outflow > 0 ? money(row.outflow) : '—'}</span>
+        <span class="n pay">{row.outflow !== 0 ? money(row.outflow) : '—'}</span>
         <span class="n">{money0(row.runningNpv)}</span>
         <span class="n buy">{row.buyout === null ? '—' : money0(row.buyout)}</span>
 

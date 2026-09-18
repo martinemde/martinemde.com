@@ -13,6 +13,7 @@
     money,
     money0,
     outright,
+    tradeInStoreCredit,
     type AppleCarePlan,
     type EndChoice,
     type Inputs,
@@ -21,11 +22,15 @@
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
 
+  // The September 2026 lineup. The 17 Pro and 17 Pro Max are discontinued, the
+  // carried-over models all went up $100, and the foldable Duo sits on top.
+  // iPhone 16 is still sold at $799 but is the one model Apple Upgrade excludes.
   const DEVICES = [
-    { key: 'iphone-17', label: 'iPhone 17', price: 799 },
-    { key: 'iphone-air', label: 'iPhone Air', price: 999 },
-    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099 },
-    { key: 'iphone-17-pro-max', label: 'iPhone 17 Pro Max', price: 1199 },
+    { key: 'iphone-17', label: 'iPhone 17', price: 899 },
+    { key: 'iphone-air', label: 'iPhone Air', price: 1099 },
+    { key: 'iphone-18-pro', label: 'iPhone 18 Pro', price: 1199 },
+    { key: 'iphone-18-pro-max', label: 'iPhone 18 Pro Max', price: 1299 },
+    { key: 'iphone-duo', label: 'iPhone Duo', price: 1999 },
     { key: 'custom', label: 'Something else', price: 0 }
   ];
 
@@ -83,7 +88,16 @@
     if (typeof window === 'undefined') return DEFAULTS;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Saved>) } : DEFAULTS;
+      if (!raw) return DEFAULTS;
+      const saved = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Saved>) };
+      // A device that has since left the lineup — a 17 Pro, say — would leave
+      // step one unselected while the rest of the flow ran on ahead against a
+      // price that no longer exists. Start the questions over; the numbers in
+      // step five are yours and survive.
+      if (saved.deviceKey && !DEVICES.some((d) => d.key === saved.deviceKey)) {
+        return { ...saved, deviceKey: null, hasTradeIn: null, term: null, appleCare: null };
+      }
+      return saved;
     } catch {
       return DEFAULTS; // A corrupt blob just means you get the defaults.
     }
@@ -221,6 +235,11 @@
   const credit = $derived(hasTradeIn === 'yes' ? tradeIn / (term ?? 24) : 0);
   const netPayment = $derived(Math.max(0, gross - credit));
   const residual = $derived(buyoutAfter(term ?? 24, listPrice, gross, 0, term ?? 24));
+  // What the initial term collects is the ceiling on the trade-in: the credit
+  // cancels payments and nothing else. Apple returns the rest as store credit.
+  const enteredTradeIn = $derived(hasTradeIn === 'yes' ? tradeIn : 0);
+  const storeCredit = $derived(tradeInStoreCredit(enteredTradeIn, gross, term ?? 24));
+  const overCeiling = $derived(enteredTradeIn > leasePayment(listPrice, 12) * 12);
   const extensionEnd = $derived((term ?? 24) + EXTENSION_MONTHS);
 
   const termOptions = $derived(
@@ -358,17 +377,26 @@
     <div class="aside">
       <h3>Where the payment comes from</h3>
       <p>
-        Apple publishes four example payments in the Apple Upgrade footnotes and never explains the
+        Apple publishes example payments in the Apple Upgrade footnotes and never explains the
         formula. Work backwards from them and it&rsquo;s boring: a 12-month iPhone lease collects
         <strong>50%</strong>
         of the sticker price and a 24-month lease collects <strong>70%</strong>. Divide by the term,
         round to the nearest x.99, done.
       </p>
       <p>
-        An iPhone 17 Pro at $1,099 gives $45.99 and $31.99. A Pro Max at $1,199 gives $49.99 and
-        $34.99. All four match Apple&rsquo;s published numbers exactly, which is the only reason to
-        trust anything else on this page. iPad and Mac leases use different shares, so this
-        calculator sticks to iPhone.
+        The footnote example is an iPhone 18 Pro 256GB at $1,199: $34.99 over twenty-four months,
+        $49.99 over twelve. Both fall straight out of the formula, and so does the single number
+        Apple quotes for the foldable &mdash; an iPhone Duo at $1,999 leases &ldquo;from
+        $57.99,&rdquo; which is 70% of $1,999 over 24 months, rounded. The same shares that priced
+        last year&rsquo;s lineup priced this one. That is the only reason to trust anything else on
+        this page.
+      </p>
+      <p>
+        The shares are an iPhone thing. Apple&rsquo;s Apple Watch Series 12 example keeps the 70% at
+        24 months but asks $21.99 for the 12-month term, where 50% would have said $16.99. And at
+        identical sticker prices the other categories come in cheaper: a $1,199 iPad Pro leases at
+        $31.99 against the 18 Pro&rsquo;s $34.99, a $1,999 MacBook Pro at $53.99 against the
+        Duo&rsquo;s $57.99. So this calculator sticks to iPhone.
       </p>
     </div>
   </Step>
@@ -377,7 +405,7 @@
   <Step
     n={2}
     title="Do you have something to trade in?"
-    lede="A trade-in does not cut the price. Klarna takes its value, slices it across the payments in your initial term, and stops."
+    lede="A trade-in does not cut the price. Klarna takes its value, slices it across the payments in your initial term, and stops. Anything worth more than those payments comes back as Apple Store credit instead."
     locked={step < 2}
     answer={hasTradeIn === 'yes' ? money0(tradeIn) : hasTradeIn === 'no' ? 'none' : undefined}
   >
@@ -401,10 +429,38 @@
       </div>
     {/if}
 
+    {#if hasTradeIn === 'yes' && overCeiling}
+      <div class="ceiling">
+        <p>
+          <strong>{money0(enteredTradeIn)} is more than this lease will collect.</strong> The credit only
+          ever cancels payments in the initial term &mdash; it cannot reach the buyout. Past that ceiling
+          your payment is $0 and Apple hands back the difference as Apple Store credit:
+        </p>
+        <ul>
+          {#each [12, 24] as const as t (t)}
+            {@const collects = leasePayment(listPrice, t) * t}
+            <li>
+              <strong>{t} months</strong> collects {money0(collects)} &mdash; {money0(
+                Math.min(enteredTradeIn, collects)
+              )} against the payments{enteredTradeIn > collects
+                ? `, ${money0(enteredTradeIn - collects)} back as store credit`
+                : ', all of it'}
+            </li>
+          {/each}
+        </ul>
+        <p>
+          So none of it evaporates, but the shorter the term the more of your old phone comes back
+          as money you can only spend at Apple. On every other path the whole {money0(
+            enteredTradeIn
+          )} comes straight off what you owe.
+        </p>
+      </div>
+    {/if}
+
     <div class="aside">
       <h3>The word doing the work is &ldquo;initial&rdquo;</h3>
       <p>
-        A $375 trade-in against a Pro Max makes the 12-month lease {money(
+        A $375 trade-in against an 18 Pro makes the 12-month lease {money(
           Math.max(0, leasePayment(1199, 12) - 375 / 12)
         )} a month and the 24-month lease {money(Math.max(0, leasePayment(1199, 24) - 375 / 24))}.
         The shorter lease ends up cheaper per month, because the same credit is spread over half as
@@ -414,6 +470,21 @@
         Then month 25 arrives, the credit is spent, and the payment snaps back to the full
         {money(leasePayment(1199, 24))}. You will see that jump in the timeline below. You also
         cannot trade in again when you upgrade &mdash; the credit is a one-time enrollment thing.
+      </p>
+      <h3>And the credit runs out before the phone does</h3>
+      <p>
+        Because it only cancels payments, a trade-in cannot be worth more to this lease than the
+        payments are. An 18 Pro collects {money0(leasePayment(1199, 12) * 12)} over twelve months and
+        {money0(leasePayment(1199, 24) * 24)} over twenty-four. Hand over a phone worth more than that
+        and the excess never touches the lease &mdash; your payment is already zero and the buyout does
+        not move. Apple returns it as Apple Store credit at checkout.
+      </p>
+      <p>
+        Which is a fair outcome and still not the same outcome. The dollars come back, but they come
+        back as Apple money &mdash; good for a case, for AppleCare, for the next thing &mdash; where
+        on every other way of paying they would have come <em>straight</em> off the price. The 12-month
+        lease is where this bites, because it only collects half the sticker: half a decent trade-in can
+        end up as store credit rather than as a smaller bill.
       </p>
     </div>
   </Step>
@@ -505,6 +576,13 @@
         three devices, and the FAQ says you can add a leased device to a subscription you already
         have. If you are already paying it, covering this phone is free, and the honest number to
         put in the box above is zero.
+      </p>
+      <p>
+        As of September 2026 there is also AppleCare One Family: $49.99 a month, every eligible
+        device across a Family Sharing group of up to six people, with no cap on how many devices
+        and up to six theft-and-loss claims a year. Same arithmetic, bigger denominator. If the
+        household is already on it, this phone&rsquo;s coverage costs nothing extra and the box
+        above should say zero.
       </p>
     </div>
   </Step>
@@ -598,9 +676,12 @@
         <h2>Every month, one row at a time</h2>
         <p class="lede">
           Your first payment lands about thirty days after you walk out of the store, so month zero
-          costs you {money0(chosen.summary.today)}. The panel follows you down the page: what
-          you&rsquo;ve paid, what that is worth in today&rsquo;s dollars, and what it would cost to
-          own the phone outright at that exact moment.
+          {#if chosen.summary.today < 0}costs you nothing &mdash; the store credit covers it, with
+            {money0(-chosen.summary.today)} of Apple credit still to spend{:else}costs you {money0(
+              chosen.summary.today
+            )}{/if}. The panel follows you down the page: what you&rsquo;ve paid, what that is worth
+          in today&rsquo;s dollars, and what it would cost to own the phone outright at that exact
+          moment.
         </p>
       </div>
 
@@ -649,9 +730,10 @@
           {:else if endChoice === 'buyout'}
             <p>
               <strong>Buy it.</strong> One payment of {money0(residual)} plus tax and it is yours. Your
-              all-in total lands at exactly the sticker price &mdash; you financed a phone at 0% for {term}
-              months and then settled up. If the phone is worth more than {money0(residual)} used, and
-              it very likely is, this beats handing it back.
+              all-in total &mdash; cash, plus whatever you handed over, less any store credit back &mdash;
+              lands at exactly the sticker price. You financed a phone at 0% for {term} months and then
+              settled up. If the phone is worth more than {money0(residual)} used, and it very likely
+              is, this beats handing it back.
             </p>
           {:else}
             <p>
@@ -820,9 +902,10 @@
       <ul>
         <li>
           Lease payments are derived as 50% (12-month) or 70% (24-month) of the sticker price,
-          divided by the term and rounded to the nearest x.99. This reproduces all four of
-          Apple&rsquo;s published iPhone examples exactly. If your actual quote differs, the shape
-          of the answer will not.
+          divided by the term and rounded to the nearest x.99. This reproduces both of Apple&rsquo;s
+          published iPhone 18 Pro payments and the $57.99 it quotes for the iPhone Duo, exactly.
+          Prices here are the September 2026 lineup, after the $100 rise on the carried-over models.
+          If your actual quote differs, the shape of the answer will not.
         </li>
         <li>
           The purchase option fee is treated as list price minus every dollar of credit applied to
@@ -925,6 +1008,37 @@
   }
   .fields.one {
     max-width: 260px;
+  }
+
+  /* Shown only when the trade-in overshoots what the term collects. */
+  .ceiling {
+    margin-top: 18px;
+    max-width: 64ch;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+    padding: 14px 18px;
+  }
+  .ceiling p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .ceiling strong {
+    color: var(--text);
+    font-weight: 560;
+  }
+  .ceiling ul {
+    margin: 10px 0;
+    padding-left: 18px;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+  .ceiling li {
+    margin: 0;
   }
 
   .aside {

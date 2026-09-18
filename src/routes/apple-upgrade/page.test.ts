@@ -125,7 +125,7 @@ describe('Apple Upgrade page', () => {
     expect(new Set(suggestions).size).toBe(suggestions.length);
   });
 
-  it('flags trade-in value the lease cannot absorb', async () => {
+  it('shows the trade-in the lease cannot absorb coming back as store credit', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
 
@@ -139,8 +139,12 @@ describe('Apple Upgrade page', () => {
     const ceiling = container.querySelector('.ceiling')!;
     expect(ceiling).not.toBeNull();
     expect(ceiling.textContent).toMatch(/\$600 is more than this lease will collect/);
-    expect(ceiling.textContent).toMatch(/12 months collects \$444 — uses \$444, strands \$156/);
-    expect(ceiling.textContent).toMatch(/24 months collects \$624 — uses \$600, all of it/);
+    expect(ceiling.textContent).toMatch(
+      /12 months collects \$444 — \$444 against the payments, \$156 back as store credit/
+    );
+    expect(ceiling.textContent).toMatch(
+      /24 months collects \$624 — \$600 against the payments, all of it/
+    );
   });
 
   it('says nothing about a trade-in the lease can absorb', async () => {

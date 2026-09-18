@@ -8,7 +8,7 @@ import {
   outright,
   PASTIMES,
   roundTo99,
-  strandedTradeIn,
+  tradeInStoreCredit,
   usableTradeIn,
   usedFraction,
   type Inputs,
@@ -119,27 +119,50 @@ describe('trade-in credit', () => {
       }
     });
 
-    it('caps the usable credit and reports the rest as stranded', () => {
+    it('caps the usable credit and returns the rest as store credit', () => {
       const gross = leasePayment(899, 12); // $36.99, so the term collects $443.88
       expect(usableTradeIn(375, gross, 12)).toBeCloseTo(375, 2);
-      expect(strandedTradeIn(375, gross, 12)).toBe(0);
+      expect(tradeInStoreCredit(375, gross, 12)).toBe(0);
       expect(usableTradeIn(600, gross, 12)).toBeCloseTo(443.88, 2);
-      expect(strandedTradeIn(600, gross, 12)).toBeCloseTo(156.12, 2);
+      expect(tradeInStoreCredit(600, gross, 12)).toBeCloseTo(156.12, 2);
     });
 
-    it('still pays exactly list price when nothing is stranded', () => {
-      const scenario = appleUpgrade(inputs({ listPrice: 899, tradeIn: 600, endChoice: 'buyout' }));
-      const used = usableTradeIn(600, leasePayment(899, 24), 24);
-      expect(scenario.summary.cash + used).toBeCloseTo(899, 2);
+    // Cash out, plus the phone you handed over, lands on list price whether or
+    // not any of the trade-in came back as store credit. Apple's "you never pay
+    // more than full price" has to hold at every trade-in value.
+    it.each([
+      [899, 24, 600], // credit fits inside the term
+      [899, 12, 600], // $156.12 back as store credit
+      [899, 12, 899], // most of it back as store credit
+      [1999, 12, 1400]
+    ])('pays exactly list on a $%d %d-month lease with a $%d trade-in', (list, term, tradeIn) => {
+      const scenario = appleUpgrade(
+        inputs({ listPrice: list, term: term as Term, tradeIn, endChoice: 'buyout' })
+      );
+      expect(scenario.summary.cash + tradeIn).toBeCloseTo(list, 2);
     });
 
-    it('is the stranded amount worse off when the credit overshoots', () => {
+    it('books the overage as a day-one Apple Store credit', () => {
       const gross = leasePayment(899, 12);
       const scenario = appleUpgrade(
         inputs({ listPrice: 899, term: 12, tradeIn: 600, endChoice: 'buyout' })
       );
-      // Cash plus the whole phone you handed over exceeds list by the overage.
-      expect(scenario.summary.cash + 600).toBeCloseTo(899 + strandedTradeIn(600, gross, 12), 2);
+      const credit = scenario.rows[0].items.find((i) => i.label === 'Apple Store credit');
+      expect(credit?.amount).toBeCloseTo(-tradeInStoreCredit(600, gross, 12), 2);
+      expect(credit?.biller).toBe('apple');
+    });
+
+    it('pays no card rewards on the store credit', () => {
+      const withBack = inputs({
+        listPrice: 899,
+        term: 12,
+        tradeIn: 600,
+        endChoice: 'buyout',
+        appleCardBack: 3
+      });
+      // The only day-one spend is zero here, so rewards must be zero too — a
+      // negative line item earning 3% would quietly hand back cash.
+      expect(appleUpgrade(withBack).rows[0].rewards).toBe(0);
     });
   });
 

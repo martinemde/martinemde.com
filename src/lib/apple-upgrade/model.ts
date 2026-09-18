@@ -194,21 +194,23 @@ export function leasePayment(listPrice: number, term: Term): number {
 }
 
 /**
- * How much of a trade-in the lease can actually absorb.
+ * How much of a trade-in the lease itself can absorb.
  *
  * The credit is spread across the initial term's payments and nothing else —
- * it cannot carry into the buyout, and Klarna will not send you a cheque. So a
- * trade-in worth more than the term collects has its excess stranded: the
- * payment bottoms out at $0 and the rest of the phone's value does nothing.
- * Everything downstream has to work from this number rather than the raw
+ * it cannot carry into the buyout. So the payments are a ceiling on it, and
+ * everything downstream has to work from this number rather than the raw
  * trade-in, or the credit ends up spent twice.
  */
 export function usableTradeIn(tradeIn: number, grossPayment: number, term: Term): number {
   return Math.min(Math.max(0, tradeIn), grossPayment * term);
 }
 
-/** Trade-in value the lease has no way to use. See `usableTradeIn`. */
-export function strandedTradeIn(tradeIn: number, grossPayment: number, term: Term): number {
+/**
+ * Trade-in value past that ceiling, which Apple hands back as Apple Store
+ * credit at checkout. The value survives — it just arrives as Apple-only money
+ * on day one rather than coming off what you owe Klarna.
+ */
+export function tradeInStoreCredit(tradeIn: number, grossPayment: number, term: Term): number {
   return Math.max(0, tradeIn) - usableTradeIn(tradeIn, grossPayment, term);
 }
 
@@ -277,6 +279,8 @@ const REWARD_RATE: Record<Biller, keyof Inputs> = {
 
 function rewardsFor(items: LineItem[], input: Inputs): number {
   return items.reduce((sum, item) => {
+    // Credits back to you are not spending, so no card pays you for them.
+    if (item.amount <= 0) return sum;
     const rate = input[REWARD_RATE[item.biller]] as number;
     return sum + item.amount * (rate / 100);
   }, 0);
@@ -382,9 +386,11 @@ export function appleUpgrade(input: Inputs): Scenario {
   const tax = 1 + input.taxRate / 100;
   const gross = leasePayment(listPrice, term);
   // Capped, so `net` is never negative and never needs flooring: the lease
-  // hands back exactly as much credit as it collected.
+  // applies exactly as much credit as it collects, and Apple returns the rest
+  // as store credit at checkout.
   const credit = usableTradeIn(tradeIn, gross, term);
   const net = gross - credit / term;
+  const storeCredit = tradeInStoreCredit(tradeIn, gross, term);
 
   // The extension: payments continue at the full rate because the trade-in
   // credit only ever covered the initial term.
@@ -402,6 +408,8 @@ export function appleUpgrade(input: Inputs): Scenario {
         out.push({ label: 'Case', amount: input.caseCost * tax, biller: 'apple' });
       if (input.activationFee > 0)
         out.push({ label: 'Carrier activation', amount: input.activationFee, biller: 'carrier' });
+      if (storeCredit > 0)
+        out.push({ label: 'Apple Store credit', amount: -storeCredit, biller: 'apple' });
       // No down payment, and the trade-in is consumed by the payment schedule
       // rather than handed back as cash, so day one is remarkably cheap.
     }

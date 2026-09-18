@@ -125,6 +125,51 @@ describe('Apple Upgrade page', () => {
     expect(new Set(suggestions).size).toBe(suggestions.length);
   });
 
+  it('flags trade-in value the lease cannot absorb', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+
+    await user.click(screen.getByText('iPhone 17')); // $899, 12 mo collects $443.88
+    await user.click(screen.getByText('Yes, I have one'));
+
+    const field = container.querySelector<HTMLInputElement>('input[type="number"]')!;
+    await user.clear(field);
+    await user.type(field, '600');
+
+    const ceiling = container.querySelector('.ceiling')!;
+    expect(ceiling).not.toBeNull();
+    expect(ceiling.textContent).toMatch(/\$600 is more than this lease will collect/);
+    expect(ceiling.textContent).toMatch(/12 months collects \$444 — uses \$444, strands \$156/);
+    expect(ceiling.textContent).toMatch(/24 months collects \$624 — uses \$600, all of it/);
+  });
+
+  it('says nothing about a trade-in the lease can absorb', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+
+    await user.click(screen.getByText('iPhone 17'));
+    await user.click(screen.getByText('Yes, I have one'));
+
+    // The default $375 fits inside both terms.
+    expect(container.querySelector('.ceiling')).toBeNull();
+  });
+
+  it('survives a cleared number field', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+
+    await user.click(screen.getByText('iPhone 17'));
+    await user.click(screen.getByText('Yes, I have one'));
+
+    // An emptied number input binds as null; everything downstream does
+    // arithmetic on it, so it has to come back as a number.
+    const field = container.querySelector<HTMLInputElement>('input[type="number"]')!;
+    await user.clear(field);
+
+    expect(screen.getByText('What are you leasing?')).toBeTruthy();
+    expect(field.valueAsNumber).toBe(0);
+  });
+
   it('re-asks when the saved device has left the lineup', () => {
     localStorage.setItem(
       'apple-upgrade-calculator',

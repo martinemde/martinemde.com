@@ -8,8 +8,11 @@ import {
   outright,
   PASTIMES,
   roundTo99,
+  strandedTradeIn,
+  usableTradeIn,
   usedFraction,
-  type Inputs
+  type Inputs,
+  type Term
 } from './model';
 
 function inputs(overrides: Partial<Inputs> = {}): Inputs {
@@ -82,6 +85,62 @@ describe('trade-in credit', () => {
   it('is spread evenly across the initial term', () => {
     expect(leasePayment(1199, 12) - 375 / 12).toBeCloseTo(18.74, 2);
     expect(leasePayment(1199, 24) - 375 / 24).toBeCloseTo(19.37, 2);
+  });
+
+  // The bug this replaced: the payment floored at $0 while the buyout kept
+  // amortising the whole trade-in, so an oversized credit made the buyout
+  // *climb* — $299 at signing to $455.12 at month 12 on a $899 phone.
+  describe('cannot be worth more to the lease than the lease collects', () => {
+    const cases: [number, Term][] = [
+      [899, 12],
+      [899, 24],
+      [1199, 12],
+      [1999, 24]
+    ];
+
+    it.each(cases)('leaves the same buyout at term on a $%d %d-month lease', (list, term) => {
+      const gross = leasePayment(list, term);
+      const target = list - gross * term;
+      for (let tradeIn = 0; tradeIn <= list; tradeIn += 25) {
+        expect(buyoutAfter(term, list, gross, tradeIn, term)).toBeCloseTo(target, 6);
+      }
+    });
+
+    it.each(cases)('never lets the buyout climb on a $%d %d-month lease', (list, term) => {
+      const gross = leasePayment(list, term);
+      for (const tradeIn of [0, list / 4, list / 2, list]) {
+        const net = gross - usableTradeIn(tradeIn, gross, term) / term;
+        for (let m = 1; m <= term; m++) {
+          const drop =
+            buyoutAfter(m - 1, list, gross, tradeIn, term) -
+            buyoutAfter(m, list, gross, tradeIn, term);
+          expect(drop).toBeCloseTo(net, 6); // exactly one net payment, never negative
+        }
+      }
+    });
+
+    it('caps the usable credit and reports the rest as stranded', () => {
+      const gross = leasePayment(899, 12); // $36.99, so the term collects $443.88
+      expect(usableTradeIn(375, gross, 12)).toBeCloseTo(375, 2);
+      expect(strandedTradeIn(375, gross, 12)).toBe(0);
+      expect(usableTradeIn(600, gross, 12)).toBeCloseTo(443.88, 2);
+      expect(strandedTradeIn(600, gross, 12)).toBeCloseTo(156.12, 2);
+    });
+
+    it('still pays exactly list price when nothing is stranded', () => {
+      const scenario = appleUpgrade(inputs({ listPrice: 899, tradeIn: 600, endChoice: 'buyout' }));
+      const used = usableTradeIn(600, leasePayment(899, 24), 24);
+      expect(scenario.summary.cash + used).toBeCloseTo(899, 2);
+    });
+
+    it('is the stranded amount worse off when the credit overshoots', () => {
+      const gross = leasePayment(899, 12);
+      const scenario = appleUpgrade(
+        inputs({ listPrice: 899, term: 12, tradeIn: 600, endChoice: 'buyout' })
+      );
+      // Cash plus the whole phone you handed over exceeds list by the overage.
+      expect(scenario.summary.cash + 600).toBeCloseTo(899 + strandedTradeIn(600, gross, 12), 2);
+    });
   });
 
   it('comes straight off the buyout on day one', () => {

@@ -194,6 +194,25 @@ export function leasePayment(listPrice: number, term: Term): number {
 }
 
 /**
+ * How much of a trade-in the lease can actually absorb.
+ *
+ * The credit is spread across the initial term's payments and nothing else —
+ * it cannot carry into the buyout, and Klarna will not send you a cheque. So a
+ * trade-in worth more than the term collects has its excess stranded: the
+ * payment bottoms out at $0 and the rest of the phone's value does nothing.
+ * Everything downstream has to work from this number rather than the raw
+ * trade-in, or the credit ends up spent twice.
+ */
+export function usableTradeIn(tradeIn: number, grossPayment: number, term: Term): number {
+  return Math.min(Math.max(0, tradeIn), grossPayment * term);
+}
+
+/** Trade-in value the lease has no way to use. See `usableTradeIn`. */
+export function strandedTradeIn(tradeIn: number, grossPayment: number, term: Term): number {
+  return Math.max(0, tradeIn) - usableTradeIn(tradeIn, grossPayment, term);
+}
+
+/**
  * Cost to buy the device outright after `month` lease payments.
  *
  * Apple describes this as "the list price minus any lease payments you've made
@@ -202,6 +221,12 @@ export function leasePayment(listPrice: number, term: Term): number {
  * Apple's other promise true — that you never pay more than full price. Every
  * dollar of credit against the device, whether it arrived as a payment or as a
  * traded-in phone, comes off the buyout.
+ *
+ * Which means this has to fall by exactly one net payment a month and land on
+ * `listPrice - term * grossPayment` at the end of the term, whatever the
+ * trade-in was. Only the credit the lease can actually use counts: amortising
+ * the full trade-in against a payment already floored at $0 would expire
+ * credit nobody ever received, and the buyout would climb month by month.
  */
 export function buyoutAfter(
   month: number,
@@ -210,7 +235,8 @@ export function buyoutAfter(
   tradeIn: number,
   term: Term
 ): number {
-  const unusedCredit = (tradeIn * Math.max(0, term - month)) / term;
+  const credit = usableTradeIn(tradeIn, grossPayment, term);
+  const unusedCredit = (credit * Math.max(0, term - month)) / term;
   return Math.max(0, listPrice - month * grossPayment - unusedCredit);
 }
 
@@ -355,8 +381,10 @@ export function appleUpgrade(input: Inputs): Scenario {
   const { listPrice, term, tradeIn, endChoice } = input;
   const tax = 1 + input.taxRate / 100;
   const gross = leasePayment(listPrice, term);
-  const creditPerMonth = tradeIn / term;
-  const net = Math.max(0, gross - creditPerMonth);
+  // Capped, so `net` is never negative and never needs flooring: the lease
+  // hands back exactly as much credit as it collected.
+  const credit = usableTradeIn(tradeIn, gross, term);
+  const net = gross - credit / term;
 
   // The extension: payments continue at the full rate because the trade-in
   // credit only ever covered the initial term.

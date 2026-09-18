@@ -13,6 +13,7 @@
     money,
     money0,
     outright,
+    strandedTradeIn,
     type AppleCarePlan,
     type EndChoice,
     type Inputs,
@@ -234,6 +235,11 @@
   const credit = $derived(hasTradeIn === 'yes' ? tradeIn / (term ?? 24) : 0);
   const netPayment = $derived(Math.max(0, gross - credit));
   const residual = $derived(buyoutAfter(term ?? 24, listPrice, gross, 0, term ?? 24));
+  // What the initial term collects is the ceiling on the trade-in: the credit
+  // cancels payments and nothing else, so anything past it is dead value.
+  const enteredTradeIn = $derived(hasTradeIn === 'yes' ? tradeIn : 0);
+  const stranded = $derived(strandedTradeIn(enteredTradeIn, gross, term ?? 24));
+  const overCeiling = $derived(enteredTradeIn > leasePayment(listPrice, 12) * 12);
   const extensionEnd = $derived((term ?? 24) + EXTENSION_MONTHS);
 
   const termOptions = $derived(
@@ -399,7 +405,7 @@
   <Step
     n={2}
     title="Do you have something to trade in?"
-    lede="A trade-in does not cut the price. Klarna takes its value, slices it across the payments in your initial term, and stops."
+    lede="A trade-in does not cut the price. Klarna takes its value, slices it across the payments in your initial term, and stops. Anything worth more than those payments has nowhere to go."
     locked={step < 2}
     answer={hasTradeIn === 'yes' ? money0(tradeIn) : hasTradeIn === 'no' ? 'none' : undefined}
   >
@@ -423,6 +429,34 @@
       </div>
     {/if}
 
+    {#if hasTradeIn === 'yes' && overCeiling}
+      <div class="ceiling">
+        <p>
+          <strong>{money0(enteredTradeIn)} is more than this lease will collect.</strong> The credit only
+          ever cancels payments in the initial term. It cannot reach the buyout, and Klarna will not hand
+          you the difference, so past that ceiling your payment is $0 and the rest of your old phone is
+          worth nothing here:
+        </p>
+        <ul>
+          {#each [12, 24] as const as t (t)}
+            {@const collects = leasePayment(listPrice, t) * t}
+            <li>
+              <strong>{t} months</strong> collects {money0(collects)} &mdash; uses {money0(
+                Math.min(enteredTradeIn, collects)
+              )}{enteredTradeIn > collects
+                ? `, strands ${money0(enteredTradeIn - collects)}`
+                : ', all of it'}
+            </li>
+          {/each}
+        </ul>
+        <p>
+          Every other column on this page takes the whole {money0(enteredTradeIn)} straight off the price.
+          The comparison at the bottom already counts it that way, which is most of why the lease stops
+          winning here.
+        </p>
+      </div>
+    {/if}
+
     <div class="aside">
       <h3>The word doing the work is &ldquo;initial&rdquo;</h3>
       <p>
@@ -436,6 +470,20 @@
         Then month 25 arrives, the credit is spent, and the payment snaps back to the full
         {money(leasePayment(1199, 24))}. You will see that jump in the timeline below. You also
         cannot trade in again when you upgrade &mdash; the credit is a one-time enrollment thing.
+      </p>
+      <h3>And the credit runs out before the phone does</h3>
+      <p>
+        Because it only cancels payments, a trade-in cannot be worth more to this lease than the
+        payments are. An 18 Pro collects {money0(leasePayment(1199, 12) * 12)} over twelve months and
+        {money0(leasePayment(1199, 24) * 24)} over twenty-four. Hand over a phone worth more than that
+        and the excess is stranded &mdash; your payment is already zero, the buyout does not move, and
+        nobody sends you the balance.
+      </p>
+      <p>
+        Which sharpens the thing that makes leases look good in the first place. A big trade-in buys
+        down the payment until it hits $0, and every dollar past that would have come
+        <em>straight</em> off the price on any other way of paying. The lease is the one place your old
+        phone can be worth less than it is worth.
       </p>
     </div>
   </Step>
@@ -678,9 +726,11 @@
           {:else if endChoice === 'buyout'}
             <p>
               <strong>Buy it.</strong> One payment of {money0(residual)} plus tax and it is yours. Your
-              all-in total lands at exactly the sticker price &mdash; you financed a phone at 0% for {term}
-              months and then settled up. If the phone is worth more than {money0(residual)} used, and
-              it very likely is, this beats handing it back.
+              all-in total &mdash; cash plus whatever you handed over &mdash; lands at exactly the sticker
+              price{#if stranded > 0}, plus the {money0(stranded)} of trade-in this lease had no way to
+                use{/if} &mdash; you financed a phone at 0% for {term} months and then settled up. If
+              the phone is worth more than {money0(residual)} used, and it very likely is, this beats
+              handing it back.
             </p>
           {:else}
             <p>
@@ -955,6 +1005,37 @@
   }
   .fields.one {
     max-width: 260px;
+  }
+
+  /* Shown only when the trade-in overshoots what the term collects. */
+  .ceiling {
+    margin-top: 18px;
+    max-width: 64ch;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    background: color-mix(in oklch, var(--accent) 8%, var(--surface));
+    padding: 14px 18px;
+  }
+  .ceiling p {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .ceiling strong {
+    color: var(--text);
+    font-weight: 560;
+  }
+  .ceiling ul {
+    margin: 10px 0;
+    padding-left: 18px;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+  .ceiling li {
+    margin: 0;
   }
 
   .aside {

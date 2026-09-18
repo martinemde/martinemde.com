@@ -10,13 +10,22 @@
   }
 
   let { label, value = $bindable(), unit = '$', hint, step = 1, min = 0 }: Props = $props();
+
+  /**
+   * Svelte binds an emptied number input as `null`, and every consumer of these
+   * fields does arithmetic on the result — one cleared box would take the whole
+   * page down. Snap it back to zero on the way out instead.
+   */
+  function guard(event: Event & { currentTarget: HTMLInputElement }) {
+    if (!Number.isFinite(event.currentTarget.valueAsNumber)) value = 0;
+  }
 </script>
 
 <label class="field">
   <span class="label">{label}</span>
   <span class="wrap" class:money={unit === '$'} class:pct={unit === '%'}>
     {#if unit === '$'}<span class="unit left" aria-hidden="true">$</span>{/if}
-    <input type="number" bind:value {step} {min} inputmode="decimal" />
+    <input type="number" bind:value oninput={guard} {step} {min} inputmode="decimal" />
     {#if unit === '%'}<span class="unit right" aria-hidden="true">%</span>{/if}
   </span>
   {#if hint}<span class="hint">{hint}</span>{/if}

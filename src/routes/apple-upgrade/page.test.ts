@@ -25,7 +25,7 @@ describe('Apple Upgrade page', () => {
   });
 
   async function walkThrough(user: ReturnType<typeof userEvent.setup>) {
-    await user.click(screen.getByText('iPhone 17 Pro Max'));
+    await user.click(screen.getByText('iPhone 18 Pro'));
     await user.click(screen.getByText('No trade-in'));
     await user.click(screen.getByText('24 months'));
     await user.click(screen.getByText('No AppleCare'));
@@ -35,7 +35,7 @@ describe('Apple Upgrade page', () => {
     render(Page);
 
     expect(screen.getByText('What are you leasing?')).toBeTruthy();
-    expect(screen.getByText('iPhone 17 Pro Max')).toBeTruthy();
+    expect(screen.getByText('iPhone 18 Pro')).toBeTruthy();
 
     // Later steps are visible as dimmed stubs, but their controls are not there.
     expect(screen.queryByText('No trade-in')).toBeNull();
@@ -46,7 +46,7 @@ describe('Apple Upgrade page', () => {
     const user = userEvent.setup();
     render(Page);
 
-    await user.click(screen.getByText('iPhone 17 Pro Max'));
+    await user.click(screen.getByText('iPhone 18 Pro'));
     expect(screen.getByText('No trade-in')).toBeTruthy();
     expect(screen.queryByText('12 months')).toBeNull();
 
@@ -62,10 +62,10 @@ describe('Apple Upgrade page', () => {
     const user = userEvent.setup();
     render(Page);
 
-    await user.click(screen.getByText('iPhone 17 Pro Max'));
+    await user.click(screen.getByText('iPhone 18 Pro'));
     await user.click(screen.getByText('No trade-in'));
 
-    // Apple's own numbers for a $1,199 Pro Max.
+    // Apple's own footnote numbers for a $1,199 iPhone 18 Pro.
     expect(screen.getByText('$49.99/mo')).toBeTruthy();
     expect(screen.getByText('$34.99/mo')).toBeTruthy();
   });
@@ -123,6 +123,26 @@ describe('Apple Upgrade page', () => {
       suggestions.push(match![1].trim());
     }
     expect(new Set(suggestions).size).toBe(suggestions.length);
+  });
+
+  it('re-asks when the saved device has left the lineup', () => {
+    localStorage.setItem(
+      'apple-upgrade-calculator',
+      JSON.stringify({
+        deviceKey: 'iphone-17-pro-max',
+        listPrice: 1199,
+        hasTradeIn: 'no',
+        term: 24,
+        appleCare: 'none',
+        taxRate: 6.25
+      })
+    );
+    render(Page);
+
+    // Step one again, rather than a finished form with nothing highlighted.
+    expect(screen.queryByText('No trade-in')).toBeNull();
+    expect(screen.queryByText('Every month, one row at a time')).toBeNull();
+    expect(screen.getByText('iPhone 18 Pro')).toBeTruthy();
   });
 
   it('remembers your answers across a reload', async () => {

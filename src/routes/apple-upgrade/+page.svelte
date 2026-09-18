@@ -21,11 +21,15 @@
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
 
+  // The September 2026 lineup. The 17 Pro and 17 Pro Max are discontinued, the
+  // carried-over models all went up $100, and the foldable Duo sits on top.
+  // iPhone 16 is still sold at $799 but is the one model Apple Upgrade excludes.
   const DEVICES = [
-    { key: 'iphone-17', label: 'iPhone 17', price: 799 },
-    { key: 'iphone-air', label: 'iPhone Air', price: 999 },
-    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099 },
-    { key: 'iphone-17-pro-max', label: 'iPhone 17 Pro Max', price: 1199 },
+    { key: 'iphone-17', label: 'iPhone 17', price: 899 },
+    { key: 'iphone-air', label: 'iPhone Air', price: 1099 },
+    { key: 'iphone-18-pro', label: 'iPhone 18 Pro', price: 1199 },
+    { key: 'iphone-18-pro-max', label: 'iPhone 18 Pro Max', price: 1299 },
+    { key: 'iphone-duo', label: 'iPhone Duo', price: 1999 },
     { key: 'custom', label: 'Something else', price: 0 }
   ];
 
@@ -83,7 +87,16 @@
     if (typeof window === 'undefined') return DEFAULTS;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Saved>) } : DEFAULTS;
+      if (!raw) return DEFAULTS;
+      const saved = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Saved>) };
+      // A device that has since left the lineup — a 17 Pro, say — would leave
+      // step one unselected while the rest of the flow ran on ahead against a
+      // price that no longer exists. Start the questions over; the numbers in
+      // step five are yours and survive.
+      if (saved.deviceKey && !DEVICES.some((d) => d.key === saved.deviceKey)) {
+        return { ...saved, deviceKey: null, hasTradeIn: null, term: null, appleCare: null };
+      }
+      return saved;
     } catch {
       return DEFAULTS; // A corrupt blob just means you get the defaults.
     }
@@ -358,17 +371,26 @@
     <div class="aside">
       <h3>Where the payment comes from</h3>
       <p>
-        Apple publishes four example payments in the Apple Upgrade footnotes and never explains the
+        Apple publishes example payments in the Apple Upgrade footnotes and never explains the
         formula. Work backwards from them and it&rsquo;s boring: a 12-month iPhone lease collects
         <strong>50%</strong>
         of the sticker price and a 24-month lease collects <strong>70%</strong>. Divide by the term,
         round to the nearest x.99, done.
       </p>
       <p>
-        An iPhone 17 Pro at $1,099 gives $45.99 and $31.99. A Pro Max at $1,199 gives $49.99 and
-        $34.99. All four match Apple&rsquo;s published numbers exactly, which is the only reason to
-        trust anything else on this page. iPad and Mac leases use different shares, so this
-        calculator sticks to iPhone.
+        The footnote example is an iPhone 18 Pro 256GB at $1,199: $34.99 over twenty-four months,
+        $49.99 over twelve. Both fall straight out of the formula, and so does the single number
+        Apple quotes for the foldable &mdash; an iPhone Duo at $1,999 leases &ldquo;from
+        $57.99,&rdquo; which is 70% of $1,999 over 24 months, rounded. The same shares that priced
+        last year&rsquo;s lineup priced this one. That is the only reason to trust anything else on
+        this page.
+      </p>
+      <p>
+        The shares are an iPhone thing. Apple&rsquo;s Apple Watch Series 12 example keeps the 70% at
+        24 months but asks $21.99 for the 12-month term, where 50% would have said $16.99. And at
+        identical sticker prices the other categories come in cheaper: a $1,199 iPad Pro leases at
+        $31.99 against the 18 Pro&rsquo;s $34.99, a $1,999 MacBook Pro at $53.99 against the
+        Duo&rsquo;s $57.99. So this calculator sticks to iPhone.
       </p>
     </div>
   </Step>
@@ -404,7 +426,7 @@
     <div class="aside">
       <h3>The word doing the work is &ldquo;initial&rdquo;</h3>
       <p>
-        A $375 trade-in against a Pro Max makes the 12-month lease {money(
+        A $375 trade-in against an 18 Pro makes the 12-month lease {money(
           Math.max(0, leasePayment(1199, 12) - 375 / 12)
         )} a month and the 24-month lease {money(Math.max(0, leasePayment(1199, 24) - 375 / 24))}.
         The shorter lease ends up cheaper per month, because the same credit is spread over half as
@@ -505,6 +527,13 @@
         three devices, and the FAQ says you can add a leased device to a subscription you already
         have. If you are already paying it, covering this phone is free, and the honest number to
         put in the box above is zero.
+      </p>
+      <p>
+        As of September 2026 there is also AppleCare One Family: $49.99 a month, every eligible
+        device across a Family Sharing group of up to six people, with no cap on how many devices
+        and up to six theft-and-loss claims a year. Same arithmetic, bigger denominator. If the
+        household is already on it, this phone&rsquo;s coverage costs nothing extra and the box
+        above should say zero.
       </p>
     </div>
   </Step>
@@ -820,9 +849,10 @@
       <ul>
         <li>
           Lease payments are derived as 50% (12-month) or 70% (24-month) of the sticker price,
-          divided by the term and rounded to the nearest x.99. This reproduces all four of
-          Apple&rsquo;s published iPhone examples exactly. If your actual quote differs, the shape
-          of the answer will not.
+          divided by the term and rounded to the nearest x.99. This reproduces both of Apple&rsquo;s
+          published iPhone 18 Pro payments and the $57.99 it quotes for the iPhone Duo, exactly.
+          Prices here are the September 2026 lineup, after the $100 rise on the carried-over models.
+          If your actual quote differs, the shape of the answer will not.
         </li>
         <li>
           The purchase option fee is treated as list price minus every dollar of credit applied to

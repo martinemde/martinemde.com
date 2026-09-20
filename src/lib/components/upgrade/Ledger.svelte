@@ -38,7 +38,7 @@
 
   let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
-  let revealed = $state<Record<string, boolean>>({});
+  let expanded = $state<Record<number, boolean>>({});
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
   let chartPx = $state(112);
 
@@ -288,10 +288,36 @@
     {@const cells = cellsFor(month)}
     {@const idle = idleLine(month)}
     {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts.map(Math.abs)))}
-    <section
+    {@const stacks = cells.map((_, i) =>
+      charges.map((charge) => ({
+        label: charge.label,
+        category: charge.categories[i],
+        amount: charge.credit ? -charge.amounts[i] : charge.amounts[i]
+      }))
+    )}
+    {@const positive = stacks.map((stack) =>
+      stack.reduce((sum, item) => sum + Math.max(0, item.amount), 0)
+    )}
+    {@const negative = stacks.map((stack) =>
+      stack.reduce((sum, item) => sum + Math.max(0, -item.amount), 0)
+    )}
+    {@const stackScale = Math.max(...positive, ...negative, 1)}
+    <div
+      role="button"
+      tabindex="0"
+      aria-label={`Month ${month}: ${expanded[month] ? 'hide' : 'show'} breakdown`}
+      aria-expanded={!!expanded[month]}
+      onclick={() => (expanded[month] = !expanded[month])}
+      onkeydown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          expanded[month] = !expanded[month];
+        }
+      }}
       bind:this={blockEls[month]}
       data-month={month}
       class="month"
+      class:expanded={!!expanded[month]}
       class:on={month === activeMonth}
       class:landed={month <= activeMonth}
       class:beat={!!beat}
@@ -306,79 +332,108 @@
           <span class="year">year {Math.floor((month + 11) / 12) || 1}</span>
         {/if}
       </header>
+      <div class="stacked" aria-hidden="true">
+        {#each stacks as stack, i (cells[i].key)}
+          <div class="stack-column">
+            <div
+              class="stack-positive"
+              style={`height: ${(Math.max(...positive) / stackScale) * 64}px`}
+            >
+              {#each stack.filter((item) => item.amount > 0.005) as item (item.label)}
+                <i
+                  class="segment"
+                  data-cat={item.category}
+                  style={`height: ${(item.amount / stackScale) * 64}px`}
+                ></i>
+              {/each}
+            </div>
+            <div
+              class="stack-negative"
+              style={`height: ${(Math.max(...negative) / stackScale) * 64}px`}
+            >
+              {#each stack.filter((item) => item.amount < -0.005) as item (item.label)}
+                <i
+                  class="segment credit"
+                  data-cat={item.category}
+                  style={`height: ${(-item.amount / stackScale) * 64}px`}
+                ></i>
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+      <div class="breakdown" inert={!expanded[month]} aria-hidden={!expanded[month]}>
+        <div class="breakdown-inner">
+          {#if charges.length}
+            <ul class="charges">
+              {#each charges as charge (charge.label)}
+                <li>
+                  <span class="head">
+                    <span class="what">{charge.label}</span>
+                  </span>
 
-      {#if charges.length}
-        <ul class="charges">
-          {#each charges as charge (charge.label)}
-            <li>
-              <span class="head">
-                <span class="what">{charge.label}</span>
-              </span>
-
-              <!-- The attribution and the amount in one mark: a bar in every
+                  <!-- The attribution and the amount in one mark: a bar in every
                    column that gets handed this charge, sized against the
                    biggest single bill of the month. -->
-              <div
-                class="bars"
-                class:credit={charge.credit}
-                data-cat={charge.category}
-                style="--track-height: {barPx(Math.max(...charge.amounts.map(Math.abs)), peak)}px"
-              >
-                {#each charge.amounts as amount, i (cells[i].key)}
-                  {@const key = `${month}:${charge.label}:${cells[i].key}`}
-                  <button
-                    type="button"
-                    class="cell"
-                    disabled={Math.abs(amount) <= 0.005}
-                    aria-label={`${cells[i].name}: ${charge.label}`}
-                    aria-expanded={!!revealed[key]}
-                    onclick={() => (revealed[key] = !revealed[key])}
-                    class:zero={Math.abs(amount) <= 0.005}
-                    class:credit={charge.credit || amount < 0}
-                    data-cat={charge.categories[i]}
+                  <div
+                    class="bars"
+                    class:credit={charge.credit}
+                    data-cat={charge.category}
+                    style="--track-height: {barPx(
+                      Math.max(...charge.amounts.map(Math.abs)),
+                      peak
+                    )}px"
                   >
-                    <span class="track">
-                      <i class="bar" style="height: {barPx(Math.abs(amount), peak)}px"></i>
-                    </span>
-                    <span class="amt" hidden={!revealed[key]}
-                      >{Math.abs(amount) > 0.005
-                        ? `${charge.credit || amount < 0 ? '−' : ''}${money(Math.abs(amount))}`
-                        : ''}</span
-                    >
-                  </button>
-                {/each}
-              </div>
-            </li>
-          {/each}
-        </ul>
+                    {#each charge.amounts as amount, i (cells[i].key)}
+                      <span
+                        class="cell"
+                        class:zero={Math.abs(amount) <= 0.005}
+                        class:credit={charge.credit || amount < 0}
+                        data-cat={charge.categories[i]}
+                      >
+                        <span class="track">
+                          <i class="bar" style="height: {barPx(Math.abs(amount), peak)}px"></i>
+                        </span>
+                        <span class="amt"
+                          >{Math.abs(amount) > 0.005
+                            ? `${charge.credit || amount < 0 ? '−' : ''}${money(Math.abs(amount))}`
+                            : ''}</span
+                        >
+                      </span>
+                    {/each}
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {:else if !idle}
+            <p class="nothing">
+              Your phone is paid off. {PAID_OFF_IDEAS[
+                paidOffMonths.indexOf(month) % PAID_OFF_IDEAS.length
+              ]}
+            </p>
+          {/if}
 
-        <div class="totals">
-          {#each cells as cell (cell.key)}
-            <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
-              {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
-            </span>
+          {#if idle}
+            <p class="nothing">{idle}</p>
+          {/if}
+          {#each scenarios as scenario (scenario.key)}
+            {#if scenario.rows[month].forfeitedCredits}
+              <p class="nothing">
+                {scenario.shortName}: {money(scenario.rows[month].forfeitedCredits!)} in trade-in credits
+                forfeited
+              </p>
+            {/if}
           {/each}
         </div>
-      {:else if !idle}
-        <p class="nothing">
-          Your phone is paid off. {PAID_OFF_IDEAS[
-            paidOffMonths.indexOf(month) % PAID_OFF_IDEAS.length
-          ]}
-        </p>
-      {/if}
-
-      {#if idle}
-        <p class="nothing">{idle}</p>
-      {/if}
-      {#each scenarios as scenario (scenario.key)}
-        {#if scenario.rows[month].forfeitedCredits}
-          <p class="nothing">
-            {scenario.shortName}: {money(scenario.rows[month].forfeitedCredits!)} in trade-in credits
-            forfeited
-          </p>
-        {/if}
-      {/each}
-    </section>
+      </div>
+      <div class="totals">
+        {#each cells as cell (cell.key)}
+          <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
+            {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
+          </span>
+        {/each}
+      </div>
+    </div>
 
     {#if questions[month]}
       <div class="question">{@render questions[month]()}</div>
@@ -398,6 +453,68 @@
        under the same column centre, as the band it feeds. */
     --bar-w: 104px;
   }
+  .month:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .stacked {
+    max-height: 130px;
+    overflow: hidden;
+    transition:
+      max-height 250ms ease,
+      opacity 250ms ease;
+    display: grid;
+    grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+    gap: var(--col-gap);
+    padding: 0 var(--gutter);
+  }
+  .stack-positive,
+  .stack-negative {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .stack-positive {
+    justify-content: flex-end;
+    border-bottom: 1px solid var(--border);
+  }
+  .segment {
+    display: block;
+    flex: none;
+    width: 100%;
+    max-width: var(--bar-w);
+    background: var(--fill);
+  }
+  .segment.credit {
+    background: transparent;
+    border: 1px solid var(--fill);
+    box-sizing: border-box;
+  }
+  .breakdown {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      grid-template-rows 250ms ease,
+      opacity 250ms ease,
+      visibility 250ms;
+  }
+  .breakdown-inner {
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    gap: 5px;
+  }
+  .expanded .breakdown {
+    grid-template-rows: 1fr;
+    opacity: 1;
+    visibility: visible;
+  }
+  .expanded .stacked {
+    max-height: 0;
+    opacity: 0;
+  }
   .sentinel {
     height: 1px;
   }
@@ -413,6 +530,7 @@
 
   /* One month */
   .month {
+    cursor: pointer;
     display: grid;
     gap: 5px;
     border: 1px solid var(--border);
@@ -511,25 +629,10 @@
     padding: 0 var(--gutter);
   }
   .cell {
-    appearance: none;
-    border: 0;
-    padding: 4px 0;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    min-height: 28px;
     display: grid;
     justify-items: center;
     gap: 2px;
     min-width: 0;
-  }
-  .cell:disabled {
-    cursor: default;
-  }
-  .cell:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 3px;
   }
   .track {
     display: flex;
@@ -739,5 +842,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .breakdown,
+    .stacked {
+      transition: none;
+    }
   }
 </style>

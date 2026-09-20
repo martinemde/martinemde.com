@@ -211,23 +211,36 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText('$34.99/mo on a 24-month lease')).toBeTruthy();
   });
 
-  it('reveals individual charges on tap or keyboard activation while keeping subtotals visible', async () => {
+  it('toggles the full month breakdown from the card, totals, and keyboard', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
-    const month = container.querySelector('[data-month="0"]')!;
-    const bars = [...month.querySelectorAll<HTMLButtonElement>('.cell:not(.zero)')];
-    const amounts = [...month.querySelectorAll<HTMLElement>('.amt')];
+    const month = screen.getByRole('button', { name: 'Month 0: show breakdown' });
+    const details = month.querySelector<HTMLElement>('.breakdown')!;
     const totals = [...month.querySelectorAll<HTMLElement>('.sum')];
-    expect(amounts.every((amount) => amount.hidden)).toBe(true);
+    expect(month.querySelector('header')).toBeTruthy();
+    expect(details.querySelector('header')).toBeNull();
+    expect(details.inert).toBe(true);
+    expect(details.getAttribute('aria-hidden')).toBe('true');
+    expect(month.querySelectorAll('.stack-column')).toHaveLength(5);
+    expect(month.querySelectorAll('.segment').length).toBeGreaterThan(5);
     expect(totals.every((total) => !total.hidden && total.textContent?.trim())).toBe(true);
-    await user.click(bars[0]);
-    expect(bars[0].querySelector<HTMLElement>('.amt')!.hidden).toBe(false);
-    expect(bars[1].querySelector<HTMLElement>('.amt')!.hidden).toBe(true);
+    await user.click(month.querySelector('.segment')!);
+    expect(month.getAttribute('aria-expanded')).toBe('true');
+    expect(details.inert).toBe(false);
+    expect([...month.querySelectorAll<HTMLElement>('.amt')].every((amount) => !amount.hidden)).toBe(
+      true
+    );
+    expect(container.querySelector('[data-month="1"]')?.getAttribute('aria-expanded')).toBe(
+      'false'
+    );
+    await user.click(totals[0]);
+    expect(details.inert).toBe(true);
+    month.focus();
     await user.keyboard('{Enter}');
-    expect(bars[0].querySelector<HTMLElement>('.amt')!.hidden).toBe(true);
+    expect(details.inert).toBe(false);
     await user.keyboard(' ');
-    expect(bars[0].querySelector<HTMLElement>('.amt')!.hidden).toBe(false);
+    expect(details.inert).toBe(true);
   });
 
   it('gates each year and only shows final totals after all three annual decisions', async () => {

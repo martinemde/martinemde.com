@@ -3,7 +3,9 @@
   import '../app.css';
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
+  import { afterNavigate } from '$app/navigation';
   import { PUBLIC_APP_URL } from '$env/static/public';
+  import { createAutoHide } from '$lib/utils/autohide';
 
   let { children } = $props();
 
@@ -39,6 +41,49 @@
   const isProjects = $derived(path.startsWith('/projects'));
   const isAbout = $derived(path.startsWith('/about'));
   const pathDisplay = $derived('martinemde.com' + (path === '/' ? '' : path));
+
+  /*
+   * Auto-hiding header. Layered on as an enhancement: with no client JS (see
+   * `csr = dev` on a couple of routes) the bar just stays put, as it always did.
+   */
+  let headerEl: HTMLElement | undefined = $state();
+  let headerHidden = $state(false);
+
+  const autoHide = createAutoHide({
+    /*
+     * Keyboard users shouldn't have the focused link slide out from under them.
+     * Tabbing into the bar reveals it (`onfocusin` below); this keeps it there
+     * for as long as focus stays inside.
+     */
+    hold: () => !!headerEl?.contains(document.activeElement)
+  });
+
+  $effect(() => {
+    let queued = false;
+
+    function read() {
+      queued = false;
+      // Clamp to the real scroll range so iOS rubber-banding past either end
+      // doesn't register as a direction change.
+      const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      headerHidden = autoHide.update(Math.min(Math.max(window.scrollY, 0), limit));
+    }
+
+    function onScroll() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(read); // one decision per frame, not per event
+    }
+
+    autoHide.reset(window.scrollY);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  });
+
+  // A new page starts at the top, so start it with the bar in view.
+  afterNavigate(() => {
+    headerHidden = autoHide.reset(window.scrollY);
+  });
 </script>
 
 <svelte:head>
@@ -74,7 +119,12 @@
   {/if}
 </svelte:head>
 <div class="site">
-  <header class="site-header">
+  <header
+    class="site-header"
+    class:is-hidden={headerHidden}
+    bind:this={headerEl}
+    onfocusin={() => (headerHidden = autoHide.reset(window.scrollY))}
+  >
     <div class="bar">
       <a class="brand" href={resolve('/')}>
         <span class="brand-mark"></span>
@@ -146,6 +196,16 @@
     border-bottom: 1px solid var(--border);
     background: color-mix(in oklch, var(--bg) 86%, transparent);
     backdrop-filter: saturate(1.2) blur(8px);
+    transition: transform 200ms ease;
+  }
+  /* Driven by the scroll latch in the script above; see $lib/utils/autohide. */
+  .site-header.is-hidden {
+    transform: translateY(-100%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition: none;
+    }
   }
   .bar {
     margin: 0 auto;
@@ -158,6 +218,7 @@
   }
   .brand {
     display: flex;
+    flex: 0 0 auto; /* the name sets the floor; the nav does the yielding */
     align-items: center;
     gap: 11px;
     color: var(--text);
@@ -174,11 +235,25 @@
     font-weight: 600;
     font-size: 17px;
     letter-spacing: -0.01em;
+    white-space: nowrap; /* non-negotiable: "Martin Emde" stays on one line */
   }
   .nav {
     display: flex;
+    min-width: 0;
+    flex: 0 1 auto;
     align-items: center;
     gap: 4px;
+    /*
+     * Last-resort valve. The tiers below are sized to fit without it, but if a
+     * viewport ever gets narrower than they allow, the nav scrolls rather than
+     * the page — the brand still doesn't wrap and nothing overflows the body.
+     */
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .nav::-webkit-scrollbar {
+    display: none;
   }
   .nav-link {
     font-family: var(--font-mono);
@@ -301,15 +376,91 @@
     animation: meBlink 1.1s step-end infinite;
   }
 
+  /*
+   * Mobile top bar, fitted progressively rather than at one breakpoint.
+   *
+   * Tier 1 (<=640px, this block) scales every contributor fluidly between 320px
+   * and 640px, so the bar tightens continuously instead of snapping and
+   * overflowing, and collapses the theme button down to its blip. Each clamp()
+   * reads `clamp(<at 320px>, <slope>vw + <intercept>, <at 640px>)`.
+   *
+   * Tier 2 (<=400px, the block after this one) drops the `/` path prefixes,
+   * which buys back the last ~22px at iPhone widths.
+   *
+   * Everything above 640px is untouched.
+   */
   @media (max-width: 640px) {
+    .site {
+      /* One gutter for header, main and footer keeps the brand aligned
+         with the content column as it tightens. 14px -> 20px. */
+      --gutter: clamp(14px, 1.875vw + 8px, 20px);
+    }
     .bar,
     .site-main,
     .statusline {
-      padding-left: 20px;
-      padding-right: 20px;
+      padding-left: var(--gutter);
+      padding-right: var(--gutter);
+    }
+    .bar {
+      padding-top: clamp(10px, 1.875vw + 4px, 16px);
+      padding-bottom: clamp(10px, 1.875vw + 4px, 16px);
+      gap: clamp(8px, 5vw - 8px, 24px);
+    }
+    .brand {
+      gap: clamp(7px, 1.25vw + 3px, 11px);
+    }
+    .brand-mark {
+      height: clamp(9px, 0.625vw + 7px, 11px);
+      width: clamp(9px, 0.625vw + 7px, 11px);
+      box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 16%, transparent);
+    }
+    .brand-name {
+      font-size: clamp(14px, 0.9375vw + 11px, 17px);
+    }
+    .nav {
+      gap: clamp(1px, 0.9375vw - 2px, 4px);
+    }
+    .nav-link {
+      font-size: clamp(11px, 0.78125vw + 8.5px, 13.5px);
+      padding-left: clamp(4px, 2.1875vw - 3px, 11px);
+      padding-right: clamp(4px, 2.1875vw - 3px, 11px);
+      white-space: nowrap;
+    }
+    .theme-ind {
+      margin-left: clamp(4px, 3.125vw - 6px, 14px);
+      padding-left: clamp(7px, 1.5625vw + 2px, 12px);
+      padding-right: clamp(7px, 1.5625vw + 2px, 12px);
+    }
+    .theme-blip {
+      height: clamp(8px, 0.625vw + 6px, 10px);
+      width: clamp(8px, 0.625vw + 6px, 10px);
     }
     .theme-text {
       display: none; /* collapse to just the blip on mobile */
+    }
+
+    /*
+     * The footer statusline was the other thing overflowing on a phone — it ran
+     * `v2026.7_` off the right edge, which put a horizontal scrollbar on the
+     * whole document and left blank space beside the sticky header. Give the
+     * path its own line and let the rest sit on a second one; nothing is lost.
+     */
+    .statusline {
+      flex-wrap: wrap;
+      gap: clamp(10px, 3.125vw, 20px);
+      font-size: clamp(10.5px, 0.3125vw + 9.5px, 11.5px);
+    }
+    .sl-path {
+      flex: 1 0 100%;
+    }
+    .sl-spacer {
+      display: none; /* the wrap does the separating now */
+    }
+  }
+
+  @media (max-width: 400px) {
+    .nav-link .slash {
+      display: none;
     }
   }
 </style>

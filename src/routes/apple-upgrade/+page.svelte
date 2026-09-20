@@ -241,7 +241,7 @@
   // ---- Step gating --------------------------------------------------------
   const tradeInAnswered = $derived(hasTradeIn !== null);
   const step = $derived(
-    !deviceKey ? 1 : !tradeInAnswered ? 2 : upgradeEvery === null ? 3 : appleCare === null ? 4 : 5
+    !deviceKey ? 1 : upgradeEvery === null ? 2 : !tradeInAnswered ? 3 : appleCare === null ? 4 : 5
   );
 
   // -1 until the first effect run, so restoring a finished form doesn't fling
@@ -410,8 +410,20 @@
   <div id="step-2"></div>
   <Step
     n={2}
-    title="Do you have something to trade in?"
+    title="How often do you want a new phone?"
     locked={step < 2}
+    answer={upgradeEvery
+      ? `Every ${upgradeEvery / 12} ${upgradeEvery === 12 ? 'year' : 'years'}`
+      : undefined}
+  >
+    <Tiles options={upgradeOptions} bind:value={upgradeEvery} name="upgrade-every" min="180px" />
+  </Step>
+
+  <div id="step-3"></div>
+  <Step
+    n={3}
+    title="Do you have something to trade in?"
+    locked={step < 3}
     answer={hasTradeIn === 'yes' ? money0(tradeIn) : hasTradeIn === 'no' ? 'none' : undefined}
   >
     <Tiles
@@ -439,23 +451,12 @@
         />
       </div>
     {/if}
-  </Step>
-
-  <div id="step-3"></div>
-  <Step
-    n={3}
-    title="How often do you want a new phone?"
-    locked={step < 3}
-    answer={upgradeEvery
-      ? `Every ${upgradeEvery / 12} ${upgradeEvery === 12 ? 'year' : 'years'}`
-      : undefined}
-  >
-    <Tiles options={upgradeOptions} bind:value={upgradeEvery} name="upgrade-every" min="180px" />
     {#if upgradeEvery && hasTradeIn === 'yes'}
       <div class="aside">
         <h3>Your carrier trade-in at month {upgradeEvery}</h3>
         <div
           class="offer-bar"
+          class:forfeited={carrierDeal.forfeited > 0}
           role="img"
           aria-label={`${money0(carrierDeal.earned)} received; ${money0(carrierDeal.forfeited)} forfeited`}
         >
@@ -728,6 +729,14 @@
     display: block;
     height: 100%;
     background: var(--accent);
+  }
+  .offer-bar.forfeited {
+    --lost-credit: light-dark(#665d16, #d8c86b);
+    background: repeating-linear-gradient(
+      135deg,
+      var(--lost-credit) 0 4px,
+      color-mix(in oklch, var(--lost-credit) 65%, var(--surface)) 4px 6px
+    );
   }
   .aside p {
     color: var(--muted);

@@ -51,8 +51,8 @@ describe('Apple Upgrade page', () => {
   /** The questions asked before the ledger starts. */
   async function walkThrough(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByText('iPhone 17 Pro Max'));
-    await user.click(screen.getByText('No trade-in'));
     await user.click(screen.getByText('Every 2 years'));
+    await user.click(screen.getByText('No trade-in'));
     await user.click(screen.getByText('No AppleCare'));
   }
 
@@ -234,8 +234,10 @@ describe('Apple Upgrade page', () => {
     const user = userEvent.setup();
     const { unmount, container } = render(Page);
     await user.click(screen.getByText('iPhone 17 Pro Max'));
+    await user.click(screen.getByText('Every 2 years'));
     await user.click(screen.getByText('Yes, I have one'));
-    expect(screen.getByLabelText(/Apple Trade-in offer/)).toBeTruthy();
+    const tradeInSection = screen.getByLabelText(/Apple Trade-in offer/).closest('section')!;
+    expect(within(tradeInSection).getByText('Your carrier trade-in at month 24')).toBeTruthy();
     expect(screen.getByText('Every year')).toBeTruthy();
     const offer = screen.getByLabelText(/Carrier Trade-in offer/);
     await user.clear(offer);
@@ -277,14 +279,14 @@ describe('Apple Upgrade page', () => {
     render(Page);
 
     await user.click(screen.getByText('iPhone 17 Pro Max'));
-    expect(screen.getByText('No trade-in')).toBeTruthy();
-    expect(screen.queryByText('Every year')).toBeNull();
-
-    await user.click(screen.getByText('No trade-in'));
     expect(screen.getByText('Every year')).toBeTruthy();
-    expect(screen.queryByText('No AppleCare')).toBeNull();
+    expect(screen.queryByText('No trade-in')).toBeNull();
 
     await user.click(screen.getByText('Every 2 years'));
+    expect(screen.getByText('No trade-in')).toBeTruthy();
+    expect(screen.queryByText('No AppleCare')).toBeNull();
+
+    await user.click(screen.getByText('No trade-in'));
     expect(screen.getByText('No AppleCare')).toBeTruthy();
   });
 
@@ -293,7 +295,6 @@ describe('Apple Upgrade page', () => {
     render(Page);
 
     await user.click(screen.getByText('iPhone 17 Pro Max'));
-    await user.click(screen.getByText('No trade-in'));
 
     expect(screen.getByText('Compare a 12-month lease')).toBeTruthy();
     expect(screen.getAllByText('Compare a 24-month lease')).toHaveLength(2);
@@ -480,6 +481,7 @@ describe('Apple Upgrade page', () => {
     const price = screen.getByLabelText(/Sticker price/i) as HTMLInputElement;
     await user.clear(price);
     await user.type(price, '999');
+    await user.click(screen.getByText('Every 2 years'));
     await user.click(screen.getByText('Yes, I have one'));
     const trade = screen.getByLabelText(/Apple Trade-in offer/i) as HTMLInputElement;
     await user.clear(trade);

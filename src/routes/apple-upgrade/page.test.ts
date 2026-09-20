@@ -296,22 +296,18 @@ describe('Apple Upgrade page', () => {
     expect(month).toMatch(/Device installment/);
   });
 
-  it('shows upfront tax in both cash and carrier columns', async () => {
+  it('includes upfront tax in a compact note under each month zero total', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
-    const row = [...container.querySelectorAll('[data-month="0"] .charges li')].find(
-      (li) => li.querySelector('.what')?.textContent === 'Sales tax, up front'
-    )!;
-    expect(
-      [...row.querySelectorAll('.cell')].map((cell) => cell.classList.contains('zero'))
-    ).toEqual([false, false, true, false]);
-    expect(
-      [...row.querySelectorAll('.cell:not(.zero) .amt')].map((amount) => amount.textContent)
-    ).toEqual(['$101.92', '$101.92', '$101.92']);
-    expect(row.querySelector('[data-cat="tax"]')).toBeTruthy();
-    expect(row.querySelector('.biller')?.textContent).toBe('apple / carrier');
-    // Splitting tax out of the phone band must not lower the cash reference line.
+    const month = container.querySelector('[data-month="0"]')!;
+    expect(month.querySelector('[data-cat="tax"]')).toBeNull();
+    expect([...month.querySelectorAll('.tax-total')].map((cell) => cell.textContent)).toEqual([
+      'incl. $106.93 tax',
+      'incl. $106.93 tax',
+      'incl. $5.02 tax',
+      'incl. $106.93 tax'
+    ]);
     expect(container.querySelector('.caption')?.textContent).toContain('$1,262');
   });
 
@@ -348,25 +344,19 @@ describe('Apple Upgrade page', () => {
     }
   });
 
-  it('puts small tax bars directly after each taxed monthly charge', async () => {
+  it('combines monthly lease and AppleCare tax under the totals', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
     await user.click(screen.getByText('AppleCare+ monthly'));
-    const rows = [...container.querySelectorAll('[data-month="1"] .charges li')];
-    for (const label of ['Lease payment', 'AppleCare+']) {
-      const index = rows.findIndex((row) => row.querySelector('.what')?.textContent === label);
-      const tax = rows[index + 1];
-      expect(tax.querySelector('.what')?.textContent).toBe(`Tax on ${label}`);
-      expect(tax.querySelector('[data-cat="tax"]')).toBeTruthy();
-      const bars = [...rows[index].querySelectorAll('.bar')];
-      [...tax.querySelectorAll('.bar')].forEach((bar, column) => {
-        const height = Number((bar as HTMLElement).style.height.replace('px', ''));
-        const base = Number((bars[column] as HTMLElement).style.height.replace('px', ''));
-        expect(height).toBeLessThanOrEqual(base);
-        expect(height > 0).toBe(base > 0);
-      });
-    }
+    const month = container.querySelector('[data-month="1"]')!;
+    expect(month.querySelector('[data-cat="tax"]')).toBeNull();
+    expect([...month.querySelectorAll('.tax-total')].map((cell) => cell.textContent)).toEqual([
+      'incl. $1.15 tax',
+      'incl. $1.15 tax',
+      'incl. $4.12 tax',
+      'incl. $1.15 tax'
+    ]);
   });
 
   it('sizes the bars against the biggest charge of that month', async () => {

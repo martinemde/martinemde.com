@@ -69,7 +69,6 @@
     label: string;
     billers: Biller[];
     category: Category;
-    taxFor?: string;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
     /** Money coming back rather than going out: drawn below the line, outlined. */
@@ -80,11 +79,11 @@
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
+        if (item.category === 'tax') continue;
         const charge = (byLabel[item.label] ??= {
           label: item.label,
           billers: [],
           category: item.category,
-          taxFor: item.taxFor,
           credit: item.amount < 0,
           amounts: scenarios.map(() => 0)
         });
@@ -112,10 +111,7 @@
       }
     }
 
-    // Keep each little tax bar with its charge, even when larger bills sort first.
-    return charges
-      .filter((charge) => !charge.taxFor || !byLabel[charge.taxFor])
-      .flatMap((charge) => [charge, ...charges.filter((tax) => tax.taxFor === charge.label)]);
+    return charges;
   }
 
   /**
@@ -136,7 +132,11 @@
       const row = s.rows[month];
       const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
-      return { key: s.key, name: s.shortName, net };
+      const tax = row.items.reduce(
+        (sum, item) => sum + (item.category === 'tax' ? item.amount : 0),
+        0
+      );
+      return { key: s.key, name: s.shortName, net, tax };
     });
   }
 
@@ -283,7 +283,7 @@
       {#if charges.length}
         <ul class="charges">
           {#each charges as charge (charge.label)}
-            <li class:tax-charge={charge.category === 'tax'}>
+            <li>
               <span class="head">
                 <span class="what">{charge.label}</span>
                 <span class="biller">{charge.billers.join(' / ')}</span>
@@ -316,6 +316,9 @@
           {#each cells as cell (cell.key)}
             <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
               {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
+              {#if cell.tax > 0.005}
+                <small class="tax-total">incl. {money(cell.tax)} tax</small>
+              {/if}
             </span>
           {/each}
         </div>
@@ -470,14 +473,6 @@
    * everybody is billed for it; one means only that column is. Height is the
    * amount, against the biggest single charge of the month.
    */
-  .tax-charge .what {
-    color: var(--muted);
-    font-size: 11px;
-  }
-  .tax-charge {
-    margin-top: -4px;
-  }
-
   .bars,
   .totals {
     display: grid;
@@ -536,6 +531,13 @@
     text-align: center;
     color: var(--text);
     font-variant-numeric: tabular-nums;
+  }
+  .tax-total {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--muted);
   }
   .sum.zero {
     color: var(--faint);
@@ -653,7 +655,6 @@
     --cat-rent: light-dark(#882e9b, #a264b0);
     --cat-care: light-dark(#2b9667, #4f9f77);
     --cat-fees: light-dark(#9a3c00, #e86518);
-    --cat-tax: light-dark(#53616d, #b3c4d2);
     --cat-repair: light-dark(#665d16, #d8c86b);
   }
   [data-cat='phone'] {
@@ -671,9 +672,6 @@
       var(--cat-repair) 0 4px,
       color-mix(in oklch, var(--cat-repair) 65%, var(--surface)) 4px 6px
     );
-  }
-  [data-cat='tax'] {
-    --fill: var(--cat-tax);
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);

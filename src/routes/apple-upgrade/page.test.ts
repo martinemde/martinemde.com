@@ -100,6 +100,24 @@ describe('Apple Upgrade page', () => {
     expect(screen.queryByText('The lease is up. Now what?')).toBeNull();
   });
 
+  it('celebrates paid-off months with a different suggestion each month', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await finish(user);
+    const suggestions = Array.from({ length: 12 }, (_, index) => {
+      const month = container.querySelector(`[data-month="${37 + index}"]`)!;
+      const text = month.querySelector('.nothing')?.textContent?.trim();
+      expect(text).toContain('Your phone is paid off.');
+      expect(month.querySelector('.charges')).toBeNull();
+      return text;
+    });
+    expect(new Set(suggestions).size).toBe(12);
+    expect(container.querySelector('[data-month="1"]')?.textContent).not.toContain(
+      'Your phone is paid off.'
+    );
+  });
+
   it('keeping the phone stops replacements on every path and exposes both automatic buyouts', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);

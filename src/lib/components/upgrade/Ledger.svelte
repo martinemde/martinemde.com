@@ -1,6 +1,12 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
+  import {
+    ADJUSTMENTS_LABEL,
+    PAID_OFF_IDEAS,
+    ledgerAmounts,
+    ledgerTotals
+  } from '$lib/apple-upgrade/presentation';
   import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
 
   interface Props {
@@ -53,10 +59,11 @@
    */
   const ceiling = $derived(
     Math.max(
-      ...scenarios.map((s) => {
-        const last = s.rows[s.rows.length - 1];
-        return basis === 'npv' ? last.runningNpv : last.runningCash;
-      }),
+      ...scenarios.flatMap((s) =>
+        ledgerTotals(s.rows, basis).map((totals) =>
+          Object.values(totals).reduce((sum, value) => sum + Math.max(0, value), 0)
+        )
+      ),
       1
     ) * 1.06
   );
@@ -81,40 +88,33 @@
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
-        const grouped = item.category === 'tax' || item.category === 'fees';
-        const label = grouped
-          ? 'Taxes, fees, rewards & discounts'
-          : [
-                'Installment',
-                'Device installment',
-                'Lease payment',
-                'New lease payment',
-                'Month-to-month payment'
-              ].includes(item.label)
-            ? 'Monthly payment'
-            : item.label;
+        if (item.category === 'tax' || item.category === 'fees') continue;
+        const label = [
+          'Installment',
+          'Device installment',
+          'Lease payment',
+          'New lease payment',
+          'Month-to-month payment'
+        ].includes(item.label)
+          ? 'Monthly payment'
+          : item.label;
         const charge = (byLabel[label] ??= {
           label,
-          category: grouped ? 'fees' : item.category,
-          credit: !grouped && item.amount < 0,
+          category: item.category,
+          credit: item.amount < 0,
           categories: scenarios.map(() => item.category),
           amounts: scenarios.map(() => 0)
         });
-        charge.amounts[column] += grouped ? item.amount : Math.abs(item.amount);
-        charge.categories[column] = grouped ? 'fees' : item.category;
+        charge.amounts[column] += Math.abs(item.amount);
+        charge.categories[column] = item.category;
       }
-      const adjustments = (byLabel['Taxes, fees, rewards & discounts'] ??= {
-        label: 'Taxes, fees, rewards & discounts',
+      const adjustments = (byLabel[ADJUSTMENTS_LABEL] ??= {
+        label: ADJUSTMENTS_LABEL,
         category: 'fees',
         categories: scenarios.map(() => 'fees'),
         amounts: scenarios.map(() => 0)
       });
-      const row = s.rows[month];
-      adjustments.amounts[column] -= row.rewards;
-      if (basis === 'npv') {
-        adjustments.amounts[column] +=
-          row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) - row.net;
-      }
+      adjustments.amounts[column] = ledgerAmounts(s.rows[month], s.rows[month - 1], basis).fees;
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
     const charges = Object.values(byLabel)
@@ -179,6 +179,10 @@
     }
     return undefined;
   }
+
+  const paidOffMonths = $derived(
+    months.filter((month) => chargesFor(month).length === 0 && !idleLine(month))
+  );
 
   const readLine = $derived(headerPx + (panelPx || chartPx + 96) + 20);
 
@@ -355,7 +359,11 @@
           {/each}
         </div>
       {:else if !idle}
-        <p class="nothing">Nothing due anywhere. The phone just gets a year older.</p>
+        <p class="nothing">
+          Your phone is paid off. {PAID_OFF_IDEAS[
+            paidOffMonths.indexOf(month) % PAID_OFF_IDEAS.length
+          ]}
+        </p>
       {/if}
 
       {#if idle}
@@ -414,9 +422,6 @@
   }
   .month.beat {
     padding-top: 10px;
-  }
-  .month.quiet:not(.beat) {
-    opacity: 0.6;
   }
   /* Highlight the current card without changing its size. */
   .month.on {
@@ -597,7 +602,7 @@
     font-size: 13px;
     font-style: italic;
     line-height: 1.55;
-    color: var(--faint);
+    color: var(--muted);
     text-wrap: pretty;
   }
 
@@ -628,7 +633,7 @@
     font-size: 13px;
     font-style: italic;
     line-height: 1.55;
-    color: var(--faint);
+    color: var(--muted);
     text-wrap: pretty;
   }
 

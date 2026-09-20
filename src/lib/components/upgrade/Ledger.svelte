@@ -87,39 +87,51 @@
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
-        const label =
-          item.category === 'tax'
-            ? 'Sales tax'
-            : [
-                  'Installment',
-                  'Device installment',
-                  'Lease payment',
-                  'New lease payment',
-                  'Month-to-month payment'
-                ].includes(item.label)
-              ? 'Monthly payment'
-              : item.label;
+        const grouped = item.category === 'tax' || item.category === 'fees';
+        const label = grouped
+          ? 'Taxes, fees, rewards & discounts'
+          : [
+                'Installment',
+                'Device installment',
+                'Lease payment',
+                'New lease payment',
+                'Month-to-month payment'
+              ].includes(item.label)
+            ? 'Monthly payment'
+            : item.label;
         const charge = (byLabel[label] ??= {
           label,
-          category: item.category,
-          credit: item.amount < 0,
+          category: grouped ? 'fees' : item.category,
+          credit: !grouped && item.amount < 0,
           categories: scenarios.map(() => item.category),
           amounts: scenarios.map(() => 0)
         });
-        charge.amounts[column] += Math.abs(item.amount);
-        charge.categories[column] = item.category;
+        charge.amounts[column] += grouped ? item.amount : Math.abs(item.amount);
+        charge.categories[column] = grouped ? 'fees' : item.category;
+      }
+      const adjustments = (byLabel['Taxes, fees, rewards & discounts'] ??= {
+        label: 'Taxes, fees, rewards & discounts',
+        category: 'fees',
+        categories: scenarios.map(() => 'fees'),
+        amounts: scenarios.map(() => 0)
+      });
+      const row = s.rows[month];
+      adjustments.amounts[column] -= row.rewards;
+      if (basis === 'npv') {
+        adjustments.amounts[column] +=
+          row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) - row.net;
       }
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
-    const charges = Object.values(byLabel).sort(
-      (a, b) => Math.max(...b.amounts) - Math.max(...a.amounts)
-    );
+    const charges = Object.values(byLabel)
+      .filter((charge) => charge.amounts.some((amount) => Math.abs(amount) > 0.005))
+      .sort((a, b) => Math.max(...b.amounts.map(Math.abs)) - Math.max(...a.amounts.map(Math.abs)));
 
     // Store credit for trade-in value a path had no room for. It arrives at
     // pickup and it is money in, so it hangs below the line in outline.
     if (month === 0) {
       const back = scenarios.map((s) => s.summary.tradeInRefund);
-      if (back.some((amount) => amount > 0.005)) {
+      if (back.some((amount) => Math.abs(amount) > 0.005)) {
         charges.push({
           label: 'Apple credit back for excess trade-in',
           category: 'phone',
@@ -151,8 +163,7 @@
       const row = s.rows[month];
       const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
-      const discount = row.net - out;
-      return { key: s.key, name: s.shortName, net, rewards: row.rewards, discount };
+      return { key: s.key, name: s.shortName, net };
     });
   }
 
@@ -277,7 +288,7 @@
     {@const charges = chargesFor(month)}
     {@const cells = cellsFor(month)}
     {@const idle = idleLine(month)}
-    {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts))}
+    {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts.map(Math.abs)))}
     <section
       bind:this={blockEls[month]}
       data-month={month}
@@ -312,20 +323,29 @@
                 class="bars"
                 class:credit={charge.credit}
                 data-cat={charge.category}
-                style="--track-height: {barPx(Math.max(...charge.amounts), peak)}px"
+                style="--track-height: {barPx(Math.max(...charge.amounts.map(Math.abs)), peak)}px"
               >
                 {#each charge.amounts as amount, i (cells[i].key)}
-                  <span class="cell" class:zero={amount <= 0.005} data-cat={charge.categories[i]}>
+                  <span
+                    class="cell"
+                    class:zero={Math.abs(amount) <= 0.005}
+                    class:credit={charge.credit || amount < 0}
+                    data-cat={charge.categories[i]}
+                  >
                     <span class="track">
                       <i
                         class="bar"
-                        style="height: {barPx(amount, peak)}px"
-                        title={amount > 0.005
+                        style="height: {barPx(Math.abs(amount), peak)}px"
+                        title={Math.abs(amount) > 0.005
                           ? `${cells[i].name}: ${money(amount)}`
                           : `${cells[i].name}: nothing`}
                       ></i>
                     </span>
-                    <span class="amt">{amount > 0.005 ? money(amount) : ''}</span>
+                    <span class="amt"
+                      >{Math.abs(amount) > 0.005
+                        ? `${charge.credit || amount < 0 ? '−' : ''}${money(Math.abs(amount))}`
+                        : ''}</span
+                    >
                   </span>
                 {/each}
               </div>
@@ -337,16 +357,6 @@
           {#each cells as cell (cell.key)}
             <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
               {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
-              {#if Math.abs(cell.rewards) > 0.005}
-                <small class="adjustment rewards-total">
-                  {cell.rewards > 0 ? '−' : '+'}{money(Math.abs(cell.rewards))} rewards
-                </small>
-              {/if}
-              {#if Math.abs(cell.discount) > 0.005}
-                <small class="adjustment discount-total">
-                  {cell.discount > 0 ? '−' : '+'}{money(Math.abs(cell.discount))} time discount
-                </small>
-              {/if}
             </span>
           {/each}
         </div>
@@ -550,13 +560,6 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  .adjustment {
-    display: block;
-    margin-top: 3px;
-    font-size: 9px;
-    font-weight: 400;
-    color: var(--faint);
-  }
   .sum.zero {
     color: var(--faint);
     font-weight: 400;
@@ -607,12 +610,12 @@
    * of the track and the bar hangs below it, outlined rather than filled,
    * because this is money coming back.
    */
-  .bars.credit .track {
+  .cell.credit .track {
     align-items: flex-start;
     border-top: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
     border-bottom: 0;
   }
-  .bars.credit .bar {
+  .cell.credit .bar {
     border: 1.5px solid var(--fill);
     border-top: 0;
     border-radius: 0 0 3px 3px;
@@ -694,9 +697,6 @@
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);
-  }
-  [data-cat='tax'] {
-    --fill: var(--cat-tax);
   }
 
   @media (max-width: 560px) {

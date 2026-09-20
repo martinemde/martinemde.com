@@ -635,7 +635,9 @@
   <p id="{id}-description">
     Estimated repair: {money(repairPrice)} including tax,
     {appleCare === 'none' ? 'without AppleCare' : 'with AppleCare'}. Leave it cracked, and pay for
-    the repair if you return or upgrade the leased phone.
+    the repair if you return the leased phone. Trade in an unrepaired phone instead, and its
+    estimated credit drops by {money(Math.max(0, screenRepairCost))}, down to $0. This uses the full
+    glass repair estimate, including for carrier offers, rather than the AppleCare service fee.
   </p>
   <div class="screen-actions">
     <button

@@ -1044,3 +1044,91 @@ describe('shared yearly upgrade decisions', () => {
     }
   });
 });
+
+describe('unrepaired glass reduces trade-in value', () => {
+  const damaged = (overrides: Partial<Inputs> = {}) =>
+    inputs({
+      listPrice: 1200,
+      resaleAtHorizon: 288,
+      upgradeMonths: [12, 24, 36],
+      screenChoice: 'defer',
+      screenRepairCost: 250,
+      ...overrides
+    });
+
+  it('deducts the full damage estimate once from cash and Apple Card trade-ins', () => {
+    for (const path of [outright, appleCardFinancing]) {
+      const broken = path(damaged());
+      const intact = path(damaged({ screenChoice: 'dismiss' }));
+      const month = path === outright ? 12 : 13;
+      expect(broken.rows[month].outflow - intact.rows[month].outflow).toBeCloseTo(
+        path === outright ? 250 : 250 / 24
+      );
+      expect(
+        broken.summary.cash +
+          broken.summary.remainingBalance -
+          intact.summary.cash -
+          intact.summary.remainingBalance
+      ).toBeCloseTo(250);
+      expect(broken.rows[0].outflow).toBe(intact.rows[0].outflow);
+      expect(broken.rows[37].outflow).toBeCloseTo(intact.rows[37].outflow);
+    }
+  });
+
+  it.each([null, 1000])(
+    'reduces the carrier trade-in, including a promotional offer of %s',
+    (carrierOffer) => {
+      const broken = carrierFinancing(damaged({ carrierOffer }));
+      const intact = carrierFinancing(damaged({ screenChoice: 'dismiss', carrierOffer }));
+      if (carrierOffer === null) {
+        expect(broken.rows[13].outflow - intact.rows[13].outflow).toBeCloseTo(250 / 36);
+      } else {
+        expect(
+          broken.rows[13].items.find((item) => item.label === 'Carrier trade-in credit')?.amount
+        ).toBeCloseTo(-750 / 36);
+        expect(
+          broken.rows[25].items.find((item) => item.label === 'Carrier trade-in credit')?.amount
+        ).toBeCloseTo(-1000 / 36);
+      }
+    }
+  );
+
+  it('reduces lease trade-ins after early or automatic buyout, without adding a repair bill', () => {
+    for (const [term, upgradeMonths] of [
+      [24, [12]],
+      [12, [24]]
+    ] as const) {
+      const input = damaged({ term, upgradeMonths: [...upgradeMonths] });
+      const broken = appleUpgrade(input);
+      const intact = appleUpgrade({ ...input, screenChoice: 'dismiss' });
+      expect(broken.summary.cash - intact.summary.cash).toBeCloseTo(250);
+      expect(broken.rows.some((row) => row.items.some((item) => item.category === 'repair'))).toBe(
+        false
+      );
+    }
+  });
+
+  it('charges the repair on an eligible lease return without also reducing a trade-in', () => {
+    const broken = appleUpgrade(damaged({ term: 12 }));
+    const intact = appleUpgrade(damaged({ term: 12, screenChoice: 'dismiss' }));
+    expect(broken.summary.cash - intact.summary.cash).toBeCloseTo(250);
+    expect(broken.rows[13].outflow).toBe(intact.rows[13].outflow);
+  });
+
+  it('uses full damage value even with coverage, and does not penalize a repaired phone', () => {
+    const base = damaged({ appleCare: 'monthly', appleCareRepairCost: 29 });
+    const broken = outright(base);
+    const fixed = outright({ ...base, screenChoice: 'repair' });
+    const intact = outright({ ...base, screenChoice: 'dismiss' });
+    expect(broken.rows[12].outflow - intact.rows[12].outflow).toBeCloseTo(250);
+    expect(fixed.rows[12].outflow).toBe(intact.rows[12].outflow);
+  });
+
+  it('floors ordinary and promotional trade-ins at zero', () => {
+    const base = damaged({ screenRepairCost: 2000, carrierOffer: 1000 });
+    expect(outright(base).rows[12].outflow).toBeCloseTo(1200);
+    expect(
+      carrierFinancing(base).rows[13].items.some((item) => item.label === 'Carrier trade-in credit')
+    ).toBe(false);
+  });
+});

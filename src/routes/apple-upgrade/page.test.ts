@@ -247,12 +247,18 @@ describe('Apple Upgrade page', () => {
     ).toContain('$250.00');
     await chooseYear(user, 1);
     await chooseYear(user, 2, true);
+    const replacement = () =>
+      within(container.querySelector('[data-month="24"]') as HTMLElement)
+        .getByText('New phone after trade-in')
+        .closest('li')!;
+    expect(replacement().querySelector('.amt')?.textContent).toBe('$909.00');
     expect(
       container.querySelectorAll('[data-month="24"] .bars[data-cat="repair"] .cell:not(.zero)')
     ).toHaveLength(1);
     const choices = within(screen.getByRole('region', { name: 'Oh no! You cracked your screen!' }));
     await user.click(choices.getByRole('button', { name: 'No I didn’t' }));
     expect(container.querySelector('.bars[data-cat="repair"]')).toBeNull();
+    expect(replacement().querySelector('.amt')?.textContent).toBe('$659.00');
   });
 
   it('reconciles all five visible columns in both dollar modes across mixed decisions', async () => {

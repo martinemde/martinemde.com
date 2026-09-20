@@ -772,7 +772,11 @@ function scheduledLease(input: Inputs): Scenario {
     const returningPrevious =
       index > 0 && previousAge >= term && previousAge < term + EXTENSION_MONTHS;
     const tradeIn =
-      index === 0 ? input.tradeIn : returningPrevious ? 0 : replacementValue(input, previousAge);
+      index === 0
+        ? input.tradeIn
+        : returningPrevious
+          ? 0
+          : replacementValue(input, previousAge, index === 1);
     const end = starts[index + 1] ?? HORIZON + 1;
     const returns = end <= HORIZON && end - start >= term && end - start < term + EXTENSION_MONTHS;
     return { start, end, returns, ...leaseTerms(listPrice, term, tradeIn) };
@@ -870,8 +874,18 @@ function purchaseMonths(input: Inputs): number[] {
   return Array.from({ length: Math.ceil(HORIZON / interval) }, (_, i) => i * interval);
 }
 
-function replacementValue(input: Inputs, age = input.upgradeEvery ?? HORIZON): number {
-  return Math.max(0, Math.min(input.listPrice, input.upgradeTradeIn ?? resaleAtAge(input, age)));
+/** Damage is a value deduction, not a repair purchase or an AppleCare service fee. */
+function tradeInDamage(input: Inputs, originalPhone: boolean): number {
+  return originalPhone && input.screenChoice === 'defer' ? Math.max(0, input.screenRepairCost) : 0;
+}
+
+function replacementValue(
+  input: Inputs,
+  age = input.upgradeEvery ?? HORIZON,
+  originalPhone = false
+): number {
+  const value = Math.min(input.listPrice, input.upgradeTradeIn ?? resaleAtAge(input, age));
+  return Math.max(0, value - tradeInDamage(input, originalPhone));
 }
 
 function purchaseExtras(input: Inputs): LineItem[] {
@@ -917,7 +931,11 @@ export function outright(input: Inputs): Scenario {
         input,
         month === 0
           ? input.tradeIn
-          : replacementValue(input, month - purchases[purchases.indexOf(month) - 1])
+          : replacementValue(
+              input,
+              month - purchases[purchases.indexOf(month) - 1],
+              purchases.indexOf(month) === 1
+            )
       );
       out.push({
         label: month === 0 ? 'Device' : 'New phone after trade-in',
@@ -965,7 +983,7 @@ export function appleCardFinancing(input: Inputs): Scenario {
     month,
     ...purchaseTerms(
       input,
-      month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1])
+      month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1], index === 1)
     )
   }));
   const items = (month: number): LineItem[] => {
@@ -1015,10 +1033,11 @@ export function appleCardFinancing(input: Inputs): Scenario {
 export function carrierTradeInDeal(
   input: Inputs,
   tradeIn = input.tradeIn,
-  duration = input.upgradeEvery ?? input.carrierTerm
+  duration = input.upgradeEvery ?? input.carrierTerm,
+  damage = 0
 ) {
   const financed = Math.max(0, input.listPrice - (input.carrierOffer === null ? tradeIn : 0));
-  const offered = Math.max(0, Math.min(financed, input.carrierOffer ?? 0));
+  const offered = Math.max(0, Math.min(financed, input.carrierOffer ?? 0) - damage);
   const months = Math.min(duration, input.carrierTerm);
   const credit = offered / input.carrierTerm;
   return {
@@ -1043,8 +1062,9 @@ export function carrierFinancing(input: Inputs): Scenario {
     month,
     ...carrierTradeInDeal(
       input,
-      month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1]),
-      (months[index + 1] ?? HORIZON + n) - month
+      month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1], index === 1),
+      (months[index + 1] ?? HORIZON + n) - month,
+      tradeInDamage(input, index === 1)
     )
   }));
   const items = (month: number): LineItem[] => {

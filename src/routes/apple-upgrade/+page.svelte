@@ -2,17 +2,18 @@
   import Step from '$lib/components/upgrade/Step.svelte';
   import Tiles from '$lib/components/upgrade/Tiles.svelte';
   import Field from '$lib/components/upgrade/Field.svelte';
-  import Timeline from '$lib/components/upgrade/Timeline.svelte';
+  import Ledger from '$lib/components/upgrade/Ledger.svelte';
   import Compare from '$lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
     appleUpgrade,
+    beats,
     buyoutAfter,
     EXTENSION_MONTHS,
+    HORIZON,
     leasePayment,
     money,
     money0,
-    outright,
     type AppleCarePlan,
     type EndChoice,
     type Inputs,
@@ -114,7 +115,7 @@
   let discountRate = $state(initial.discountRate);
   let carrierCredits = $state(initial.carrierCredits);
   let resaleAtTerm = $state(Math.round(initial.listPrice * 0.45));
-  let resaleAt36 = $state(Math.round(initial.listPrice * 0.33));
+  let resaleAtHorizon = $state(Math.round(initial.listPrice * 0.24));
 
   // Resale estimates follow the device and the term. Change either and these
   // re-derive; they're guesses either way, so tune them after you pick.
@@ -122,7 +123,7 @@
     const price = listPrice;
     const months = term ?? 24;
     resaleAtTerm = Math.round(price * (months === 12 ? 0.62 : 0.45));
-    resaleAt36 = Math.round(price * 0.33);
+    resaleAtHorizon = Math.round(price * 0.24);
   });
 
   $effect(() => {
@@ -208,14 +209,13 @@
     carrierCardBack,
     discountRate,
     resaleAtTerm,
-    resaleAt36,
+    resaleAtHorizon,
     carrierCredits,
     carrierTerm: 36
   });
 
-  const chosen = $derived(appleUpgrade(inputs));
-  const baseline = $derived(outright(inputs));
   const scenarios = $derived(allScenarios(inputs));
+  const story = $derived(beats(inputs));
 
   const gross = $derived(leasePayment(listPrice, term ?? 24));
   const credit = $derived(hasTradeIn === 'yes' ? tradeIn / (term ?? 24) : 0);
@@ -306,7 +306,7 @@
   <title>Apple Upgrade, decoded - Martin Emde</title>
   <meta
     name="description"
-    content="A step-by-step calculator for Apple Upgrade, the Klarna-backed iPhone lease. Walk the decision month by month and compare it against paying cash, Apple Card financing, and carrier installments."
+    content="Four ways to buy the same iPhone, run side by side for forty-eight months. Answer the questions Apple's checkout asks, then scroll and watch the columns fill up: cash, Apple Card financing, the Klarna-backed Apple Upgrade lease, and carrier installments."
   />
 </svelte:head>
 
@@ -316,9 +316,15 @@
     <h1>Apple Upgrade, decoded</h1>
     <p class="lede">
       Apple Upgrade is Apple&rsquo;s new device lease, underwritten by Klarna. Twelve or twenty-four
-      months of low payments, then you hand the phone back &mdash; or don&rsquo;t. This page walks
-      the decision the way Apple&rsquo;s checkout would, one choice at a time, then prices what you
-      picked against the three other ways you could have paid.
+      months of low payments, then you hand the phone back &mdash; or don&rsquo;t. The question
+      everyone asks about it is <em>should I lease or should I buy</em>, and that is the one
+      question this page will not put to you.
+    </p>
+    <p class="lede">
+      Instead: answer the things Apple&rsquo;s checkout asks anyway &mdash; which phone, what
+      coverage, what you&rsquo;re trading in, what the case and the activation fee cost. Then
+      scroll. Four columns, one per way of paying, fill up a month at a time for four years. Every
+      charge is named, described, and dropped into whichever columns get handed it.
     </p>
 
     <div class="thesis">
@@ -334,8 +340,10 @@
         option to walk away at month 24 instead.
       </p>
       <p>
-        The catches are real. They are just not the ones people assume, and most of them are about
-        <strong>when</strong> the money moves rather than how much of it there is.
+        Which is why the columns are worth watching rather than totalling. They mostly end up the
+        same height. What differs is <strong>when</strong> each one grows, and
+        <strong>what the money was doing</strong> on the way &mdash; whether it bought you a phone or
+        bought you a month.
       </p>
     </div>
   </header>
@@ -343,8 +351,8 @@
   <div id="step-1"></div>
   <Step
     n={1}
-    title="What are you leasing?"
-    lede="Apple Upgrade covers every current iPhone except the 16. The payment is a fixed share of the sticker price, so this one number drives every number below it."
+    title="What are you buying?"
+    lede="Not how you're paying for it — that's the whole point. Just which phone. The payment on every path is a fixed function of this one number."
     answer={deviceKey ? money0(listPrice) : undefined}
   >
     <Tiles options={deviceOptions} bind:value={deviceKey} name="device" min="168px" />
@@ -377,7 +385,7 @@
   <Step
     n={2}
     title="Do you have something to trade in?"
-    lede="A trade-in does not cut the price. Klarna takes its value, slices it across the payments in your initial term, and stops."
+    lede="On the paths where you buy the phone, a trade-in is a credit against the order. On the lease it is not: Klarna takes its value, slices it across the payments in your initial term, and stops."
     locked={step < 2}
     answer={hasTradeIn === 'yes' ? money0(tradeIn) : hasTradeIn === 'no' ? 'none' : undefined}
   >
@@ -411,8 +419,8 @@
         many payments.
       </p>
       <p>
-        Then month 25 arrives, the credit is spent, and the payment snaps back to the full
-        {money(leasePayment(1199, 24))}. You will see that jump in the timeline below. You also
+        Then the term ends, the credit is spent, and the payment snaps back to the full
+        {money(leasePayment(1199, 24))}. There is a month down the page that says so. You also
         cannot trade in again when you upgrade &mdash; the credit is a one-time enrollment thing.
       </p>
     </div>
@@ -421,8 +429,8 @@
   <div id="step-3"></div>
   <Step
     n={3}
-    title="Twelve months or twenty-four?"
-    lede="The tiles show the payment, the total, and the number Apple leaves off the marketing page: what it costs to keep the phone when the term ends."
+    title="If you leased, twelve months or twenty-four?"
+    lede="This is not the buy-or-lease question — it is which lease goes in the third column. The tiles show the payment, the total, and the number Apple leaves off the marketing page: what it costs to keep the phone when the term ends."
     locked={step < 3}
     answer={term ? `${term} months` : undefined}
   >
@@ -450,7 +458,7 @@
   <Step
     n={4}
     title="AppleCare?"
-    lede="Not included in the lease, billed by Apple rather than Klarna, and doing a different job than usual: it is the thing standing between you and a damage fee on a phone you have to give back."
+    lede="The one line that lands in all four columns identically, because it does not care how you paid. On a lease it is doing a different job than usual: it stands between you and a damage fee on a phone you have to give back."
     locked={step < 4}
     answer={appleCare ? careLabel[appleCare] : undefined}
   >
@@ -513,7 +521,7 @@
   <Step
     n={5}
     title="The stuff nobody quotes you"
-    lede="Six numbers that move the answer more than the monthly payment does."
+    lede="These move the answer more than the monthly payment does, and most of them land on day one, in the columns you were not watching."
     locked={step < 5}
   >
     <div class="fields">
@@ -564,7 +572,7 @@
         step={25}
         hint="What you could sell it for."
       />
-      <Field label="Resale at month 36" bind:value={resaleAt36} step={25} />
+      <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
     </div>
 
     <div class="aside">
@@ -578,7 +586,7 @@
         {money0(1199 * 1.085 * 0.03)} across a full term on a $1,199 phone, the same 3% you would have
         earned buying it outright. This is the detail that decides the whole comparison. Card rewards
         were the one thing that could have made leasing structurally worse than financing, and they turn
-        out to be a wash across every path on this page. What is left is timing, and nothing else.
+        out to be a wash across every column below. What is left is timing, and nothing else.
       </p>
       <h3>Why the discount rate matters here</h3>
       <p>
@@ -586,35 +594,42 @@
         Money you keep for two years is money that earns something. The discount rate converts every
         future payment back into today&rsquo;s dollars so the comparison is honest about timing,
         which &mdash; on a program where the totals are engineered to land on the same number
-        &mdash; is the entire ballgame.
+        &mdash; is the entire ballgame. Tap the label in the corner of the panel below to switch the
+        columns between nominal dollars and today&rsquo;s.
       </p>
     </div>
   </Step>
 
   {#if step >= 5 && term}
-    <section class="timeline-section">
+    <section class="ledger-section">
       <div class="head">
-        <div class="eyebrow">// thirty-six months</div>
-        <h2>Every month, one row at a time</h2>
+        <div class="eyebrow">// forty-eight months, four columns</div>
+        <h2>Scroll, and watch them fill up</h2>
         <p class="lede">
-          Your first payment lands about thirty days after you walk out of the store, so month zero
-          costs you {money0(chosen.summary.today)}. The panel follows you down the page: what
-          you&rsquo;ve paid, what that is worth in today&rsquo;s dollars, and what it would cost to
-          own the phone outright at that exact moment.
+          Four ways to pay for the phone you picked. The panel latches to the top of the screen and
+          keeps a running total for each one; below it, every month lists what arrived and who got
+          billed, and each column&rsquo;s slice climbs into its bar. Nothing here is a projection of
+          your behavior &mdash; it is the same phone, the same four years, priced four ways.
+        </p>
+        <p class="lede">
+          The bands inside each bar are what the money was <em>for</em>. A column made mostly of
+          rent ends four years with nothing in your hand; a column made mostly of
+          <em>toward owning it</em> ends with a phone you can sell. That distinction is invisible in a
+          monthly payment and it is the only one that survives to the bottom of the page.
         </p>
       </div>
 
-      <Timeline scenario={chosen} {baseline} decisionAt={term} decision={decisionCard} />
+      <Ledger {scenarios} beats={story} questions={{ [term]: decisionCard }} />
     </section>
 
     {#snippet decisionCard()}
       <div class="decide">
         <div class="decide-head">
-          <span class="eyebrow">// month {term}</span>
+          <span class="eyebrow">// this one we do have to ask</span>
           <h3>The lease is up. Now what?</h3>
           <p>
-            Four doors, and Apple opens one of them for you if you ignore all four. Pick one and the
-            rest of the timeline above rewrites itself.
+            Four doors, and Apple opens one of them for you if you ignore all four. Pick one and
+            every month from here down &mdash; and the lease column above &mdash; rewrites itself.
           </p>
         </div>
 
@@ -626,32 +641,32 @@
               <strong>Hand it back.</strong> You have paid {money0(
                 gross * (term ?? 24) - (hasTradeIn === 'yes' ? tradeIn : 0)
               )} in cash plus whatever you traded in, you owe nothing more, and you were only ever taxed
-              on the {Math.round((term ?? 24) === 12 ? 50 : 70)}% you actually paid. You also have
-              no phone, which is why the comparison below tracks cost per month of phone rather than
-              cost flat.
+              on the {Math.round((term ?? 24) === 12 ? 50 : 70)}% you actually paid. The lease
+              column stops growing here, which looks like winning until you notice the other three
+              still have a phone in them.
             </p>
           {:else if endChoice === 'upgrade'}
             <p>
-              <strong>Upgrade.</strong> Return this one, sign a fresh lease on a new one. No
-              trade-in is allowed on an upgrade, so the new payment is the full undiscounted rate
-              &mdash;
+              <strong>Upgrade.</strong> Return this one, sign a fresh lease on a new one, and do it
+              again every {term} months. No trade-in is allowed on an upgrade, so the new payment is the
+              full undiscounted rate &mdash;
               {money(gross)} rather than the {money(netPayment)} you had been paying. Apple&rsquo;s own
               terms warn that &ldquo;your new monthly payments may be greater than your prior monthly
               payments,&rdquo; and this is why.
             </p>
             <p>
-              Watch what this does to the bottom of the comparison. Three years in you are twelve
-              months into a fresh lease, and a 24-month lease has only collected 35% of the sticker
-              by month twelve &mdash; so the buyout is still <em>above</em> what that phone would fetch
-              used. You will have paid more than any other path here and you own nothing. That is the
-              actual trade: a new phone every couple of years, forever, for payments that never stop.
+              Watch the lease column from here. It is the only one of the four with no ceiling: rent
+              accumulates for all {HORIZON} months and the band that buys equity never appears. Four years
+              in you will have paid more than any other column and own nothing. That is the actual trade
+              &mdash; a new phone every couple of years, forever, for payments that never stop.
             </p>
           {:else if endChoice === 'buyout'}
             <p>
-              <strong>Buy it.</strong> One payment of {money0(residual)} plus tax and it is yours. Your
-              all-in total lands at exactly the sticker price &mdash; you financed a phone at 0% for {term}
-              months and then settled up. If the phone is worth more than {money0(residual)} used, and
-              it very likely is, this beats handing it back.
+              <strong>Buy it.</strong> One payment of {money0(residual)} plus tax and it is yours. It
+              lands in the column as a single block of <em>toward owning it</em> sitting on top of
+              two years of rent, and your all-in total comes to exactly the sticker price &mdash;
+              you financed a phone at 0% for {term} months and then settled up. If the phone is worth
+              more than {money0(residual)} used, and it very likely is, this beats handing it back.
             </p>
           {:else}
             <p>
@@ -680,17 +695,16 @@
 
     <section class="compare-section">
       <div class="head">
-        <div class="eyebrow">// five ways to pay</div>
-        <h2>The same phone, five ways</h2>
+        <div class="eyebrow">// the same four columns, totalled</div>
+        <h2>What the scroll adds up to</h2>
         <p class="lede">
-          Every column uses the numbers you entered above, over the same 36 months, ending with the
-          same question: what did this cost, and what do you have to show for it? The lease columns
-          use the ending you picked.
+          Same numbers, same {HORIZON} months, collapsed into one screen. The lease column uses the ending
+          you picked above.
         </p>
         <p class="lede">
           Watch the <strong>total paid</strong> row in particular. Pay cash, Apple Card financing
-          and both leases will often land on the identical number, because Apple built them to.
-          Every row below it is a consequence of <em>when</em> that identical number gets paid.
+          and the lease will often land on the identical number, because Apple built them to. Every
+          row below it is a consequence of <em>when</em> that identical number gets paid.
         </p>
       </div>
 
@@ -700,23 +714,22 @@
         <div class="note-card">
           <h3>Pay cash</h3>
           <p>
-            The most expensive option in today&rsquo;s dollars and the cheapest in every other
-            sense. You hand over the full price plus tax on day one, collect your 3%, and never
-            think about it again. No credit check, no carrier requirement, no return inspection, no
-            Klarna.
+            One tall block on day one and then a flat line for four years. The most expensive option
+            in today&rsquo;s dollars and the cheapest in every other sense: no credit check, no
+            carrier requirement, no return inspection, no Klarna.
           </p>
         </div>
         <div class="note-card">
           <h3>Apple Card, 24 months at 0%</h3>
           <p>
-            Financing the tax-inclusive total over 24 months at zero interest, with the 3% Daily
-            Cash paid up front. This is the honest baseline: the same total as cash, spread over two
-            years, with no lease, no carrier requirement and no return inspection. The lease only
-            beats it on when the money moves.
+            The honest baseline. Financing the tax-inclusive total over 24 months at zero interest,
+            with the 3% Daily Cash paid up front: the same total as cash, spread over two years, no
+            lease, no carrier requirement, no inspection. Watch it stop growing at month 24 while
+            the lease is still going.
           </p>
         </div>
         <div class="note-card">
-          <h3>Apple Upgrade, 12 or 24 months</h3>
+          <h3>Apple Upgrade, {term} months</h3>
           <p>
             The lowest monthly payment and the lowest day-one cost, in exchange for a device you do
             not own, a carrier you must attach, and a decision waiting for you at the end. It earns
@@ -730,9 +743,9 @@
           <p>
             Usually the lowest sticker of all, because the promo credits are enormous. They are also
             the leash: the credits arrive monthly across three years and evaporate if you leave, and
-            you pay the entire sales tax bill on day one. Put a real promo in the credits field
-            above and this column will win outright &mdash; at the price of thirty-six months of
-            loyalty.
+            you pay the entire sales tax bill on day one &mdash; which is the orange block sitting
+            under this column at month zero. Put a real promo in the credits field above and this
+            column will finish shortest, at the price of thirty-six months of loyalty.
           </p>
         </div>
       </div>
@@ -782,7 +795,8 @@
           <h3>The damage fee is undisclosed</h3>
           <p>
             &ldquo;Good working condition&rdquo; is the standard and Apple has not published what
-            failing it costs. That is an open-ended liability on every lease without AppleCare.
+            failing it costs. That is an open-ended liability on every lease without AppleCare, and
+            it lands every single time you hand a device back.
           </p>
         </li>
         <li>
@@ -842,8 +856,15 @@
           as a reduction to the monthly payment on the lease, per the FAQ.
         </li>
         <li>
-          Present values discount monthly at your annual rate divided by twelve. Card rewards are
-          netted against the month they are earned.
+          Card rewards are netted against the charge that earned them, in the month it was earned,
+          which is why a column&rsquo;s coloured bands still add up to exactly what that column
+          cost. Present values discount monthly at your annual rate divided by twelve.
+        </li>
+        <li>
+          The four bands are ours, not Apple&rsquo;s. <em>Toward owning it</em> is any dollar that
+          ends with the phone in your name &mdash; the cash purchase, an installment, a buyout.
+          <em>Rent</em> is a lease payment. The split is the argument this page is making, so it is worth
+          disagreeing with if you think a lease payment buys you something.
         </li>
         <li>
           Resale values are guesses seeded from the list price, and are the softest number on the
@@ -852,7 +873,8 @@
         </li>
         <li>
           The upgrade path assumes a replacement device at the same price on the same lease terms,
-          with no trade-in, because Apple does not allow one.
+          with no trade-in, because Apple does not allow one &mdash; and it assumes you keep doing
+          that for the full {HORIZON} months.
         </li>
       </ul>
       <p class="disclaimer">
@@ -886,12 +908,18 @@
     letter-spacing: -0.03em;
   }
   .lede {
-    margin: 0;
+    margin: 0 0 14px;
     max-width: 62ch;
     font-size: 17px;
     line-height: 1.7;
     color: var(--muted);
     text-wrap: pretty;
+  }
+  .lede:last-child {
+    margin-bottom: 0;
+  }
+  .lede em {
+    font-style: italic;
   }
 
   .thesis {
@@ -914,6 +942,9 @@
   .thesis em {
     color: var(--accent);
     font-style: normal;
+  }
+  .thesis strong {
+    font-weight: 580;
   }
 
   /* Step internals */
@@ -978,11 +1009,11 @@
     letter-spacing: -0.025em;
   }
 
-  .timeline-section {
+  .ledger-section {
     border-top: 1px solid var(--border);
   }
 
-  /* End-of-term decision, rendered inline in the timeline */
+  /* End-of-term decision, rendered inline in the ledger */
   .decide {
     border: 1px solid var(--accent);
     border-radius: 14px;
@@ -1011,16 +1042,22 @@
     padding-top: 18px;
   }
   .decide-detail p {
-    margin: 0;
+    margin: 0 0 11px;
     max-width: 62ch;
     font-size: 14.5px;
     line-height: 1.7;
     color: var(--muted);
     text-wrap: pretty;
   }
+  .decide-detail p:last-child {
+    margin-bottom: 0;
+  }
   .decide-detail strong {
     color: var(--text);
     font-weight: 580;
+  }
+  .decide-detail em {
+    font-style: italic;
   }
   .decide-foot {
     margin: 18px 0 0;
@@ -1115,6 +1152,9 @@
   .assumptions li::marker {
     color: var(--faint);
   }
+  .assumptions em {
+    font-style: italic;
+  }
   .disclaimer {
     margin: 26px 0 0;
     max-width: 68ch;
@@ -1132,6 +1172,9 @@
     }
     h1 {
       font-size: 34px;
+    }
+    .lede {
+      font-size: 16px;
     }
     .head {
       padding-top: 52px;

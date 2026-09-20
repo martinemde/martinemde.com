@@ -735,11 +735,11 @@
   <div class="eyebrow">// month 09</div>
   <h2 id="{id}-title">Oh no! You cracked your screen!</h2>
   <p id="{id}-description">
-    Estimated repair: {money(repairPrice)} including tax,
-    {appleCare === 'none' ? 'without AppleCare' : 'with AppleCare'}. Leave it cracked, and pay for
-    the repair if you return the leased phone. Trade in an unrepaired phone instead, and its
-    estimated credit drops by {money(Math.max(0, screenRepairCost))}, down to $0. This uses the full
-    glass repair estimate, including for carrier offers, rather than the AppleCare service fee.
+    One of the big risks with a leased phone is breaking it. You have to return it in good condition
+    or buy it outright. What would you do if you broke your screen a few months before the new
+    iphone? Estimated repair: {money(repairPrice)}. If you want to trade it in, you will be forced
+    to repair it and it's much more expensive without AppleCare. Fine for people with liquid cash,
+    maybe not for everyone.
   </p>
   <div class="screen-actions">
     <button

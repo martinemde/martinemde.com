@@ -6,7 +6,7 @@
     PAID_OFF_IDEAS,
     ledgerAmounts
   } from '$lib/apple-upgrade/presentation';
-  import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
+  import { money, money0, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
 
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */
@@ -388,6 +388,21 @@
               <p class="nothing">
                 {scenario.shortName}: {money(scenario.rows[month].forfeitedCredits!)} in trade-in credits
                 forfeited
+              </p>
+            {/if}
+          {/each}
+          {#each scenarios as scenario (scenario.key)}
+            {@const returned = scenario.rows[month].leaseReturn}
+            {#if returned}
+              <p class="nothing lease-return">
+                {scenario.shortName}: Buying out the lease in full, then
+                {returned.privateSale ? 'selling' : 'trading in'} the phone,
+                {#if returned.value > returned.buyout}
+                  may be worth {money0(returned.value - returned.buyout)} more than returning it at lease
+                  end.
+                {:else}
+                  would not recover more than returning it at lease end.
+                {/if}
               </p>
             {/if}
           {/each}

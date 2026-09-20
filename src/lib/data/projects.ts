@@ -29,6 +29,13 @@ export interface Project {
 
 export const projects: Project[] = [
   {
+    name: 'Apple Upgrade Broken Down',
+    description:
+      'Pick a phone, choose your trade-in, and watch the costs of leasing, buying, and financing add up as you make upgrade and repair decisions.',
+    url: resolve('/apple-upgrade'),
+    icon: Smartphone
+  },
+  {
     name: 'gem.coop',
     description: 'The Gem Cooperative - Founding member, Project Leadership Committee.',
     url: 'https://gem.coop',
@@ -104,13 +111,6 @@ export const projects: Project[] = [
       'Compare loans side by side. Calculate monthly payments, total interest, and grand totals.',
     url: resolve('/loans'),
     icon: Calculator
-  },
-  {
-    name: 'Apple Upgrade, decoded',
-    description:
-      "A step-by-step walkthrough of Apple's Klarna-backed iPhone lease, month by month, priced against paying cash, Apple Card financing, and carrier installments.",
-    url: resolve('/apple-upgrade'),
-    icon: Smartphone
   },
   {
     name: 'RubyGems & Bundler',

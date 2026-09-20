@@ -174,6 +174,8 @@ export interface MonthRow {
   owns: boolean;
   note?: string;
   forfeitedCredits?: number;
+  /** Value surrendered at a scheduled return; informational, not another cash charge. */
+  leaseReturn?: { value: number; buyout: number; privateSale: boolean };
   /** Shown in place of the line items on months where nothing is due. */
   idleNote?: string;
 }
@@ -444,7 +446,10 @@ function appleCareItems(input: Inputs, month: number): LineItem[] {
     case 'one':
       return month >= 1 ? care('AppleCare One', input.appleCareOneMonthly) : [];
     case 'annual':
-      return month % 12 === 0 ? care('AppleCare+ (annual)', input.appleCareAnnual) : [];
+      // The endpoint does not start another year of coverage.
+      return month < HORIZON && month % 12 === 0
+        ? care('AppleCare+ (annual)', input.appleCareAnnual)
+        : [];
     default:
       return [];
   }
@@ -943,6 +948,17 @@ function scheduledLease(input: Inputs): Scenario {
   };
   const rows = assemble(input, items, state);
   const latest = cycles[cycles.length - 1];
+  for (const cycle of cycles) {
+    if (!cycle.returns) continue;
+    const age = cycle.end - cycle.start;
+    rows[cycle.end].leaseReturn = {
+      value: input.privateSaleValues
+        ? closingValue(input, age, cycle.start === 0)
+        : replacementValue(input, age, cycle.start === 0),
+      buyout: balance(cycle, age) * tax,
+      privateSale: !!input.privateSaleValues
+    };
+  }
   const age = HORIZON - latest.start;
   const resale = closingValue(input, age, starts.length === 1);
   const equity =

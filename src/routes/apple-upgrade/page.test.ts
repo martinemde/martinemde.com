@@ -149,6 +149,95 @@ describe('Apple Upgrade page', () => {
     });
   });
 
+  it('prefills the initial trade-in by phone and preserves a custom offer on reload', async () => {
+    const user = userEvent.setup();
+    const view = render(Page);
+    await user.click(screen.getByText('iPhone Duo'));
+    await user.click(screen.getByText('Yes, I have one'));
+    const picker = screen.getByRole('combobox', { name: 'Pick the phone you want to trade in' });
+    await user.selectOptions(picker, 'iPhone Air');
+    const offer = screen.getByLabelText(/^Apple Trade-in offer/) as HTMLInputElement;
+    expect(offer.value).toBe('585');
+    await user.selectOptions(picker, 'iPhone 16 Pro Max');
+    expect(offer.value).toBe('610');
+    await user.selectOptions(picker, 'iPhone 17 Pro Max');
+    expect(offer.value).toBe('885');
+    await user.click(screen.getByText('No AppleCare'));
+    await chooseYear(user, 1, true);
+    const replacement = () =>
+      within(document.querySelector('[data-month="12"]') as HTMLElement)
+        .getByText('New phone after trade-in')
+        .closest('li')!
+        .querySelector('.amt')?.textContent;
+    expect(replacement()).toBe('$637.00');
+    await user.selectOptions(picker, 'custom');
+    await fireEvent.input(offer, { target: { value: '825' } });
+    expect(replacement()).toBe('$637.00');
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).tradeIn).toBe(825);
+    view.unmount();
+    render(Page);
+    expect((screen.getByLabelText(/^Apple Trade-in offer/) as HTMLInputElement).value).toBe('825');
+    expect(
+      (
+        screen.getByRole('combobox', {
+          name: 'Pick the phone you want to trade in'
+        }) as HTMLSelectElement
+      ).value
+    ).toBe('custom');
+  });
+
+  it('focuses required values without scrolling past them and starts with a trade-in prompt', async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await user.click(screen.getByText('Something else'));
+    const price = screen.getByRole('spinbutton', { name: /^Sticker price/ });
+    expect(document.activeElement).toBe(price);
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    await fireEvent.input(price, { target: { value: '1500' } });
+    expect(document.activeElement).toBe(price);
+    await user.click(screen.getByText('Yes, I have one'));
+    const picker = screen.getByRole('combobox', {
+      name: 'Pick the phone you want to trade in'
+    }) as HTMLSelectElement;
+    expect(picker.selectedOptions[0].textContent).toBe('Choose your trade-in');
+    expect(document.activeElement).toBe(picker);
+    expect(screen.queryByText('No AppleCare')).toBeNull();
+    expect(screen.queryByLabelText(/^Apple Trade-in offer/)).toBeNull();
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    await user.selectOptions(picker, 'custom');
+    const offer = screen.getByRole('spinbutton', { name: /^Apple Trade-in offer/ });
+    expect(document.activeElement).toBe(offer);
+    await fireEvent.input(offer, { target: { value: '825' } });
+    expect(document.activeElement).toBe(offer);
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    await user.click(screen.getByText('AppleCare+ monthly'));
+    expect(document.activeElement).toBe(screen.getByRole('spinbutton', { name: 'Monthly price' }));
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('shows the value surrendered on a lease return without adding it to the bills', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await user.click(screen.getByText('iPhone 18 Pro Max'));
+    await user.click(screen.getByText('No trade-in'));
+    await user.click(screen.getByText('No AppleCare'));
+    await chooseYear(user, 1);
+    await chooseYear(user, 2, true);
+    const month = container.querySelector('[data-month="24"]')!;
+    const explanation = month.querySelector('.lease-return');
+    expect(explanation?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Lease 24: Buying out the lease in full, then trading in the phone, may be worth $190 more than returning it at lease end.'
+    );
+    const details = explanation!.closest<HTMLElement>('.breakdown')!;
+    expect(details.inert).toBe(true);
+    expect(details.getAttribute('aria-hidden')).toBe('true');
+    await user.click(screen.getByRole('button', { name: 'Month 24: show breakdown' }));
+    expect(details.inert).toBe(false);
+    expect(details.getAttribute('aria-hidden')).toBe('false');
+    await chooseYear(user, 2);
+    expect(container.querySelector('.lease-return')).toBeNull();
+  });
+
   it('uses editable Pro Max percentages for Duo trade-in estimates', async () => {
     const user = userEvent.setup();
     render(Page);
@@ -370,7 +459,7 @@ describe('Apple Upgrade page', () => {
       null
     ]);
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { name: 'Apple Upgrade, decoded' })
+      screen.getByRole('heading', { name: 'Apple Upgrade Broken Down' })
     );
   });
 
@@ -401,17 +490,58 @@ describe('Apple Upgrade page', () => {
       await walkThrough(user);
       if (coverage !== 'No AppleCare') await user.click(screen.getByText(coverage));
       await scrollToMonth(9);
+      const alternative =
+        coverage === 'No AppleCare'
+          ? 'This would cost $31 with AppleCare.'
+          : 'This would cost $271 without AppleCare.';
+      expect(within(await screen.findByRole('dialog')).getByText(alternative)).toBeTruthy();
       await user.click(
         within(await screen.findByRole('dialog')).getByRole('button', {
           name:
             coverage === 'No AppleCare'
-              ? 'Pay $271.25 to fix it without AppleCare'
-              : 'Pay $31.47 to fix it with AppleCare'
+              ? 'Pay $271 to fix it without AppleCare'
+              : 'Pay $31 to fix it with AppleCare'
         })
       );
       expect(
         container.querySelectorAll('[data-month="9"] .bars[data-cat="repair"] .cell:not(.zero)')
       ).toHaveLength(5);
+      expect(
+        within(screen.getByRole('region', { name: 'Oh no! You cracked your screen!' })).getByText(
+          alternative
+        )
+      ).toBeTruthy();
+    }
+  );
+
+  it.each([
+    ['monthly', 'repair', '$703', ['$31', '$31', '$31', '$31', '$31']],
+    ['annual', 'repair', '$647', ['$31', '$31', '$31', '$31', '$31']],
+    ['monthly', 'defer', '$703', ['$31', '$31', '$31', '$31', '$31']],
+    ['none', 'repair', '$0', ['$271', '$271', '$271', '$271', '$271']],
+    ['none', 'defer', '$0', ['$0', '$0', '$271', '$0', '$0']]
+  ])(
+    'separates premiums and repair costs for %s coverage and %s damage',
+    (appleCare, screenChoice, premiums, repairs) => {
+      localStorage.setItem(
+        'apple-upgrade-calculator',
+        JSON.stringify({
+          deviceKey: 'iphone-18-pro',
+          hasTradeIn: 'no',
+          appleCare,
+          screenChoice,
+          annualChoices: ['upgrade', 'upgrade', 'upgrade']
+        })
+      );
+      render(Page);
+      const cells = (label: string) =>
+        within(screen.getByRole('row', { name: new RegExp(`^${label}`) }))
+          .getAllByRole('cell')
+          .map((cell) => cell.textContent);
+      expect(cells('AppleCare premiums paid')).toEqual(Array(5).fill(premiums));
+      expect(cells('Repairs paid')).toEqual(repairs);
+      expect(cells('One screen repair with AppleCare')).toEqual(Array(5).fill('$31'));
+      expect(cells('One screen repair without AppleCare')).toEqual(Array(5).fill('$271'));
     }
   );
 
@@ -536,6 +666,10 @@ describe('Apple Upgrade page', () => {
     await user.clear(price);
     await user.type(price, '999');
     await user.click(screen.getByText('Yes, I have one'));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Pick the phone you want to trade in' }),
+      'custom'
+    );
     const trade = screen.getByLabelText(/Apple Trade-in offer/i);
     await user.clear(trade);
     await user.type(trade, '800');

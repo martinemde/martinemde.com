@@ -438,6 +438,8 @@ describe('AppleCare', () => {
     const scenario = outright(inputs({ appleCare: 'annual' }));
     expect(scenario.rows[12].outflow).toBeCloseTo(149, 2);
     expect(scenario.rows[13].outflow).toBe(0);
+    expect(scenario.rows[48].outflow).toBe(0);
+    expect(scenario.summary.cash).toBeCloseTo(1199 + 4 * 149, 2);
   });
 
   it('stops billing when you hand the phone back', () => {
@@ -997,8 +999,49 @@ describe('shared yearly upgrade decisions', () => {
     );
   });
 
+  it.each([0, 825])('explains return equity independently of the initial $%s credit', (tradeIn) => {
+    const input = scheduled([12, 24, 36], {
+      listPrice: 1999,
+      term: 12,
+      tradeIn,
+      taxRate: 8.5,
+      upgradeTradeIns: [1480, 1000, 700, 500]
+    });
+    const lease = appleUpgrade(input);
+    for (const month of [12, 24, 36]) {
+      expect(lease.rows[month].leaseReturn).toEqual({
+        value: 1480,
+        buyout: expect.closeTo((1999 - 82.99 * 12) * 1.085, 6),
+        privateSale: false
+      });
+    }
+    // Changing the phone's estimated value changes the explanation, not lease bills.
+    const low = appleUpgrade({ ...input, upgradeTradeIns: [500, 400, 300, 200] });
+    expect(low.rows.map((row) => row.outflow)).toEqual(lease.rows.map((row) => row.outflow));
+    expect(low.rows[12].leaseReturn?.value).toBe(500);
+    expect(low.rows[12].leaseReturn!.value).toBeLessThan(low.rows[12].leaseReturn!.buyout);
+    expect(lease.rows[48].leaseReturn).toBeUndefined();
+  });
+
+  it('uses the damaged private-sale estimate when explaining return equity', () => {
+    const lease = appleUpgrade(
+      scheduled([12], {
+        term: 12,
+        privateSaleValues: [800, 600, 400, 200],
+        screenChoice: 'defer',
+        screenRepairCost: 250
+      })
+    );
+    expect(lease.rows[12].leaseReturn).toEqual({
+      value: 550,
+      buyout: expect.closeTo(600.12, 6),
+      privateSale: true
+    });
+  });
+
   it('settles a 24-month lease before an early upgrade, then trades the owned phone', () => {
     const lease = appleUpgrade(scheduled([12], { term: 24 }));
+    expect(lease.rows[12].leaseReturn).toBeUndefined();
     expect(
       lease.rows[12].items.find((item) => item.label === 'Buy out phone before upgrading')?.amount
     ).toBeCloseTo(1200 - 34.99 * 12);

@@ -7,9 +7,10 @@
     hint?: string;
     step?: number;
     min?: number;
+    id?: string;
   }
 
-  let { label, value = $bindable(), unit = '$', hint, step = 1, min = 0 }: Props = $props();
+  let { label, value = $bindable(), unit = '$', hint, step = 1, min = 0, id }: Props = $props();
 
   /**
    * A number input reports an empty box as null, and `bind:value` would push
@@ -34,6 +35,7 @@
   <span class="wrap" class:money={unit === '$'} class:pct={unit === '%'}>
     {#if unit === '$'}<span class="unit left" aria-hidden="true">$</span>{/if}
     <input
+      {id}
       type="number"
       {value}
       {step}

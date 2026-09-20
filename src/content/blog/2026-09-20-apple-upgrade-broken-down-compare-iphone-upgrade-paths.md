@@ -146,9 +146,10 @@ micropub:
     post-status:
       - published
 ---
-The Apple Upgrade program is more complicated than it looks. I've seen many attempts to explain it away and I don't think they captured the nuances. 
 
-The best way for me to understand what's going on is to build a tool to help myself. This gives me a clear understanding of the dynamics at play in a system. I hope it can benefit you just as much as we approach the iPhone Duo purchasing frenzy. 
+The Apple Upgrade program is more complicated than it looks. I've seen many attempts to explain it away and I don't think they captured the nuances.
+
+The best way for me to understand what's going on is to build a tool to help myself. This gives me a clear understanding of the dynamics at play in a system. I hope it can benefit you just as much as we approach the iPhone Duo purchasing frenzy.
 
 [Apple Upgrade Broken Down](https://martinemde.com/apple-upgrade) - My interactive exploration of the new Apple lease program.
 
@@ -175,8 +176,7 @@ If you're interested in this stuff, like me, then here's the tidbits this tool h
 4. AppleCare is really expensive. If you break your screen less than once per year, especially if you and your partner or family can distribute the cost of an occasional broken screen, then you're much better off without AppleCare. Even a full price fix every other year is a better deal, but 2 fixes, not a good deal. This may change with the iPhone Duo, which seems hard to protect and unpleasant to put a case on.
 5. If you upgrade every year, as many people do, surprisingly the best deal seems to be the 2 year lease, paid in full every year. If you pay the 2 year lease in full after 1 year, and then trade in right away you might get a reliably better deal than the lease hand-off. This is marginally better in the long run.
 6. Apple's lease trade-in, where you give your device back for free, is a luxury you pay a lot of money for. Right now a 1 year old iPhone 17 Pro Max will fetch 74% of its purchase price on trade-in. If this were an Apple Upgrade lease, I'd hand it back for 50% of the original purchase price, **a $335 loss**.
-   
-There's no getting away from this: *This tool is complicated.* Despite my efforts, there's some irreducible complexity here. I chose to model each month to give you a sense of your payment per month on each plan, and the months where a big charge hits, but it clutters the overall picture. [Send me an issue on GitHub](https://github.com/martinemde/martinemde.com) if you want to nerd-snipe me into fixing it some other way.
+
+There's no getting away from this: _This tool is complicated._ Despite my efforts, there's some irreducible complexity here. I chose to model each month to give you a sense of your payment per month on each plan, and the months where a big charge hits, but it clutters the overall picture. [Send me an issue on GitHub](https://github.com/martinemde/martinemde.com) if you want to nerd-snipe me into fixing it some other way.
 
 [Apple Upgrade Broken Down](https://martinemde.com/apple-upgrade) is built to compare financing options across the same approach, but doesn't make it super easy to compare different devices or different refresh periods. I figure it's pretty obvious when something costs more, and buying a more expensive phone more often costs more. Anyone with the liquid wealth to pay for a full price phone repair should consider dropping AppleCare unless they know they use it. Unless you raw dog your phone every day (in which case your willingness to break your phone is a signifier of your wealth) then a good case is a better investment than AppleCare.
-

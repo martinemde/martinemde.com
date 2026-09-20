@@ -1,5 +1,24 @@
 import { CATEGORIES, type CategoryTotals, type MonthRow } from './model';
 
+/** Actual charges, including their separate tax lines, before card rewards.
+ * Deferred damage deductions are lost phone value, not repair work paid for. */
+export function careAndRepairPaid(rows: MonthRow[]): { care: number; repair: number } {
+  const paid = { care: 0, repair: 0 };
+  for (const row of rows) {
+    for (const category of ['care', 'repair'] as const) {
+      const charges = row.items.filter(
+        (item) => item.category === category && !item.label.startsWith('Screen damage at ')
+      );
+      const labels = new Set(charges.map((item) => item.label));
+      paid[category] += charges.reduce((total, item) => total + item.amount, 0);
+      paid[category] += row.items
+        .filter((item) => item.category === 'tax' && item.taxFor && labels.has(item.taxFor))
+        .reduce((total, item) => total + item.amount, 0);
+    }
+  }
+  return paid;
+}
+
 export const ADJUSTMENTS_LABEL = 'Taxes, fees, rewards & discounts';
 
 export const PAID_OFF_IDEAS = [

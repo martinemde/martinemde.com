@@ -87,16 +87,18 @@
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
-        if (item.category === 'tax') continue;
-        const label = [
-          'Installment',
-          'Device installment',
-          'Lease payment',
-          'New lease payment',
-          'Month-to-month payment'
-        ].includes(item.label)
-          ? 'Monthly payment'
-          : item.label;
+        const label =
+          item.category === 'tax'
+            ? 'Sales tax'
+            : [
+                  'Installment',
+                  'Device installment',
+                  'Lease payment',
+                  'New lease payment',
+                  'Month-to-month payment'
+                ].includes(item.label)
+              ? 'Monthly payment'
+              : item.label;
         const charge = (byLabel[label] ??= {
           label,
           category: item.category,
@@ -149,11 +151,8 @@
       const row = s.rows[month];
       const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
-      const tax = row.items.reduce(
-        (sum, item) => sum + (item.category === 'tax' ? item.amount : 0),
-        0
-      );
-      return { key: s.key, name: s.shortName, net, tax };
+      const discount = row.net - out;
+      return { key: s.key, name: s.shortName, net, rewards: row.rewards, discount };
     });
   }
 
@@ -338,8 +337,15 @@
           {#each cells as cell (cell.key)}
             <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
               {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
-              {#if cell.tax > 0.005}
-                <small class="tax-total">incl. {money(cell.tax)} tax</small>
+              {#if Math.abs(cell.rewards) > 0.005}
+                <small class="adjustment rewards-total">
+                  {cell.rewards > 0 ? '−' : '+'}{money(Math.abs(cell.rewards))} rewards
+                </small>
+              {/if}
+              {#if Math.abs(cell.discount) > 0.005}
+                <small class="adjustment discount-total">
+                  {cell.discount > 0 ? '−' : '+'}{money(Math.abs(cell.discount))} time discount
+                </small>
               {/if}
             </span>
           {/each}
@@ -544,12 +550,12 @@
     color: var(--text);
     font-variant-numeric: tabular-nums;
   }
-  .tax-total {
+  .adjustment {
     display: block;
     margin-top: 3px;
     font-size: 9px;
     font-weight: 400;
-    color: var(--cat-tax);
+    color: var(--faint);
   }
   .sum.zero {
     color: var(--faint);
@@ -688,6 +694,9 @@
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);
+  }
+  [data-cat='tax'] {
+    --fill: var(--cat-tax);
   }
 
   @media (max-width: 560px) {

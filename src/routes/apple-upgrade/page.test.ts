@@ -350,19 +350,52 @@ describe('Apple Upgrade page', () => {
     expect(month).not.toMatch(/Lease payment|Device installment|Installment/);
   });
 
-  it('includes upfront tax in a compact note under each month zero total', async () => {
+  it('shows upfront tax as a charge in each month zero column', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
     const month = container.querySelector('[data-month="0"]')!;
-    expect(month.querySelector('[data-cat="tax"]')).toBeNull();
-    expect([...month.querySelectorAll('.tax-total')].map((cell) => cell.textContent)).toEqual([
-      'incl. $106.93 tax',
-      'incl. $106.93 tax',
-      'incl. $5.02 tax',
-      'incl. $106.93 tax'
-    ]);
+    expect(
+      [...month.querySelectorAll('.bars[data-cat="tax"] .amt')].map((cell) => cell.textContent)
+    ).toEqual(['$106.93', '$106.93', '$5.02', '$106.93']);
     expect(container.querySelector('.caption')?.textContent).toContain('$1,262');
+  });
+
+  it('reconciles visible charges, tax, rewards and discount with each monthly total', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await chooseEnding(user);
+    const dollars = (text: string | null | undefined) =>
+      Number(text?.match(/\$([\d,]+\.\d{2})/)?.[1].replaceAll(',', '')) || 0;
+    const adjustment = (element: Element | null) =>
+      dollars(element?.textContent) * (element?.textContent?.trim().startsWith('+') ? -1 : 1);
+
+    for (const discounted of [true, false]) {
+      if (!discounted) {
+        await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
+      }
+      for (const month of [0, 1, 24, 30, 48]) {
+        const block = container.querySelector(`[data-month="${month}"]`)!;
+        const sums = [...block.querySelectorAll('.sum')];
+        sums.forEach((sum, column) => {
+          const charges = [...block.querySelectorAll('.charges li')].reduce((total, row) => {
+            const amount = dollars(row.querySelectorAll('.amt')[column].textContent);
+            return total + (row.querySelector('.bars.credit') ? -amount : amount);
+          }, 0);
+          const rewards = adjustment(sum.querySelector('.rewards-total'));
+          const discount = adjustment(sum.querySelector('.discount-total'));
+          const total =
+            dollars(sum.firstChild?.textContent) * (sum.classList.contains('back') ? -1 : 1);
+          // Each printed component rounds independently to cents.
+          expect(Math.abs(charges - rewards - discount - total)).toBeLessThan(0.04);
+        });
+        if (!discounted || month === 0) expect(block.querySelector('.discount-total')).toBeNull();
+      }
+      expect(container.querySelector('[data-month="0"] .rewards-total')).not.toBeNull();
+      if (discounted)
+        expect(container.querySelector('[data-month="1"] .discount-total')).not.toBeNull();
+    }
   });
 
   /**
@@ -426,19 +459,15 @@ describe('Apple Upgrade page', () => {
     ]);
   });
 
-  it('combines monthly lease and AppleCare tax under the totals', async () => {
+  it('combines monthly lease and AppleCare tax in a visible charge row', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
     await user.click(screen.getByText('AppleCare+ monthly'));
     const month = container.querySelector('[data-month="1"]')!;
-    expect(month.querySelector('[data-cat="tax"]')).toBeNull();
-    expect([...month.querySelectorAll('.tax-total')].map((cell) => cell.textContent)).toEqual([
-      'incl. $1.15 tax',
-      'incl. $1.15 tax',
-      'incl. $4.12 tax',
-      'incl. $1.15 tax'
-    ]);
+    expect(
+      [...month.querySelectorAll('.bars[data-cat="tax"] .amt')].map((cell) => cell.textContent)
+    ).toEqual(['$1.15', '$1.15', '$4.12', '$1.15']);
   });
 
   it('sizes the bars against the biggest charge of that month', async () => {

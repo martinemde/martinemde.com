@@ -306,10 +306,23 @@ function screenRepairItems(input: Inputs, month: number, leased = false): LineIt
     input.screenChoice === 'defer' &&
     month === input.term + 1 &&
     (input.endChoice === 'return' || input.endChoice === 'upgrade');
-  if (!now && !atReturn) return [];
+  // Use coverage before handing over the original phone. If it is kept for
+  // the whole comparison, restore it before counting its intact closing value.
+  const coveredRepairMonth = leased
+    ? input.endChoice === 'return' || input.endChoice === 'upgrade'
+      ? input.term + 1
+      : HORIZON
+    : (purchaseMonths(input)[1] ?? HORIZON);
+  const beforeHandoff =
+    input.screenChoice === 'defer' && input.appleCare !== 'none' && month === coveredRepairMonth;
+  if (!now && !atReturn && !beforeHandoff) return [];
   return [
     {
-      label: atReturn ? 'Screen repair before return' : 'Screen repair',
+      label: atReturn
+        ? 'Screen repair before return'
+        : beforeHandoff
+          ? 'Screen repair with AppleCare'
+          : 'Screen repair',
       amount: screenRepairPrice(input),
       includedTax:
         (Math.max(
@@ -909,7 +922,8 @@ function scheduledLease(input: Inputs): Scenario {
         cycle.start === 0 &&
         month === cycle.end &&
         cycle.returns &&
-        input.screenChoice === 'defer'
+        input.screenChoice === 'defer' &&
+        input.appleCare === 'none'
       ) {
         out.push(
           ...screenRepairItems({ ...input, screenChoice: 'repair' }, SCREEN_CRACK_MONTH).map(
@@ -959,9 +973,11 @@ function purchaseMonths(input: Inputs): number[] {
   return Array.from({ length: Math.ceil(HORIZON / interval) }, (_, i) => i * interval);
 }
 
-/** Damage is a value deduction, not a repair purchase or an AppleCare service fee. */
+/** Uncovered damage reduces value; covered phones are repaired before handoff. */
 function tradeInDamage(input: Inputs, originalPhone: boolean): number {
-  return originalPhone && input.screenChoice === 'defer' ? Math.max(0, input.screenRepairCost) : 0;
+  return originalPhone && input.screenChoice === 'defer' && input.appleCare === 'none'
+    ? Math.max(0, input.screenRepairCost)
+    : 0;
 }
 
 function replacementValue(

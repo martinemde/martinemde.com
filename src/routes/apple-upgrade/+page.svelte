@@ -815,10 +815,9 @@
             <p>
               Usually the lowest sticker of all, because the promo credits are enormous. They are
               also the leash: the credits arrive monthly across three years and evaporate if you
-              leave, and you pay the entire sales tax bill on day one &mdash; which is the orange
-              block sitting under this column at month zero. Put a real promo in the credits field
-              above and this column will finish shortest, at the price of thirty-six months of
-              loyalty.
+              leave, and you pay the entire sales tax bill on day one &mdash; shown in the tax band
+              at month zero. Put a real promo in the credits field above and this column will finish
+              shortest, at the price of thirty-six months of loyalty.
             </p>
           </div>
         </div>
@@ -922,7 +921,9 @@
           <li>
             Sales tax is applied to each lease payment and to the buyout, which is how leases are
             normally taxed. Buying outright taxes the whole thing on day one; carrier financing does
-            the same. Your state may differ, and a few tax the trade-in credit too.
+            the same. Your state may differ, and a few tax the trade-in credit too. Each taxed
+            charge shows its tax separately, including AppleCare, the case, and screen repairs. Tax
+            has its own band in the totals, net of any card rewards it earns.
           </li>
           <li>
             Trade-in credit is modeled as a credit against the order total on the purchase paths,

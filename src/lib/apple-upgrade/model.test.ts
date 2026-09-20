@@ -283,6 +283,55 @@ describe('timing', () => {
 });
 
 describe('tax', () => {
+  it.each(['buyout', 'nothing'] as const)(
+    'collects equal device tax across ownership paths with %s',
+    (endChoice) => {
+      for (const scenario of allScenarios(inputs({ endChoice, taxRate: 8.5 }))) {
+        expect(scenario.rows[HORIZON].runningByCategory.tax).toBeCloseTo(1199 * 0.085, 8);
+        expect(scenario.rows[HORIZON].runningByCategory.fees).toBe(0);
+      }
+    }
+  );
+
+  it.each(['monthly', 'annual', 'one'] as const)(
+    'separates tax on every taxable charge with %s coverage',
+    (appleCare) => {
+      const input = inputs({
+        appleCare,
+        taxRate: 10,
+        caseCost: 50,
+        activationFee: 35,
+        screenChoice: 'repair',
+        endChoice: 'nothing'
+      });
+      for (const scenario of allScenarios(input)) {
+        for (const row of scenario.rows) {
+          for (const charge of row.items.filter((item) => item.category !== 'tax')) {
+            const tax = row.items.find((item) => item.taxFor === charge.label);
+            if (charge.label === 'Carrier activation' || charge.label === 'Device installment') {
+              expect(tax).toBeUndefined();
+            } else {
+              expect(tax?.amount).toBeCloseTo(charge.amount * 0.1, 8);
+              expect(tax?.biller).toBe(charge.biller);
+            }
+          }
+        }
+      }
+    }
+  );
+
+  it('shows no tax charges when the tax rate is zero', () => {
+    for (const scenario of allScenarios(
+      inputs({ taxRate: 0, appleCare: 'monthly', screenChoice: 'repair', caseCost: 50 })
+    )) {
+      expect(
+        scenario.rows
+          .flatMap((row) => row.items)
+          .filter((item) => item.category === 'tax' && item.amount > 0)
+      ).toEqual([]);
+    }
+  });
+
   it('is collected per payment, and totals the same as paying cash', () => {
     const withTax = appleUpgrade(inputs({ taxRate: 8.5, endChoice: 'nothing' }));
     expect(withTax.summary.cash).toBeCloseTo(1199 * 1.085, 2);
@@ -308,7 +357,7 @@ describe('tax', () => {
       expect(dayOne.rewards).toBeCloseTo(owed * 0.03, 8);
       expect(scenario.summary.cash).toBeCloseTo(owed * 0.97, 8);
       expect(scenario.summary.tradeInRefund).toBeCloseTo(Math.max(0, tradeIn - 1199 * 1.085), 8);
-      expect(dayOne.runningByCategory.fees).toBeCloseTo(
+      expect(dayOne.runningByCategory.tax).toBeCloseTo(
         Math.max(0, 1199 * 0.085 - Math.max(0, tradeIn - 1199)) * 0.97,
         8
       );
@@ -574,12 +623,12 @@ describe('category split', () => {
   it('separates the cash purchase from its upfront tax', () => {
     const scenario = outright(inputs({ taxRate: 8.5 }));
     expect(scenario.rows[0].runningByCategory.phone).toBeCloseTo(1199, 2);
-    expect(scenario.rows[0].runningByCategory.fees).toBeCloseTo(1199 * 0.085, 2);
+    expect(scenario.rows[0].runningByCategory.tax).toBeCloseTo(1199 * 0.085, 2);
   });
 
-  it('books the carrier’s up-front tax as a fee, not as the phone', () => {
+  it('books the carrier’s up-front tax separately from fees and phone', () => {
     const scenario = carrierFinancing(inputs({ taxRate: 8.5 }));
-    expect(scenario.rows[0].runningByCategory.fees).toBeCloseTo(1199 * 0.085, 2);
+    expect(scenario.rows[0].runningByCategory.tax).toBeCloseTo(1199 * 0.085, 2);
     expect(scenario.rows[0].runningByCategory.phone).toBe(0);
   });
 
@@ -664,14 +713,14 @@ describe('the treadmill', () => {
         }
       }
     });
-    it('includes repair tax, rewards and discounting in the separate band', () => {
+    it('separates repair and tax while preserving rewards and discounting', () => {
       const scenario = appleUpgrade(
         inputs({ screenChoice: 'repair', taxRate: 10, appleCardBack: 3, discountRate: 6 })
       );
       const row = scenario.rows[9];
-      expect(row.items.find((i) => i.category === 'repair')?.amount).toBeCloseTo(275);
-      expect(row.runningByCategory.repair).toBeCloseTo(275 * 0.97);
-      expect(row.runningNpvByCategory.repair).toBeCloseTo((275 * 0.97) / 1.005 ** 9);
+      expect(row.items.find((i) => i.category === 'repair')?.amount).toBeCloseTo(250);
+      expect(row.runningByCategory.repair).toBeCloseTo(250 * 0.97);
+      expect(row.runningNpvByCategory.repair).toBeCloseTo((250 * 0.97) / 1.005 ** 9);
     });
   });
 

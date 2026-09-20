@@ -70,6 +70,7 @@
     label: string;
     billers: Biller[];
     category: Category;
+    taxFor?: string;
     note?: string;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
@@ -98,6 +99,7 @@
           label: item.label,
           billers: [],
           category: item.category,
+          taxFor: item.taxFor,
           note: firstSeen[item.label] === month ? CHARGE_NOTES[item.label] : undefined,
           amounts: scenarios.map(() => 0)
         });
@@ -126,7 +128,10 @@
       }
     }
 
-    return charges;
+    // Keep each little tax bar with its charge, even when larger bills sort first.
+    return charges
+      .filter((charge) => !charge.taxFor || !byLabel[charge.taxFor])
+      .flatMap((charge) => [charge, ...charges.filter((tax) => tax.taxFor === charge.label)]);
   }
 
   /**
@@ -298,7 +303,7 @@
       {#if charges.length}
         <ul class="charges">
           {#each charges as charge (charge.label)}
-            <li>
+            <li class:tax-charge={charge.category === 'tax'}>
               <span class="head">
                 <span class="what">{charge.label}</span>
                 <span class="biller">{charge.billers.join(' / ')}</span>
@@ -498,6 +503,14 @@
    * everybody is billed for it; one means only that column is. Height is the
    * amount, against the biggest single charge of the month.
    */
+  .tax-charge .what {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .tax-charge {
+    margin-top: -4px;
+  }
+
   .bars,
   .totals {
     display: grid;
@@ -673,6 +686,7 @@
     --cat-rent: light-dark(#882e9b, #a264b0);
     --cat-care: light-dark(#2b9667, #4f9f77);
     --cat-fees: light-dark(#9a3c00, #e86518);
+    --cat-tax: light-dark(#53616d, #b3c4d2);
     --cat-repair: light-dark(#665d16, #d8c86b);
   }
   [data-cat='phone'] {
@@ -690,6 +704,9 @@
       var(--cat-repair) 0 4px,
       color-mix(in oklch, var(--cat-repair) 65%, var(--surface)) 4px 6px
     );
+  }
+  [data-cat='tax'] {
+    --fill: var(--cat-tax);
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);

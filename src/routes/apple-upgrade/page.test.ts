@@ -119,11 +119,11 @@ describe('Apple Upgrade page', () => {
     const repair = () => container.querySelector('[data-month="24"] [data-cat="repair"]');
     expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
     expect(repair()!.querySelector('.cell:not(.zero) .bar')?.getAttribute('title')).toBe(
-      'Lease: $31.47'
+      'Lease: $29.00'
     );
-    expect(repair()!.textContent).toContain('$31.47');
+    expect(repair()!.textContent).toContain('$29.00');
     await user.click(screen.getByText('No AppleCare'));
-    expect(repair()!.textContent).toContain('$271.25');
+    expect(repair()!.textContent).toContain('$250.00');
     await chooseEnding(user, 'Do nothing');
     expect(repair()).toBeNull();
   });
@@ -244,7 +244,7 @@ describe('Apple Upgrade page', () => {
     expect(
       [...row.querySelectorAll('.cell:not(.zero) .amt')].map((amount) => amount.textContent)
     ).toEqual(['$101.92', '$101.92']);
-    expect(row.querySelector('[data-cat="fees"]')).toBeTruthy();
+    expect(row.querySelector('[data-cat="tax"]')).toBeTruthy();
     expect(row.querySelector('.biller')?.textContent).toBe('apple / carrier');
     // Splitting tax out of the phone band must not lower the cash reference line.
     expect(container.querySelector('.caption')?.textContent).toContain('$1,262');
@@ -280,6 +280,27 @@ describe('Apple Upgrade page', () => {
         // Only the lease column, and it is the third.
         expect(drawn).toEqual([false, false, true, false]);
       }
+    }
+  });
+
+  it('puts small tax bars directly after each taxed monthly charge', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await user.click(screen.getByText('AppleCare+ monthly'));
+    const rows = [...container.querySelectorAll('[data-month="1"] .charges li')];
+    for (const label of ['Installment', 'Lease payment', 'AppleCare+']) {
+      const index = rows.findIndex((row) => row.querySelector('.what')?.textContent === label);
+      const tax = rows[index + 1];
+      expect(tax.querySelector('.what')?.textContent).toBe(`Tax on ${label}`);
+      expect(tax.querySelector('[data-cat="tax"]')).toBeTruthy();
+      const bars = [...rows[index].querySelectorAll('.bar')];
+      [...tax.querySelectorAll('.bar')].forEach((bar, column) => {
+        const height = Number((bar as HTMLElement).style.height.replace('px', ''));
+        const base = Number((bars[column] as HTMLElement).style.height.replace('px', ''));
+        expect(height).toBeLessThanOrEqual(base);
+        expect(height > 0).toBe(base > 0);
+      });
     }
   });
 

@@ -117,6 +117,14 @@ export interface Inputs {
   carrierOffer: number | null;
   /** Replacement cadence for owned phones; leases follow the selected ending. */
   upgradeEvery?: UpgradeInterval;
+  /** Explicit shared replacement months. An empty list means keep the original phone. */
+  upgradeMonths?: number[];
+  /** Explicit regular trade-in estimates for phones aged one through four years.
+   * Independent of private resale estimates. No quote means no assumed credit. */
+  upgradeTradeIns?: readonly number[];
+  /** Opt in to selling owned phones privately. Net proceeds after fees/shipping,
+   * by age in years. Replaces trade-in credit; never sells a returned lease. */
+  privateSaleValues?: readonly number[];
   upgradeTradeIn?: number;
   /** Carrier installment term. Effectively always 36 now. */
   carrierTerm: number;
@@ -478,7 +486,7 @@ function assemble(
       )
       .map((item) => ({
         ...item,
-        reward: item.amount * ((input[REWARD_RATE[item.biller]] as number) / 100)
+        reward: item.reward ?? item.amount * ((input[REWARD_RATE[item.biller]] as number) / 100)
       }));
 
     let outflow = 0;
@@ -574,12 +582,85 @@ function summarize(
   };
 }
 
+/** Identify the cost of unrepaired trade-in damage without changing any cash flow.
+ * Loans collect it through installments; promotions collect it as smaller credits.
+ */
+function attributeDeferredDamage(input: Inputs, build: (input: Inputs) => Scenario): Scenario {
+  const scenario = build(input);
+  if (input.screenChoice !== 'defer') return scenario;
+  const intact = build({ ...input, screenChoice: 'dismiss' });
+  const running = zeroTotals();
+  const runningNpv = zeroTotals();
+  const rate = monthlyDiscount(input.discountRate);
+  const key = (item: LineItem) => `${item.category}:${item.biller}:${item.label}`;
+  scenario.rows = scenario.rows.map((row, month) => {
+    const originals = new Map(intact.rows[month].items.map((item) => [key(item), item]));
+    const items: LineItem[] = [];
+    const split = (item: LineItem, baseline: LineItem | undefined) => {
+      const damage = item.amount - (baseline?.amount ?? 0);
+      if ((item.category === 'phone' || item.category === 'rent') && damage > 0.005) {
+        const reward = (item.reward ?? 0) - (baseline?.reward ?? 0);
+        const remainder = {
+          ...item,
+          amount: item.amount - damage,
+          reward: (item.reward ?? 0) - reward
+        };
+        if (Math.abs(remainder.amount) > 0.005) items.push(remainder);
+        items.push({
+          label: input.privateSaleValues
+            ? 'Screen damage at private sale'
+            : 'Screen damage at trade-in',
+          amount: damage,
+          reward,
+          biller: item.biller,
+          category: 'repair'
+        });
+      } else items.push(item);
+    };
+    for (const item of row.items) {
+      split(item, originals.get(key(item)));
+      originals.delete(key(item));
+    }
+    // Damage can consume an entire surplus trade-in refund.
+    for (const item of originals.values()) {
+      if (item.category === 'phone' && item.amount < -0.005)
+        split({ ...item, amount: 0, reward: 0 }, item);
+    }
+    for (const item of items) {
+      const net = item.amount - (item.reward ?? 0);
+      running[item.category] += net;
+      runningNpv[item.category] += pv(net, month, rate);
+    }
+    return {
+      ...row,
+      items,
+      runningByCategory: { ...running },
+      runningNpvByCategory: { ...runningNpv }
+    };
+  });
+  return scenario;
+}
+
+export function appleUpgrade(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildAppleUpgrade);
+}
+export function outright(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildOutright);
+}
+export function appleCardFinancing(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildAppleCardFinancing);
+}
+export function carrierFinancing(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildCarrierFinancing);
+}
+
 /**
  * The lease. Payments start ~30 days after pickup, the trade-in credit is
  * smeared across the initial term only, and the interesting stuff all happens
  * the month a term runs out — which, on the upgrade path, happens over and over.
  */
-export function appleUpgrade(input: Inputs): Scenario {
+function buildAppleUpgrade(input: Inputs): Scenario {
+  if (input.upgradeMonths !== undefined) return scheduledLease(input);
   const { listPrice, term, tradeIn, endChoice } = input;
   const tax = 1 + input.taxRate / 100;
   const { gross, credit, refund, payment, buyoutAtTerm } = leaseTerms(listPrice, term, tradeIn);
@@ -758,20 +839,163 @@ export function appleUpgrade(input: Inputs): Scenario {
   };
 }
 
+/** Shared annual decisions: return an eligible lease, or settle and trade an owned device. */
+function scheduledLease(input: Inputs): Scenario {
+  const { term, listPrice } = input;
+  const starts = purchaseMonths(input);
+  const tax = 1 + input.taxRate / 100;
+  const cycles = starts.map((start, index) => {
+    const previousAge = index > 0 ? start - starts[index - 1] : 0;
+    // At an eligible return, the leased phone settles the lease; it is not a trade-in.
+    const returningPrevious =
+      index > 0 && previousAge >= term && previousAge < term + EXTENSION_MONTHS;
+    const tradeIn =
+      index === 0
+        ? input.tradeIn
+        : returningPrevious
+          ? 0
+          : replacementValue(input, previousAge, index === 1);
+    const end = starts[index + 1] ?? HORIZON + 1;
+    const returns = end <= HORIZON && end - start >= term && end - start < term + EXTENSION_MONTHS;
+    return {
+      start,
+      end,
+      returns,
+      sale:
+        index > 0 && !returningPrevious ? privateSaleItems(input, previousAge, index === 1) : [],
+      ...leaseTerms(listPrice, term, tradeIn)
+    };
+  });
+  const paidThrough = (cycle: (typeof cycles)[number], age: number) =>
+    cycle.payment * Math.min(Math.max(0, age), term) +
+    cycle.gross * Math.min(Math.max(0, age - term), EXTENSION_MONTHS - 1);
+  const balance = (cycle: (typeof cycles)[number], age: number) =>
+    buyoutAfter(listPrice, cycle.credit, paidThrough(cycle, age));
+  const charge = (label: string, amount: number, category: Category): LineItem => ({
+    label,
+    amount: amount * tax,
+    includedTax: (amount * input.taxRate) / 100,
+    biller: 'klarna',
+    category
+  });
+  const items = (month: number): LineItem[] => {
+    const out: LineItem[] = [];
+    for (const cycle of cycles) {
+      const age = month - cycle.start;
+      if (age < 0 || month > cycle.end) continue;
+      if (age === 0) {
+        out.push(...purchaseExtras(input), ...cycle.sale);
+        if (cycle.start > 0 && cycle.refund > 0)
+          out.push({
+            label: 'Apple credit back for excess trade-in',
+            amount: -cycle.refund,
+            reward: 0,
+            biller: 'apple',
+            category: 'phone'
+          });
+      }
+      const category = cycle.returns ? 'rent' : 'phone';
+      if (age > 0 && age <= term && cycle.payment > 0)
+        out.push(
+          charge(cycle.start === 0 ? 'Lease payment' : 'New lease payment', cycle.payment, category)
+        );
+      if (age > term && age < term + EXTENSION_MONTHS)
+        out.push(charge('Month-to-month payment', cycle.gross, category));
+      if (age === term + EXTENSION_MONTHS)
+        out.push(charge('Automatic buyout — it’s yours', balance(cycle, age), 'phone'));
+      if (month === cycle.end && age < term)
+        out.push(charge('Buy out phone before upgrading', balance(cycle, age), 'phone'));
+      if (
+        cycle.start === 0 &&
+        month === cycle.end &&
+        cycle.returns &&
+        input.screenChoice === 'defer'
+      ) {
+        out.push(
+          ...screenRepairItems({ ...input, screenChoice: 'repair' }, SCREEN_CRACK_MONTH).map(
+            (item) => ({ ...item, label: 'Screen repair before return' })
+          )
+        );
+      }
+    }
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
+    return out;
+  };
+  const state = (month: number) => {
+    const cycle = cycles.findLast((cycle) => cycle.start <= month)!;
+    const age = month - cycle.start;
+    const owns = age >= term + EXTENSION_MONTHS;
+    return { hasPhone: true, owns, buyout: owns ? null : balance(cycle, age) };
+  };
+  const rows = assemble(input, items, state);
+  const latest = cycles[cycles.length - 1];
+  const age = HORIZON - latest.start;
+  const resale = closingValue(input, age, starts.length === 1);
+  const equity =
+    age >= term + EXTENSION_MONTHS
+      ? resale
+      : age >= term
+        ? Math.max(0, resale - balance(latest, age) * tax)
+        : resale - balance(latest, age) * tax;
+  return {
+    key: `upgrade-${term}`,
+    name: `Apple Upgrade · ${term} mo`,
+    shortName: `Lease ${term}`,
+    blurb: `${term}-month lease, following the same upgrade decisions.`,
+    rows,
+    summary: summarize(input, rows, equity, cycles[0].refund)
+  };
+}
+
 /** The last month is a comparison endpoint, not another purchase. */
 function purchaseMonths(input: Inputs): number[] {
+  if (input.upgradeMonths !== undefined) {
+    return [
+      0,
+      ...new Set(input.upgradeMonths.filter((month) => [12, 24, 36].includes(month)))
+    ].sort((a, b) => a - b);
+  }
   const interval = input.upgradeEvery ?? HORIZON;
   return Array.from({ length: Math.ceil(HORIZON / interval) }, (_, i) => i * interval);
 }
 
-function replacementValue(input: Inputs): number {
-  return Math.max(
-    0,
-    Math.min(
-      input.listPrice,
-      input.upgradeTradeIn ?? resaleAtAge(input, input.upgradeEvery ?? HORIZON)
-    )
-  );
+/** Damage is a value deduction, not a repair purchase or an AppleCare service fee. */
+function tradeInDamage(input: Inputs, originalPhone: boolean): number {
+  return originalPhone && input.screenChoice === 'defer' ? Math.max(0, input.screenRepairCost) : 0;
+}
+
+function replacementValue(
+  input: Inputs,
+  age = input.upgradeEvery ?? HORIZON,
+  originalPhone = false
+): number {
+  if (input.privateSaleValues) return 0;
+  const quoted = input.upgradeTradeIns?.[Math.max(0, Math.ceil(age / 12) - 1)];
+  const value = Math.min(input.listPrice, Math.max(0, input.upgradeTradeIn ?? quoted ?? 0));
+  return Math.max(0, value - tradeInDamage(input, originalPhone));
+}
+
+/** Closing value is still held, not a cash receipt at month 48. */
+function closingValue(input: Inputs, age: number, originalPhone: boolean): number {
+  const values = input.privateSaleValues ?? input.upgradeTradeIns;
+  const quote = values?.[Math.max(0, Math.ceil(age / 12) - 1)] ?? 0;
+  return Math.max(0, quote - tradeInDamage(input, originalPhone));
+}
+
+function privateSaleItems(input: Inputs, age: number, originalPhone: boolean): LineItem[] {
+  if (!input.privateSaleValues) return [];
+  const amount = closingValue(input, age, originalPhone);
+  return amount > 0
+    ? [
+        {
+          label: 'Private sale proceeds',
+          amount: -amount,
+          reward: 0,
+          biller: 'apple',
+          category: 'phone'
+        }
+      ]
+    : [];
 }
 
 function purchaseExtras(input: Inputs): LineItem[] {
@@ -808,14 +1032,28 @@ function purchaseTerms(input: Inputs, tradeIn: number) {
 }
 
 /** A fresh cash purchase and trade-in at each chosen upgrade. */
-export function outright(input: Inputs): Scenario {
+function buildOutright(input: Inputs): Scenario {
   const purchases = purchaseMonths(input);
   const items = (month: number): LineItem[] => {
     const out: LineItem[] = [];
     if (purchases.includes(month)) {
-      const terms = purchaseTerms(input, month === 0 ? input.tradeIn : replacementValue(input));
+      const terms = purchaseTerms(
+        input,
+        month === 0
+          ? input.tradeIn
+          : replacementValue(
+              input,
+              month - purchases[purchases.indexOf(month) - 1],
+              purchases.indexOf(month) === 1
+            )
+      );
       out.push({
-        label: month === 0 ? 'Device' : 'New phone after trade-in',
+        label:
+          month === 0
+            ? 'Device'
+            : input.privateSaleValues
+              ? 'New phone'
+              : 'New phone after trade-in',
         amount: terms.device,
         biller: 'apple',
         category: 'phone'
@@ -829,6 +1067,9 @@ export function outright(input: Inputs): Scenario {
           taxFor: 'Device'
         });
       out.push(...purchaseExtras(input));
+      const index = purchases.indexOf(month);
+      if (index > 0)
+        out.push(...privateSaleItems(input, month - purchases[index - 1], index === 1));
     }
     out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
@@ -844,7 +1085,7 @@ export function outright(input: Inputs): Scenario {
     summary: summarize(
       input,
       rows,
-      resaleAtAge(input, age),
+      closingValue(input, age, purchases.length === 1),
       purchaseTerms(input, input.tradeIn).refund
     )
   };
@@ -854,10 +1095,15 @@ export function outright(input: Inputs): Scenario {
  * Tax is billed to the card at purchase, outside the interest-free installment plan.
  * https://support.apple.com/en-us/104950
  */
-export function appleCardFinancing(input: Inputs): Scenario {
-  const purchases = purchaseMonths(input).map((month) => ({
+function buildAppleCardFinancing(input: Inputs): Scenario {
+  const months = purchaseMonths(input);
+  const purchases = months.map((month, index) => ({
     month,
-    ...purchaseTerms(input, month === 0 ? input.tradeIn : replacementValue(input))
+    sale: index > 0 ? privateSaleItems(input, month - months[index - 1], index === 1) : [],
+    ...purchaseTerms(
+      input,
+      month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1], index === 1)
+    )
   }));
   const items = (month: number): LineItem[] => {
     const out: LineItem[] = [];
@@ -871,12 +1117,16 @@ export function appleCardFinancing(input: Inputs): Scenario {
             category: 'tax',
             taxFor: 'Device'
           });
-        out.push(...purchaseExtras(input));
+        out.push(...purchaseExtras(input), ...purchase.sale);
       }
       if (month > purchase.month && month <= purchase.month + 24) {
         const traded = purchases.some((next) => next.month > purchase.month && next.month < month);
         out.push({
-          label: traded ? 'Installment on traded-in phone' : 'Installment',
+          label: traded
+            ? input.privateSaleValues
+              ? 'Installment on privately sold phone'
+              : 'Installment on traded-in phone'
+            : 'Installment',
           amount: purchase.device / 24,
           biller: 'apple',
           category: 'phone'
@@ -898,15 +1148,26 @@ export function appleCardFinancing(input: Inputs): Scenario {
     shortName: 'Finance',
     blurb: 'Old installments continue after a trade-in.',
     rows,
-    summary: summarize(input, rows, resaleAtAge(input, age) - debt, purchases[0].refund, debt)
+    summary: summarize(
+      input,
+      rows,
+      closingValue(input, age, purchases.length === 1) - debt,
+      purchases[0].refund,
+      debt
+    )
   };
 }
 
 /** A carrier offer is the TOTAL trade-in, not a bonus on top of Apple's value. */
-export function carrierTradeInDeal(input: Inputs, tradeIn = input.tradeIn) {
+export function carrierTradeInDeal(
+  input: Inputs,
+  tradeIn = input.tradeIn,
+  duration = input.upgradeEvery ?? input.carrierTerm,
+  damage = 0
+) {
   const financed = Math.max(0, input.listPrice - (input.carrierOffer === null ? tradeIn : 0));
-  const offered = Math.max(0, Math.min(financed, input.carrierOffer ?? 0));
-  const months = Math.min(input.upgradeEvery ?? input.carrierTerm, input.carrierTerm);
+  const offered = Math.max(0, Math.min(financed, input.carrierOffer ?? 0) - damage);
+  const months = Math.min(duration, input.carrierTerm);
   const credit = offered / input.carrierTerm;
   return {
     financed,
@@ -923,11 +1184,18 @@ export function carrierTradeInDeal(input: Inputs, tradeIn = input.tradeIn) {
  * This excludes paid early-upgrade add-ons and offers with upfront trade-in portions.
  * https://www.verizon.com/support/device-payment-faqs/
  */
-export function carrierFinancing(input: Inputs): Scenario {
+function buildCarrierFinancing(input: Inputs): Scenario {
   const n = input.carrierTerm;
-  const purchases = purchaseMonths(input).map((month) => ({
+  const months = purchaseMonths(input);
+  const purchases = months.map((month, index) => ({
     month,
-    ...carrierTradeInDeal(input, month === 0 ? input.tradeIn : replacementValue(input))
+    sale: index > 0 ? privateSaleItems(input, month - months[index - 1], index === 1) : [],
+    ...carrierTradeInDeal(
+      index > 0 && input.privateSaleValues ? { ...input, carrierOffer: null } : input,
+      month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1], index === 1),
+      (months[index + 1] ?? HORIZON + n) - month,
+      tradeInDamage(input, index === 1)
+    )
   }));
   const items = (month: number): LineItem[] => {
     const out: LineItem[] = [];
@@ -940,7 +1208,7 @@ export function carrierFinancing(input: Inputs): Scenario {
           biller: 'carrier',
           category: 'tax'
         });
-        out.push(...purchaseExtras(input));
+        out.push(...purchaseExtras(input), ...purchase.sale);
       }
       const age = month - purchase.month;
       if (age > 0 && age <= n && month <= end) {
@@ -973,7 +1241,8 @@ export function carrierFinancing(input: Inputs): Scenario {
     buyout: null,
     hasPhone: true,
     owns: true,
-    forfeitedCredits: purchases.slice(1).some((p) => p.month === month) ? purchases[0].forfeited : 0
+    forfeitedCredits:
+      purchases.find((p, index) => purchases[index + 1]?.month === month)?.forfeited ?? 0
   }));
   const latest = purchases[purchases.length - 1];
   const age = HORIZON - latest.month;
@@ -988,7 +1257,7 @@ export function carrierFinancing(input: Inputs): Scenario {
       ...summarize(
         input,
         rows,
-        resaleAtAge(input, age) - debt,
+        closingValue(input, age, purchases.length === 1) - debt,
         input.carrierOffer === null ? Math.max(0, input.tradeIn - input.listPrice) : 0,
         debt
       ),
@@ -1005,7 +1274,14 @@ export function carrierFinancing(input: Inputs): Scenario {
  * lease, because that is the question the page exists to answer.
  */
 export function allScenarios(input: Inputs): Scenario[] {
-  return [outright(input), appleCardFinancing(input), appleUpgrade(input), carrierFinancing(input)];
+  return [
+    outright(input),
+    appleCardFinancing(input),
+    ...(input.upgradeMonths === undefined
+      ? [appleUpgrade(input)]
+      : ([12, 24] as const).map((term) => appleUpgrade({ ...input, term }))),
+    carrierFinancing(input)
+  ];
 }
 
 /**
@@ -1017,6 +1293,31 @@ export interface Beat {
 }
 
 export function beats(input: Inputs): Map<number, Beat> {
+  if (input.upgradeMonths !== undefined) {
+    const map = new Map<number, Beat>([
+      [0, { title: 'You walk out of the store' }],
+      [1, { title: 'Thirty days later, everything starts billing' }],
+      [48, { title: 'Four years in' }]
+    ]);
+    for (const month of [12, 24, 36])
+      map.set(month, {
+        title: input.upgradeMonths.includes(month)
+          ? 'A new phone, on every path'
+          : 'Another year with your phone'
+      });
+    for (const term of [12, 24] as const) {
+      for (const row of appleUpgrade({ ...input, term }).rows) {
+        if (row.items.some((item) => item.label.startsWith('Automatic buyout')))
+          map.set(row.month, { title: `The ${term}-month lease becomes yours` });
+        if (
+          row.items.some((item) => item.label === 'Month-to-month payment') &&
+          row.month % 12 === 1
+        )
+          map.set(row.month, { title: 'The lease term ended; full payments continue' });
+      }
+    }
+    return map;
+  }
   const { term, endChoice, carrierTerm } = input;
   const { gross, payment } = leaseTerms(input.listPrice, term, input.tradeIn);
   const map = new Map<number, Beat>();

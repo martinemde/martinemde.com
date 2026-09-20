@@ -1,8 +1,12 @@
 <script lang="ts">
   import { CATEGORIES, CATEGORY_LABELS, money0, type Scenario } from '$lib/apple-upgrade/model';
+  import { ADJUSTMENTS_LABEL, ledgerTotals } from '$lib/apple-upgrade/presentation';
+
+  const labels = { ...CATEGORY_LABELS, fees: ADJUSTMENTS_LABEL };
 
   interface Props {
     scenarios: Scenario[];
+    upgradeSummary?: string;
     /** Which month the reader has scrolled to. Columns show totals through it. */
     month: number;
     /** Tallest column at the horizon, so bars are on one scale all the way down. */
@@ -19,6 +23,7 @@
 
   let {
     scenarios,
+    upgradeSummary,
     month,
     ceiling,
     basis = $bindable(),
@@ -35,28 +40,32 @@
       // four empty columns, so the first thing the reader sees arrive is the
       // day-one cost rather than a chart that was already part-full.
       const row = month < 0 ? undefined : s.rows[Math.min(month, s.rows.length - 1)];
-      const split = !row
-        ? empty
-        : basis === 'npv'
-          ? row.runningNpvByCategory
-          : row.runningByCategory;
+      const split = row ? ledgerTotals(s.rows, basis)[row.month] : empty;
       const total = !row ? 0 : basis === 'npv' ? row.runningNpv : row.runningCash;
       // Trade-in value this column could not use, handed back as store credit
       // on day one. It is money in, so it hangs below the axis — leave it out
       // and the columns never net out, and a big trade-in makes the lease look
       // dearer than buying outright, which is the opposite of what happens.
-      const credit = row ? s.summary.tradeInRefund : 0;
+      const refund = row ? s.summary.tradeInRefund : 0;
+      const bands = CATEGORIES.map((category) => ({ category, amount: split[category] })).filter(
+        (band) => band.amount > 0.005
+      );
+      const credits = CATEGORIES.map((category) => ({
+        category,
+        amount: Math.max(0, -split[category]) + (category === 'phone' ? refund : 0)
+      })).filter((band) => band.amount > 0.005);
+      const positive = bands.reduce((sum, band) => sum + band.amount, 0);
+      const credit = credits.reduce((sum, band) => sum + band.amount, 0);
       return {
         key: s.key,
         name: s.shortName,
-        total,
+        total: positive,
         credit,
-        net: total - credit,
-        // Bottom-up, fixed order: a band never changes place as values move.
-        bands: CATEGORIES.map((c) => ({ category: c, amount: split[c] })).filter(
-          (b) => b.amount > 0.005
-        ),
-        pct: ceiling > 0 ? Math.min(100, (total / ceiling) * 100) : 0
+        refund,
+        net: total - refund,
+        bands,
+        credits,
+        pct: ceiling > 0 ? Math.min(100, (positive / ceiling) * 100) : 0
       };
     })
   );
@@ -68,7 +77,7 @@
       : bars.reduce((best, b, i) => (b.net < bars[best].net ? i : best), 0)
   );
 
-  /** Deepest credit on screen. Zero unless a trade-in outran what a path can use. */
+  /** Shared space below the axis for net deductions and surplus trade-in credit. */
   const creditCeiling = $derived(Math.max(0, ...bars.map((b) => b.credit)));
 
   /**
@@ -90,7 +99,7 @@
   <div class="top">
     <span class="eyebrow"
       >// month {month < 0 ? '--' : String(month).padStart(2, '0')} of {scenarios[0].rows.length -
-        1}</span
+        1}{upgradeSummary ? ` ${upgradeSummary}` : ''}</span
     >
     <button
       class="basis"
@@ -112,7 +121,9 @@
           .map(
             (b) =>
               `${b.name} ${money0(b.net)}` +
-              (b.credit > 0 ? ` (${money0(b.total)} out, ${money0(b.credit)} back)` : '')
+              (b.credit > 0
+                ? ` (${money0(b.total)} before deductions, ${money0(b.credit)} deducted)`
+                : '')
           )
           .join(', ')}`}
   >
@@ -133,7 +144,7 @@
                 class="band"
                 data-cat={band.category}
                 style="flex: 0 1 {bandPct(band.amount, bar.total)}%"
-                title="{CATEGORY_LABELS[band.category]}: {money0(band.amount)}"
+                title="{labels[band.category]}: {money0(band.amount)}"
               ></div>
             {/each}
           </div>
@@ -141,11 +152,18 @@
         {#if creditCeiling > 0}
           <div class="down" style="flex: {creditCeiling} 0 0">
             {#if bar.credit > 0}
-              <i
-                class="credit"
-                style="height: {(bar.credit / creditCeiling) * 100}%"
-                title="Apple credit back: {money0(bar.credit)}"
-              ></i>
+              <div class="stack negative" style="height: {(bar.credit / creditCeiling) * 100}%">
+                {#each bar.credits as band (band.category)}
+                  <div
+                    class="band credit"
+                    data-cat={band.category}
+                    style="flex: 0 1 {bandPct(band.amount, bar.credit)}%"
+                    title="{band.category === 'phone' && bar.refund > 0
+                      ? 'Apple credit back'
+                      : labels[band.category]}: {money0(-band.amount)}"
+                  ></div>
+                {/each}
+              </div>
             {/if}
           </div>
         {/if}
@@ -166,7 +184,7 @@
     {#each bars as bar, i (bar.key)}
       <span class="name" class:low={i === leader} style="grid-column: {i + 1}">
         {bar.name}
-        {#if bar.credit > 0}<b>{money0(bar.credit)} back</b>{/if}
+        {#if bar.refund > 0}<b>{money0(bar.refund)} back</b>{/if}
       </span>
     {/each}
   </div>
@@ -208,11 +226,11 @@
 
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: var(--surface);
-    padding: 12px 14px 10px;
+    padding: 8px 14px 7px;
     transition:
       border-color 0.2s ease,
       box-shadow 0.2s ease;
@@ -232,6 +250,8 @@
   /* The whole thesis of the page is timing, so switching basis stays one tap
      away rather than living in a settings block further up. */
   .basis {
+    flex-shrink: 0;
+    white-space: nowrap;
     border: 1px solid var(--border);
     border-radius: 999px;
     background: transparent;
@@ -321,7 +341,7 @@
   .credit {
     width: 100%;
     max-width: var(--bar-w);
-    border: 1.5px solid var(--cat-credit);
+    border: 1.5px solid var(--fill);
     border-top: 0;
     border-radius: 0 0 4px 4px;
     transition: height 0.32s cubic-bezier(0.22, 1, 0.36, 1);
@@ -384,6 +404,14 @@
     border-radius: 4px 4px 0 0;
   }
 
+  .stack.negative {
+    flex-direction: column;
+  }
+  .band.credit {
+    background: transparent;
+    border-radius: 0 0 4px 4px;
+  }
+
   .name {
     grid-row: 3;
     display: block;
@@ -394,9 +422,7 @@
     letter-spacing: 0.02em;
     text-align: center;
     color: var(--muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
   }
   .name b {
     display: block;
@@ -420,9 +446,6 @@
       color-mix(in oklch, var(--cat-repair) 65%, var(--surface)) 4px 6px
     );
   }
-  [data-cat='tax'] {
-    --fill: var(--cat-tax);
-  }
   [data-cat='fees'] {
     --fill: var(--cat-fees);
   }
@@ -432,10 +455,10 @@
       --bar-w: 62px;
 
       border-radius: 11px;
-      padding: 9px 10px 8px;
+      padding: 7px 10px 6px;
     }
     .chart {
-      gap: 6px;
+      gap: 4px 6px;
     }
     .total {
       font-size: 11.5px;

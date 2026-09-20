@@ -1,11 +1,18 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
+  import {
+    ADJUSTMENTS_LABEL,
+    PAID_OFF_IDEAS,
+    ledgerAmounts,
+    ledgerTotals
+  } from '$lib/apple-upgrade/presentation';
   import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
 
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */
     scenarios: Scenario[];
+    upgradeSummary?: string;
     /** Months worth stopping on, keyed by month. */
     beats: Map<number, Beat>;
     /** Questions that only make sense once you have got there, keyed by month. */
@@ -20,12 +27,19 @@
     activeMonth?: number;
   }
 
-  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
+  let {
+    scenarios,
+    upgradeSummary,
+    beats,
+    questions = {},
+    limit,
+    activeMonth = $bindable(-1)
+  }: Props = $props();
 
-  let basis = $state<'cash' | 'npv'>('cash');
+  let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
-  let chartPx = $state(190);
+  let chartPx = $state(112);
 
   let blockEls: HTMLElement[] = [];
   let sentinel: HTMLElement;
@@ -45,10 +59,11 @@
    */
   const ceiling = $derived(
     Math.max(
-      ...scenarios.map((s) => {
-        const last = s.rows[s.rows.length - 1];
-        return basis === 'npv' ? last.runningNpv : last.runningCash;
-      }),
+      ...scenarios.flatMap((s) =>
+        ledgerTotals(s.rows, basis).map((totals) =>
+          Object.values(totals).reduce((sum, value) => sum + Math.max(0, value), 0)
+        )
+      ),
       1
     ) * 1.06
   );
@@ -73,7 +88,7 @@
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
-        if (item.category === 'tax') continue;
+        if (item.category === 'tax' || item.category === 'fees') continue;
         const label = [
           'Installment',
           'Device installment',
@@ -93,17 +108,24 @@
         charge.amounts[column] += Math.abs(item.amount);
         charge.categories[column] = item.category;
       }
+      const adjustments = (byLabel[ADJUSTMENTS_LABEL] ??= {
+        label: ADJUSTMENTS_LABEL,
+        category: 'fees',
+        categories: scenarios.map(() => 'fees'),
+        amounts: scenarios.map(() => 0)
+      });
+      adjustments.amounts[column] = ledgerAmounts(s.rows[month], s.rows[month - 1], basis).fees;
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
-    const charges = Object.values(byLabel).sort(
-      (a, b) => Math.max(...b.amounts) - Math.max(...a.amounts)
-    );
+    const charges = Object.values(byLabel)
+      .filter((charge) => charge.amounts.some((amount) => Math.abs(amount) > 0.005))
+      .sort((a, b) => Math.max(...b.amounts.map(Math.abs)) - Math.max(...a.amounts.map(Math.abs)));
 
     // Store credit for trade-in value a path had no room for. It arrives at
     // pickup and it is money in, so it hangs below the line in outline.
     if (month === 0) {
       const back = scenarios.map((s) => s.summary.tradeInRefund);
-      if (back.some((amount) => amount > 0.005)) {
+      if (back.some((amount) => Math.abs(amount) > 0.005)) {
         charges.push({
           label: 'Apple credit back for excess trade-in',
           category: 'phone',
@@ -135,15 +157,11 @@
       const row = s.rows[month];
       const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
-      const tax = row.items.reduce(
-        (sum, item) => sum + (item.category === 'tax' ? item.amount : 0),
-        0
-      );
-      return { key: s.key, name: s.shortName, net, tax };
+      return { key: s.key, name: s.shortName, net };
     });
   }
 
-  const TRACK_PX = 26; // Keep in step with `.track`'s height below.
+  const TRACK_PX = 16;
   function barPx(amount: number, peak: number): number {
     if (peak <= 0 || amount <= 0.005) return 0;
     return Math.max(2, (amount / peak) * TRACK_PX);
@@ -161,6 +179,10 @@
     }
     return undefined;
   }
+
+  const paidOffMonths = $derived(
+    months.filter((month) => chargesFor(month).length === 0 && !idleLine(month))
+  );
 
   const readLine = $derived(headerPx + (panelPx || chartPx + 96) + 20);
 
@@ -188,8 +210,8 @@
       const header = document.querySelector('header');
       if (header) headerPx = Math.round(header.getBoundingClientRect().height);
       const narrow = window.innerWidth <= 560;
-      // A quarter of the screen. The panel is a running tally, not the page.
-      chartPx = Math.round(Math.max(112, Math.min(narrow ? 176 : 210, window.innerHeight * 0.25)));
+      // Leave room below the running tally to read the monthly charges.
+      chartPx = Math.round(Math.max(88, Math.min(narrow ? 112 : 140, window.innerHeight * 0.16)));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -215,8 +237,8 @@
 
   /**
    * The month sitting just under the panel is the one being read. Straight
-   * scroll maths rather than an observer band: 49 blocks, no gaps between
-   * them, and it never flickers between two.
+   * scroll maths rather than an observer band: follow each card's top edge
+   * so the small gaps between months don't interrupt the running tally.
    */
   $effect(() => {
     const line = readLine;
@@ -249,6 +271,7 @@
   <div class="panel-wrap" bind:this={panelWrap}>
     <Columns
       {scenarios}
+      {upgradeSummary}
       month={activeMonth}
       {ceiling}
       {reference}
@@ -263,7 +286,7 @@
     {@const charges = chargesFor(month)}
     {@const cells = cellsFor(month)}
     {@const idle = idleLine(month)}
-    {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts))}
+    {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts.map(Math.abs)))}
     <section
       bind:this={blockEls[month]}
       data-month={month}
@@ -294,19 +317,33 @@
               <!-- The attribution and the amount in one mark: a bar in every
                    column that gets handed this charge, sized against the
                    biggest single bill of the month. -->
-              <div class="bars" class:credit={charge.credit} data-cat={charge.category}>
+              <div
+                class="bars"
+                class:credit={charge.credit}
+                data-cat={charge.category}
+                style="--track-height: {barPx(Math.max(...charge.amounts.map(Math.abs)), peak)}px"
+              >
                 {#each charge.amounts as amount, i (cells[i].key)}
-                  <span class="cell" class:zero={amount <= 0.005} data-cat={charge.categories[i]}>
+                  <span
+                    class="cell"
+                    class:zero={Math.abs(amount) <= 0.005}
+                    class:credit={charge.credit || amount < 0}
+                    data-cat={charge.categories[i]}
+                  >
                     <span class="track">
                       <i
                         class="bar"
-                        style="height: {barPx(amount, peak)}px"
-                        title={amount > 0.005
+                        style="height: {barPx(Math.abs(amount), peak)}px"
+                        title={Math.abs(amount) > 0.005
                           ? `${cells[i].name}: ${money(amount)}`
                           : `${cells[i].name}: nothing`}
                       ></i>
                     </span>
-                    <span class="amt">{amount > 0.005 ? money(amount) : ''}</span>
+                    <span class="amt"
+                      >{Math.abs(amount) > 0.005
+                        ? `${charge.credit || amount < 0 ? '−' : ''}${money(Math.abs(amount))}`
+                        : ''}</span
+                    >
                   </span>
                 {/each}
               </div>
@@ -318,14 +355,15 @@
           {#each cells as cell (cell.key)}
             <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
               {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
-              {#if cell.tax > 0.005}
-                <small class="tax-total">incl. {money(cell.tax)} tax</small>
-              {/if}
             </span>
           {/each}
         </div>
       {:else if !idle}
-        <p class="nothing">Nothing due anywhere. The phone just gets a year older.</p>
+        <p class="nothing">
+          Your phone is paid off. {PAID_OFF_IDEAS[
+            paidOffMonths.indexOf(month) % PAID_OFF_IDEAS.length
+          ]}
+        </p>
       {/if}
 
       {#if idle}
@@ -367,29 +405,27 @@
     position: sticky;
     top: var(--sticky-top, 57px);
     z-index: 4;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     background: var(--bg);
-    padding: 8px 0;
+    padding: 4px 0;
   }
 
   /* One month */
   .month {
     display: grid;
-    gap: 8px;
-    border-top: 1px solid color-mix(in oklch, var(--border) 45%, transparent);
-    padding: 10px 0 8px;
+    gap: 5px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: color-mix(in oklch, var(--surface) 65%, var(--bg));
+    margin-bottom: 8px;
+    padding: 8px 0;
   }
   .month.beat {
-    border-top-color: var(--border);
-    padding-top: 22px;
+    padding-top: 10px;
   }
-  .month.quiet:not(.beat) {
-    opacity: 0.6;
-  }
-  /* The month being read. A tint only: an inset edge sat on top of the month
-     number, and anything with width would widen the page. */
+  /* Highlight the current card without changing its size. */
   .month.on {
-    border-radius: 6px;
+    border-color: color-mix(in oklch, var(--accent) 50%, var(--border));
     background: color-mix(in oklch, var(--accent) 7%, transparent);
   }
 
@@ -397,6 +433,7 @@
     display: flex;
     align-items: baseline;
     gap: 10px;
+    padding: 0 var(--gutter);
   }
   .mnum {
     flex: none;
@@ -437,14 +474,14 @@
   /* What arrived, described once, then drawn across the columns that pay it */
   .charges {
     display: grid;
-    gap: 10px;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
   .charges li {
     display: grid;
-    gap: 4px;
+    gap: 2px;
   }
   .head {
     display: flex;
@@ -483,7 +520,7 @@
     align-items: flex-end;
     justify-content: center;
     width: 100%;
-    height: 26px;
+    height: var(--track-height);
     border-bottom: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
   }
   .bar {
@@ -523,13 +560,6 @@
     text-align: center;
     color: var(--text);
     font-variant-numeric: tabular-nums;
-  }
-  .tax-total {
-    display: block;
-    margin-top: 3px;
-    font-size: 9px;
-    font-weight: 400;
-    color: var(--cat-tax);
   }
   .sum.zero {
     color: var(--faint);
@@ -572,7 +602,7 @@
     font-size: 13px;
     font-style: italic;
     line-height: 1.55;
-    color: var(--faint);
+    color: var(--muted);
     text-wrap: pretty;
   }
 
@@ -581,12 +611,12 @@
    * of the track and the bar hangs below it, outlined rather than filled,
    * because this is money coming back.
    */
-  .bars.credit .track {
+  .cell.credit .track {
     align-items: flex-start;
     border-top: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
     border-bottom: 0;
   }
-  .bars.credit .bar {
+  .cell.credit .bar {
     border: 1.5px solid var(--fill);
     border-top: 0;
     border-radius: 0 0 3px 3px;
@@ -603,7 +633,7 @@
     font-size: 13px;
     font-style: italic;
     line-height: 1.55;
-    color: var(--faint);
+    color: var(--muted);
     text-wrap: pretty;
   }
 
@@ -672,11 +702,11 @@
 
   @media (max-width: 560px) {
     .panel-wrap {
-      margin-bottom: 14px;
-      padding: 6px 0;
+      margin-bottom: 8px;
+      padding: 4px 0;
     }
     .month {
-      gap: 7px;
+      gap: 5px;
     }
     header h3 {
       font-size: 16.5px;

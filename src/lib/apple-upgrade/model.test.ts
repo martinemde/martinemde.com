@@ -44,6 +44,7 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     discountRate: 4,
     resaleAtTerm: 500,
     resaleAtHorizon: 380,
+    upgradeTradeIns: [744, 540, 396, 288],
     carrierOffer: null,
     carrierTerm: 36,
     ...overrides
@@ -697,7 +698,7 @@ describe('the treadmill', () => {
             )) {
               const repairs = scenario.rows.flatMap((r) =>
                 r.items
-                  .filter((i) => i.category === 'repair')
+                  .filter((i) => i.label === 'Screen repair before return')
                   .map((i) => ({ month: r.month, amount: i.amount }))
               );
               expect(repairs).toEqual(
@@ -787,7 +788,13 @@ describe('upgrade preferences and carrier offers', () => {
 
   it('keeps old Apple Card payments running and discounts only the new phone', () => {
     const scenario = appleCardFinancing(
-      inputs({ listPrice: 1200, upgradeEvery: 12, upgradeTradeIn: 600, taxRate: 10 })
+      inputs({
+        listPrice: 1200,
+        upgradeEvery: 12,
+        upgradeTradeIn: 600,
+        upgradeTradeIns: undefined,
+        taxRate: 10
+      })
     );
     expect(scenario.rows[0].outflow).toBe(120);
     expect(scenario.rows[1].outflow).toBe(50);
@@ -851,7 +858,14 @@ describe('upgrade preferences and carrier offers', () => {
 
   it('pays cash again, using the replacement trade-in but not forgiving any debt', () => {
     const scenario = outright(
-      inputs({ listPrice: 1200, tradeIn: 400, upgradeEvery: 12, upgradeTradeIn: 600, taxRate: 10 })
+      inputs({
+        listPrice: 1200,
+        tradeIn: 400,
+        upgradeEvery: 12,
+        upgradeTradeIn: 600,
+        upgradeTradeIns: undefined,
+        taxRate: 10
+      })
     );
     expect([0, 12, 24, 36].map((m) => scenario.rows[m].outflow)).toEqual([920, 720, 720, 720]);
     expect(scenario.rows[48].outflow).toBe(0);
@@ -903,5 +917,414 @@ describe('upgrade preferences and carrier offers', () => {
         }
       }
     }
+  });
+});
+
+describe('shared yearly upgrade decisions', () => {
+  const scheduled = (upgradeMonths: number[], overrides: Partial<Inputs> = {}) =>
+    inputs({ listPrice: 1200, resaleAtHorizon: 288, upgradeMonths, ...overrides });
+
+  it('keeps the original phone on all five paths when every answer is keep', () => {
+    const scenarios = allScenarios(scheduled([]));
+    expect(scenarios.map((s) => s.key)).toEqual([
+      'outright',
+      'applecard',
+      'upgrade-12',
+      'upgrade-24',
+      'carrier'
+    ]);
+    for (const s of scenarios) {
+      expect(s.summary.cash).toBeCloseTo(1200, 6);
+      expect(s.summary.equityAtHorizon).toBeCloseTo(288, 6);
+      expect(s.summary.remainingBalance).toBe(0);
+      expect(s.rows.every((row) => row.hasPhone)).toBe(true);
+    }
+    expect(
+      scenarios[2].rows[18].items.some((item) => item.label.startsWith('Automatic buyout'))
+    ).toBe(true);
+    expect(
+      scenarios[3].rows[30].items.some((item) => item.label.startsWith('Automatic buyout'))
+    ).toBe(true);
+  });
+
+  it('replaces every path only in the selected years, with age-based trade-ins', () => {
+    const input = scheduled([12, 36], { activationFee: 35 });
+    for (const scenario of allScenarios(input)) {
+      expect(
+        scenario.rows
+          .filter((row) => row.items.some((item) => item.label === 'Carrier activation'))
+          .map((row) => row.month)
+      ).toEqual([0, 12, 36]);
+    }
+    const cash = outright(input);
+    expect(
+      cash.rows[12].items.find((item) => item.label === 'New phone after trade-in')?.amount
+    ).toBeCloseTo(1200 * (1 - 0.62));
+    expect(
+      cash.rows[36].items.find((item) => item.label === 'New phone after trade-in')?.amount
+    ).toBeCloseTo(1200 * (1 - 0.45));
+    expect(cash.rows[24].outflow).toBe(0);
+    expect(cash.summary.equityAtHorizon).toBeCloseTo(744);
+  });
+
+  it('returns a 12-month lease at yearly upgrades without inventing another trade-in', () => {
+    const lease = appleUpgrade(scheduled([12, 24, 36], { term: 12, tradeIn: 375 }));
+    expect(lease.rows[1].outflow).toBeCloseTo(49.99 - 375 / 12);
+    expect(lease.rows[13].outflow).toBeCloseTo(49.99);
+    expect(lease.summary.cash).toBeCloseTo(49.99 * 48 - 375);
+    expect(lease.rows.some((row) => row.items.some((item) => item.label.includes('buyout')))).toBe(
+      false
+    );
+  });
+
+  it('settles a 24-month lease before an early upgrade, then trades the owned phone', () => {
+    const lease = appleUpgrade(scheduled([12], { term: 24 }));
+    expect(
+      lease.rows[12].items.find((item) => item.label === 'Buy out phone before upgrading')?.amount
+    ).toBeCloseTo(1200 - 34.99 * 12);
+    expect(lease.rows[13].outflow).toBeCloseTo(34.99 - 744 / 24);
+    expect(lease.summary.cash).toBeCloseTo(1200 + (1200 - 744));
+  });
+
+  it('loses the initial trade-in subsidy in the extension and buys out at six months', () => {
+    const lease = appleUpgrade(scheduled([], { term: 12, tradeIn: 375 }));
+    expect(lease.rows[12].outflow).toBeCloseTo(49.99 - 375 / 12);
+    expect(lease.rows[13].outflow).toBeCloseTo(49.99);
+    expect(lease.rows[18].outflow).toBeCloseTo(1200 - 375 - (49.99 - 375 / 12) * 12 - 49.99 * 5);
+    expect(lease.rows[18].owns).toBe(true);
+    expect(lease.rows[19].outflow).toBe(0);
+    expect(lease.summary.cash).toBeCloseTo(825);
+  });
+
+  it('trades an automatically bought-out phone at its current age', () => {
+    const lease = appleUpgrade(scheduled([24], { term: 12 }));
+    expect(lease.rows[18].owns).toBe(true);
+    expect(lease.rows[25].outflow).toBeCloseTo(49.99 - 540 / 12);
+    expect(lease.summary.cash).toBeCloseTo(1200 + 660);
+  });
+
+  it('calculates carrier credit losses per actual interval, not the initial interval', () => {
+    const carrier = carrierFinancing(scheduled([12, 36], { carrierOffer: 1200 }));
+    expect(carrier.rows[12].forfeitedCredits).toBeCloseTo(800);
+    expect(carrier.rows[36].forfeitedCredits).toBeCloseTo(400);
+    expect(carrier.summary.carrierCreditsLost).toBeCloseTo(1200);
+    expect(carrier.rows[12].outflow).toBeCloseTo(800);
+    expect(carrier.rows[36].outflow).toBeCloseTo(400);
+  });
+
+  it('repairs a deferred cracked screen only when returning the original leased phone', () => {
+    for (const term of [12, 24] as const) {
+      const lease = appleUpgrade(scheduled([24, 36], { term, screenChoice: 'defer' }));
+      const repairs = lease.rows.filter((row) =>
+        row.items.some((item) => item.label === 'Screen repair before return')
+      );
+      expect(repairs.map((row) => row.month)).toEqual(term === 24 ? [24] : []);
+    }
+  });
+
+  it('reconciles cash, NPV and categories across every possible three-year decision sequence', () => {
+    for (let mask = 0; mask < 8; mask++) {
+      const months = [12, 24, 36].filter((_, index) => mask & (1 << index));
+      for (const s of allScenarios(
+        scheduled(months, {
+          tradeIn: 375,
+          carrierOffer: 1000,
+          appleCardBack: 3,
+          klarnaCardBack: 3,
+          carrierCardBack: 2,
+          taxRate: 8.5,
+          caseCost: 59,
+          activationFee: 35
+        })
+      )) {
+        let total = 0;
+        let npv = 0;
+        for (const row of s.rows) {
+          total += row.items.reduce((sum, item) => sum + item.amount - (item.reward ?? 0), 0);
+          npv += row.net / (1 + 0.04 / 12) ** row.month;
+          expect(row.runningCash).toBeCloseTo(total, 7);
+          expect(row.runningNpv).toBeCloseTo(npv, 7);
+          expect(Object.values(row.runningByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+            total,
+            7
+          );
+          expect(Object.values(row.runningNpvByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+            npv,
+            7
+          );
+        }
+        expect(s.summary.cash).toBeCloseTo(total, 7);
+      }
+    }
+  });
+});
+
+describe('unrepaired glass reduces trade-in value', () => {
+  const damaged = (overrides: Partial<Inputs> = {}) =>
+    inputs({
+      listPrice: 1200,
+      resaleAtHorizon: 288,
+      upgradeMonths: [12, 24, 36],
+      screenChoice: 'defer',
+      screenRepairCost: 250,
+      ...overrides
+    });
+
+  it('deducts the full damage estimate once from cash and Apple Card trade-ins', () => {
+    for (const path of [outright, appleCardFinancing]) {
+      const broken = path(damaged());
+      const intact = path(damaged({ screenChoice: 'dismiss' }));
+      const month = path === outright ? 12 : 13;
+      expect(broken.rows[month].outflow - intact.rows[month].outflow).toBeCloseTo(
+        path === outright ? 250 : 250 / 24
+      );
+      expect(
+        broken.summary.cash +
+          broken.summary.remainingBalance -
+          intact.summary.cash -
+          intact.summary.remainingBalance
+      ).toBeCloseTo(250);
+      expect(broken.rows[0].outflow).toBe(intact.rows[0].outflow);
+      expect(broken.rows[37].outflow).toBeCloseTo(intact.rows[37].outflow);
+    }
+  });
+
+  it.each([null, 1000])(
+    'reduces the carrier trade-in, including a promotional offer of %s',
+    (carrierOffer) => {
+      const broken = carrierFinancing(damaged({ carrierOffer }));
+      const intact = carrierFinancing(damaged({ screenChoice: 'dismiss', carrierOffer }));
+      if (carrierOffer === null) {
+        expect(broken.rows[13].outflow - intact.rows[13].outflow).toBeCloseTo(250 / 36);
+      } else {
+        expect(
+          broken.rows[13].items
+            .filter((item) =>
+              ['Carrier trade-in credit', 'Screen damage at trade-in'].includes(item.label)
+            )
+            .reduce((sum, item) => sum + item.amount, 0)
+        ).toBeCloseTo(-750 / 36);
+        expect(
+          broken.rows[25].items.find((item) => item.label === 'Carrier trade-in credit')?.amount
+        ).toBeCloseTo(-1000 / 36);
+      }
+    }
+  );
+
+  it('reduces lease trade-ins after early or automatic buyout, without adding a repair bill', () => {
+    for (const [term, upgradeMonths] of [
+      [24, [12]],
+      [12, [24]]
+    ] as const) {
+      const input = damaged({ term, upgradeMonths: [...upgradeMonths] });
+      const broken = appleUpgrade(input);
+      const intact = appleUpgrade({ ...input, screenChoice: 'dismiss' });
+      expect(broken.summary.cash - intact.summary.cash).toBeCloseTo(250);
+      expect(
+        broken.rows.some((row) =>
+          row.items.some((item) => item.label === 'Screen repair before return')
+        )
+      ).toBe(false);
+    }
+  });
+
+  it('charges the repair on an eligible lease return without also reducing a trade-in', () => {
+    const broken = appleUpgrade(damaged({ term: 12 }));
+    const intact = appleUpgrade(damaged({ term: 12, screenChoice: 'dismiss' }));
+    expect(broken.summary.cash - intact.summary.cash).toBeCloseTo(250);
+    expect(broken.rows[13].outflow).toBe(intact.rows[13].outflow);
+  });
+
+  it('uses full damage value even with coverage, and does not penalize a repaired phone', () => {
+    const base = damaged({ appleCare: 'monthly', appleCareRepairCost: 29 });
+    const broken = outright(base);
+    const fixed = outright({ ...base, screenChoice: 'repair' });
+    const intact = outright({ ...base, screenChoice: 'dismiss' });
+    expect(broken.rows[12].outflow - intact.rows[12].outflow).toBeCloseTo(250);
+    expect(fixed.rows[12].outflow).toBe(intact.rows[12].outflow);
+  });
+
+  it('floors ordinary and promotional trade-ins at zero', () => {
+    const base = damaged({ screenRepairCost: 2000, carrierOffer: 1000 });
+    expect(outright(base).rows[12].outflow).toBeCloseTo(1200);
+    expect(
+      carrierFinancing(base)
+        .rows[13].items.filter((item) =>
+          ['Carrier trade-in credit', 'Screen damage at trade-in'].includes(item.label)
+        )
+        .reduce((sum, item) => sum + item.amount, 0)
+    ).toBeCloseTo(0);
+    for (const scenario of allScenarios(base)) {
+      const capped = allScenarios({ ...base, screenRepairCost: 10000 }).find(
+        (s) => s.key === scenario.key
+      )!;
+      // Actual lease-return repairs remain uncapped; trade-in deductions cannot exceed value.
+      if (scenario.key !== 'upgrade-12')
+        expect(capped.summary.cash).toBeCloseTo(scenario.summary.cash);
+    }
+  });
+});
+
+describe('annual upgrades through early lease buyout', () => {
+  it.each([480, 600, 744])('accounts for every dollar with a $%s annual trade-in', (value) => {
+    const base = inputs({
+      listPrice: 1200,
+      resaleAtHorizon: (value * 0.24) / 0.62,
+      upgradeTradeIns: [value, 400, 300],
+      upgradeMonths: [12, 24, 36],
+      discountRate: 0
+    });
+    const long = appleUpgrade({ ...base, term: 24 });
+    const short = appleUpgrade({ ...base, term: 12 });
+    for (const month of [12, 24, 36]) {
+      const start = month - 12;
+      const paid = long.rows
+        .slice(start + 1, month + 1)
+        .flatMap((r) => r.items)
+        .reduce((sum, item) => sum + item.amount, 0);
+      expect(paid).toBeCloseTo(1200 - (start === 0 ? 0 : value));
+      expect(long.rows[month].items.some((i) => i.label === 'Buy out phone before upgrading')).toBe(
+        true
+      );
+    }
+    // Include final buyout and resale: four owned-phone years cost four depreciations.
+    expect(long.summary.netCost).toBeCloseTo(4 * (1200 - value));
+    if (value === 744) expect(long.summary.netCost).toBeLessThan(short.summary.netCost);
+    if (value === 480) expect(long.summary.netCost).toBeGreaterThan(short.summary.netCost);
+  });
+
+  it('keeps damage attribution reconciled across all annual decisions and taxes/rewards', () => {
+    for (let mask = 0; mask < 8; mask++) {
+      for (const cost of [250, 2000]) {
+        for (const s of allScenarios(
+          inputs({
+            upgradeMonths: [12, 24, 36].filter((_, i) => mask & (1 << i)),
+            screenChoice: 'defer',
+            screenRepairCost: cost,
+            carrierOffer: 1000,
+            taxRate: 8.5,
+            appleCardBack: 3,
+            klarnaCardBack: 2,
+            carrierCardBack: 1
+          })
+        )) {
+          for (const row of s.rows) {
+            expect(row.items.reduce((sum, i) => sum + i.amount, 0)).toBeCloseTo(row.outflow, 7);
+            expect(row.items.reduce((sum, i) => sum + (i.reward ?? 0), 0)).toBeCloseTo(
+              row.rewards,
+              7
+            );
+            expect(Object.values(row.runningByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+              row.runningCash,
+              7
+            );
+            expect(Object.values(row.runningNpvByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+              row.runningNpv,
+              7
+            );
+          }
+        }
+      }
+    }
+  });
+});
+
+describe('quoted trade-in credits are separate from private resale', () => {
+  it('does not change any payment when private resale changes', () => {
+    for (const upgradeMonths of [[12, 24, 36], [24], [36]]) {
+      const base = inputs({ upgradeMonths, upgradeTradeIns: [550, 400, 250] });
+      const low = allScenarios({ ...base, resaleAtHorizon: 0 });
+      const high = allScenarios({ ...base, resaleAtHorizon: 1000 });
+      low.forEach((scenario, index) => {
+        expect(scenario.rows.map((r) => r.outflow)).toEqual(high[index].rows.map((r) => r.outflow));
+      });
+    }
+  });
+  it('assumes no replacement credit without a quote', () => {
+    const base = inputs({ upgradeMonths: [12], upgradeTradeIns: undefined, resaleAtHorizon: 1000 });
+    expect(outright(base).rows[12].outflow).toBe(1199);
+  });
+});
+
+describe('private sale is a separate action', () => {
+  const base = (overrides: Partial<Inputs> = {}) =>
+    inputs({
+      listPrice: 1200,
+      upgradeMonths: [12, 24, 36],
+      upgradeTradeIns: [600, 400, 300, 200],
+      privateSaleValues: [700, 500, 350, 250],
+      ...overrides
+    });
+  it('collects sale proceeds separately and finances the whole new phone', () => {
+    const cash = outright(base());
+    expect(cash.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.amount).toBe(-700);
+    expect(cash.rows[12].outflow).toBe(500);
+    const card = appleCardFinancing(base());
+    expect(card.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.reward).toBe(0);
+    expect(card.rows[13].outflow).toBe(100);
+    expect(card.summary.remainingBalance).toBe(600);
+  });
+  it('does not sell a returned lease, and pays off an early lease before selling', () => {
+    const short = appleUpgrade(base({ term: 12 }));
+    expect(short.rows.some((r) => r.items.some((i) => i.label === 'Private sale proceeds'))).toBe(
+      false
+    );
+    const long = appleUpgrade(base({ term: 24 }));
+    expect(
+      long.rows[12].items.find((i) => i.label === 'Buy out phone before upgrading')?.amount
+    ).toBeCloseTo(780.12);
+    expect(long.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.amount).toBe(-700);
+    expect(long.rows[13].outflow).toBeCloseTo(34.99);
+  });
+  it('does not also earn carrier trade-in credits for a privately sold phone', () => {
+    const carrier = carrierFinancing(base({ carrierOffer: 1000 }));
+    expect(carrier.rows[1].items.some((i) => i.label === 'Carrier trade-in credit')).toBe(true);
+    expect(carrier.rows[13].items.some((i) => i.label === 'Carrier trade-in credit')).toBe(false);
+    expect(carrier.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.amount).toBe(
+      -700
+    );
+  });
+  it('caps deferred damage at sale proceeds and keeps taxes, rewards and NPV reconciled', () => {
+    for (const cost of [250, 2000]) {
+      for (const scenario of allScenarios(
+        base({
+          screenChoice: 'defer',
+          screenRepairCost: cost,
+          taxRate: 8.5,
+          appleCardBack: 3,
+          klarnaCardBack: 3,
+          carrierCardBack: 2
+        })
+      )) {
+        for (const row of scenario.rows) {
+          expect(row.items.reduce((sum, i) => sum + i.amount - (i.reward ?? 0), 0)).toBeCloseTo(
+            row.net,
+            7
+          );
+          expect(Object.values(row.runningByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+            row.runningCash,
+            7
+          );
+          expect(Object.values(row.runningNpvByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+            row.runningNpv,
+            7
+          );
+        }
+        if (scenario.key !== 'upgrade-12') {
+          const disposition = scenario.rows[12].items.filter((i) =>
+            ['Private sale proceeds', 'Screen damage at private sale'].includes(i.label)
+          );
+          expect(disposition.reduce((sum, i) => sum + i.amount, 0)).toBeCloseTo(
+            -Math.max(0, 700 - cost)
+          );
+        }
+      }
+    }
+  });
+  it('uses Apple quotes for closing value by default, private estimates only when selected', () => {
+    const trade = outright(base({ privateSaleValues: undefined, upgradeMonths: [] }));
+    const sold = outright(base({ upgradeMonths: [] }));
+    expect(trade.summary.equityAtHorizon).toBe(200);
+    expect(sold.summary.equityAtHorizon).toBe(250);
   });
 });

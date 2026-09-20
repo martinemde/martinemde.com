@@ -48,6 +48,63 @@ function pct(style: string | null): number {
 }
 
 describe('Columns', () => {
+  it.each(['cash', 'npv'] as const)(
+    'uses the same grouped amounts as the ledger in %s',
+    (basis) => {
+      const { container, scenarios } = mount(24, basis);
+      const tracks = [...container.querySelectorAll('.track')];
+      scenarios.forEach((scenario, index) => {
+        const rows = scenario.rows.slice(0, 25);
+        const phone = rows
+          .flatMap((row) => row.items)
+          .filter((item) => item.category === 'phone')
+          .reduce((sum, item) => sum + item.amount, 0);
+        const extras = rows
+          .flatMap((row) => row.items)
+          .filter((item) => item.category === 'tax' || item.category === 'fees')
+          .reduce((sum, item) => sum + item.amount, 0);
+        const rewards = rows.reduce((sum, row) => sum + row.rewards, 0);
+        const discount =
+          basis === 'npv' ? scenario.rows[24].runningCash - scenario.rows[24].runningNpv : 0;
+        expect(tracks[index].querySelector('[data-cat="tax"]')).toBeNull();
+        if (phone > 0)
+          expect(tracks[index].querySelector('.up [data-cat="phone"]')?.getAttribute('title')).toBe(
+            `Toward owning it: ${money0(phone)}`
+          );
+        const adjusted = extras - rewards - discount;
+        const band = tracks[index].querySelector(
+          `${adjusted < 0 ? '.down' : '.up'} [data-cat="fees"]`
+        );
+        expect(band?.getAttribute('title')).toBe(
+          `Taxes, fees, rewards & discounts: ${money0(adjusted)}`
+        );
+      });
+    }
+  );
+
+  it('shows a negative adjustment below the axis without shrinking the principal band', () => {
+    const scenarios = allScenarios(
+      inputs({ taxRate: 0, caseCost: 0, activationFee: 0, appleCare: 'none', discountRate: 20 })
+    );
+    const { container } = render(Columns, {
+      scenarios,
+      month: 24,
+      ceiling: 1500,
+      basis: 'npv',
+      height: 240
+    });
+    const cash = container.querySelector('.track')!;
+    expect(cash.querySelector('.up [data-cat="phone"]')?.getAttribute('title')).toBe(
+      'Toward owning it: $1,199'
+    );
+    expect(cash.querySelector('.down [data-cat="fees"]')?.getAttribute('title')).toBe(
+      'Taxes, fees, rewards & discounts: -$36'
+    );
+    expect(container.querySelector('.total')?.textContent).toBe(
+      money0(scenarios[0].rows[24].runningNpv)
+    );
+  });
+
   it('draws one bar per way of paying', () => {
     const { container, scenarios } = mount(24);
     expect(container.querySelectorAll('.track')).toHaveLength(scenarios.length);

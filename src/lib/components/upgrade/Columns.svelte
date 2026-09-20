@@ -98,8 +98,9 @@
   <div class="top">
     <span class="eyebrow"
       >// month {month < 0 ? '--' : String(month).padStart(2, '0')} of {scenarios[0].rows.length -
-        1}{#if upgradeEvery}
-        upgrading {upgradeEvery === 12 ? 'yearly' : `every ${upgradeEvery / 12} years`}{/if}</span
+        1}{#if upgradeEvery}{' '}upgrading {upgradeEvery === 12
+          ? 'yearly'
+          : `every ${upgradeEvery / 12} years`}{/if}</span
     >
     <button
       class="basis"
@@ -217,11 +218,11 @@
 
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 5px;
     border: 1px solid var(--border);
     border-radius: 14px;
     background: var(--surface);
-    padding: 12px 14px 10px;
+    padding: 8px 14px 7px;
     transition:
       border-color 0.2s ease,
       box-shadow 0.2s ease;
@@ -241,6 +242,8 @@
   /* The whole thesis of the page is timing, so switching basis stays one tap
      away rather than living in a settings block further up. */
   .basis {
+    flex-shrink: 0;
+    white-space: nowrap;
     border: 1px solid var(--border);
     border-radius: 999px;
     background: transparent;
@@ -441,10 +444,10 @@
       --bar-w: 62px;
 
       border-radius: 11px;
-      padding: 9px 10px 8px;
+      padding: 7px 10px 6px;
     }
     .chart {
-      gap: 6px;
+      gap: 4px 6px;
     }
     .total {
       font-size: 11.5px;

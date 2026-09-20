@@ -39,7 +39,7 @@
   let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
-  let chartPx = $state(190);
+  let chartPx = $state(112);
 
   let blockEls: HTMLElement[] = [];
   let sentinel: HTMLElement;
@@ -157,7 +157,7 @@
     });
   }
 
-  const TRACK_PX = 26; // Keep in step with `.track`'s height below.
+  const TRACK_PX = 16;
   function barPx(amount: number, peak: number): number {
     if (peak <= 0 || amount <= 0.005) return 0;
     return Math.max(2, (amount / peak) * TRACK_PX);
@@ -202,8 +202,8 @@
       const header = document.querySelector('header');
       if (header) headerPx = Math.round(header.getBoundingClientRect().height);
       const narrow = window.innerWidth <= 560;
-      // A quarter of the screen. The panel is a running tally, not the page.
-      chartPx = Math.round(Math.max(112, Math.min(narrow ? 176 : 210, window.innerHeight * 0.25)));
+      // Leave room below the running tally to read the monthly charges.
+      chartPx = Math.round(Math.max(88, Math.min(narrow ? 112 : 140, window.innerHeight * 0.16)));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -309,7 +309,12 @@
               <!-- The attribution and the amount in one mark: a bar in every
                    column that gets handed this charge, sized against the
                    biggest single bill of the month. -->
-              <div class="bars" class:credit={charge.credit} data-cat={charge.category}>
+              <div
+                class="bars"
+                class:credit={charge.credit}
+                data-cat={charge.category}
+                style="--track-height: {barPx(Math.max(...charge.amounts), peak)}px"
+              >
                 {#each charge.amounts as amount, i (cells[i].key)}
                   <span class="cell" class:zero={amount <= 0.005} data-cat={charge.categories[i]}>
                     <span class="track">
@@ -382,21 +387,21 @@
     position: sticky;
     top: var(--sticky-top, 57px);
     z-index: 4;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     background: var(--bg);
-    padding: 8px 0;
+    padding: 4px 0;
   }
 
   /* One month */
   .month {
     display: grid;
-    gap: 8px;
+    gap: 5px;
     border-top: 1px solid color-mix(in oklch, var(--border) 45%, transparent);
-    padding: 10px 0 8px;
+    padding: 8px 0 6px;
   }
   .month.beat {
     border-top-color: var(--border);
-    padding-top: 22px;
+    padding-top: 14px;
   }
   .month.quiet:not(.beat) {
     opacity: 0.6;
@@ -452,14 +457,14 @@
   /* What arrived, described once, then drawn across the columns that pay it */
   .charges {
     display: grid;
-    gap: 10px;
+    gap: 6px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
   .charges li {
     display: grid;
-    gap: 4px;
+    gap: 2px;
   }
   .head {
     display: flex;
@@ -498,7 +503,7 @@
     align-items: flex-end;
     justify-content: center;
     width: 100%;
-    height: 26px;
+    height: var(--track-height);
     border-bottom: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
   }
   .bar {
@@ -687,11 +692,11 @@
 
   @media (max-width: 560px) {
     .panel-wrap {
-      margin-bottom: 14px;
-      padding: 6px 0;
+      margin-bottom: 8px;
+      padding: 4px 0;
     }
     .month {
-      gap: 7px;
+      gap: 5px;
     }
     header h3 {
       font-size: 16.5px;

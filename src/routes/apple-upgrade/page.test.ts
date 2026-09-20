@@ -450,7 +450,7 @@ describe('Apple Upgrade page', () => {
       Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
     );
     // One bar reaches the top of the track; nothing exceeds it.
-    expect(Math.max(...bars)).toBe(26);
+    expect(Math.max(...bars)).toBe(16);
   });
 
   it('rewrites the ledger when you change the ending', async () => {

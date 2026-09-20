@@ -744,7 +744,10 @@
     <button
       type="button"
       aria-pressed={screenChoice === 'repair'}
-      onclick={() => chooseScreen('repair')}>Pay {money(repairPrice)} to fix it</button
+      onclick={() => chooseScreen('repair')}
+      >Pay {money(repairPrice)} to fix it {appleCare === 'none'
+        ? 'without AppleCare'
+        : 'with AppleCare'}</button
     >
     <button
       type="button"

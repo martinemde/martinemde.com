@@ -385,7 +385,10 @@ describe('Apple Upgrade page', () => {
       await scrollToMonth(9);
       await user.click(
         within(await screen.findByRole('dialog')).getByRole('button', {
-          name: coverage === 'No AppleCare' ? 'Pay $271.25 to fix it' : 'Pay $31.47 to fix it'
+          name:
+            coverage === 'No AppleCare'
+              ? 'Pay $271.25 to fix it without AppleCare'
+              : 'Pay $31.47 to fix it with AppleCare'
         })
       );
       expect(

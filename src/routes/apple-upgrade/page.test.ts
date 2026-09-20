@@ -279,7 +279,7 @@ describe('Apple Upgrade page', () => {
     expect(replacement().querySelector('.amt')?.textContent).toBe('$589.00');
   });
 
-  it('defaults to fixed Apple values and shows private sales as a separate action', async () => {
+  it('prefills editable Apple estimates and shows private sales as a separate action', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
@@ -289,11 +289,18 @@ describe('Apple Upgrade page', () => {
       month().getByText(label).closest('li')!.querySelector('.amt')!.textContent;
     expect(amount('New phone after trade-in')).toBe('$314.00');
     await user.click(screen.getByText('Nitpicky stuff if you want to account for every penny'));
-    expect(screen.queryByRole('spinbutton', { name: /^Apple trade-in after/ })).toBeNull();
+    const tradeIn = screen.getByRole('spinbutton', { name: /^Apple trade-in after 1 year/ });
+    expect((tradeIn as HTMLInputElement).value).toBe('885');
+    await fireEvent.input(tradeIn, { target: { value: '500' } });
+    expect(amount('New phone after trade-in')).toBe('$699.00');
     const choice = screen.getByRole('checkbox', {
       name: 'I’ll sell owned phones privately instead'
     });
     await user.click(choice);
+    expect(
+      (screen.getByRole('spinbutton', { name: /^Private sale after 1 year/ }) as HTMLInputElement)
+        .value
+    ).toBe('500');
     await fireEvent.input(screen.getByRole('spinbutton', { name: /^Private sale after 1 year/ }), {
       target: { value: '900' }
     });
@@ -305,7 +312,23 @@ describe('Apple Upgrade page', () => {
     );
     await user.click(choice);
     expect(month().queryByText('Private sale proceeds')).toBeNull();
-    expect(amount('New phone after trade-in')).toBe('$314.00');
+    expect(amount('New phone after trade-in')).toBe('$699.00');
+  });
+
+  it('scales prefilled estimates with the custom phone price', async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await walkThrough(user);
+    await user.click(screen.getByText('Something else'));
+    await user.click(screen.getByText('Nitpicky stuff if you want to account for every penny'));
+    await fireEvent.input(screen.getByRole('spinbutton', { name: /^Sticker price/ }), {
+      target: { value: '2398' }
+    });
+    expect(
+      screen
+        .getAllByRole('spinbutton', { name: /^Apple trade-in after/ })
+        .map((field) => (field as HTMLInputElement).value)
+    ).toEqual(['1770', '1220', '910', '720']);
   });
 
   it('reconciles all five visible columns in both dollar modes across mixed decisions', async () => {

@@ -167,9 +167,13 @@
   let carrierCardBack = $state(initial.carrierCardBack);
   let discountRate = $state(initial.discountRate);
   let carrierOffer = $state(initial.carrierOffer);
-  let upgradeTradeIns = $derived([
-    ...(DEVICES.find((device) => device.key === deviceKey)?.tradeIns ?? [0, 0, 0, 0])
-  ]);
+  const tradeInRates = $derived.by(() => {
+    const device =
+      DEVICES.find((device) => device.key === deviceKey && device.price > 0) ??
+      DEVICES.find((device) => device.key === 'iphone-17-pro-max')!;
+    return device.tradeIns.map((value) => value / device.price);
+  });
+  let upgradeTradeIns = $derived(tradeInRates.map((rate) => Math.round(listPrice * rate)));
   let privateSaleValues = $state(initial.privateSaleValues);
   let previousDevice = initial.deviceKey;
 
@@ -494,28 +498,29 @@
         <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
         <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
       </div>
-      <h3>Apple trade-in values</h3>
+      <h3>Apple trade-in estimates</h3>
       <p>
-        We use <a href="https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values"
-          >Apple’s fixed trade-in values</a
-        > for similar phones aged one through four years, checked September 20, 2026. Future offers may
-        differ. Older Air estimates use regular iPhones. These values also set what your final phone is
-        worth in the comparison.
+        These fields start with percentages of the phone’s price, based on
+        <a href="https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values"
+          >Apple’s trade-in values</a
+        > checked September 20, 2026. Adjust them to your expected offer. Custom phones start with the
+        Pro Max percentages; older Air estimates use regular iPhones. The same estimates set your final
+        phone’s value. Choose private sale below if you plan to sell it yourself.
       </p>
       <div class="fields">
         {#each [1, 2, 3, 4] as age, index (age)}
-          {#if deviceKey === 'custom'}
-            <Field
-              label={`Apple trade-in after ${age} ${age === 1 ? 'year' : 'years'}`}
-              bind:value={upgradeTradeIns[index]}
-              step={25}
-            />
-          {:else}
-            <p>
-              {age}
-              {age === 1 ? 'year' : 'years'} old: <strong>{money0(upgradeTradeIns[index])}</strong>
-            </p>
-          {/if}
+          <Field
+            label={`Apple trade-in after ${age} ${age === 1 ? 'year' : 'years'}`}
+            bind:value={
+              () => upgradeTradeIns[index],
+              (value: number) =>
+                (upgradeTradeIns = upgradeTradeIns.map((current, i) =>
+                  i === index ? value : current
+                ))
+            }
+            hint={`Default: about ${Math.round(tradeInRates[index] * 100)}% of the phone’s price.`}
+            step={25}
+          />
         {/each}
       </div>
       <label class="private-sale-choice">

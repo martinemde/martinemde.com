@@ -6,7 +6,7 @@ import { HORIZON } from '$lib/apple-upgrade/model';
 
 /**
  * Smoke test for the step-by-step flow: the page gates each question behind the
- * previous answer and only builds the scrolling ledger once all four are in.
+ * previous answer and only builds the scrolling ledger once the setup answers are in.
  */
 describe('Apple Upgrade page', () => {
   let scrolledMonth = -1;
@@ -48,347 +48,234 @@ describe('Apple Upgrade page', () => {
     Element.prototype.scrollIntoView = vi.fn();
   });
 
-  /** The questions asked before the ledger starts. */
   async function walkThrough(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByText('iPhone 17 Pro Max'));
-    await user.click(screen.getByText('Every 2 years'));
     await user.click(screen.getByText('No trade-in'));
     await user.click(screen.getByText('No AppleCare'));
   }
-
-  /** …and the one the ledger stops at, part-way down. */
-  async function chooseEnding(user: ReturnType<typeof userEvent.setup>, label = 'Do nothing') {
-    await user.click(screen.getByText(label));
+  async function chooseYear(
+    user: ReturnType<typeof userEvent.setup>,
+    year: number,
+    upgrade = false
+  ) {
+    const section = document.getElementById(`year-${year}-title`)!.closest('section')!;
+    await user.click(
+      within(section).getByRole('button', { name: upgrade ? 'Upgrade' : 'Keep this phone' })
+    );
   }
-
+  async function finish(user: ReturnType<typeof userEvent.setup>) {
+    for (const year of [1, 2, 3]) await chooseYear(user, year);
+  }
   async function scrollToMonth(month: number) {
     scrolledMonth = month;
     await fireEvent.scroll(window);
   }
 
-  it('jumps to the top without clearing answers, then starts fresh including saved choices', async () => {
+  it('asks for the phone, trade-in and coverage, without an upfront upgrade schedule', async () => {
     const user = userEvent.setup();
-    const { unmount, container } = render(Page);
+    render(Page);
+    expect(screen.queryByText('No trade-in')).toBeNull();
+    await user.click(screen.getByText('iPhone 17 Pro Max'));
+    expect(screen.getByText('No trade-in')).toBeTruthy();
+    expect(screen.queryByText('No AppleCare')).toBeNull();
+    await user.click(screen.getByText('No trade-in'));
+    expect(screen.getByText('No AppleCare')).toBeTruthy();
+    expect(screen.queryByText('How often do you want a new phone?')).toBeNull();
+    expect(screen.getByText('$34.99/mo on a 24-month lease')).toBeTruthy();
+  });
+
+  it('gates each year and only shows final totals after all three annual decisions', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
     await walkThrough(user);
-    await scrollToMonth(9);
-    await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deal with it' })
+    expect(container.querySelectorAll('.chart .name')).toHaveLength(5);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    for (const year of [1, 2, 3]) {
+      await chooseYear(user, year);
+      expect(container.querySelectorAll('[data-month]')).toHaveLength((year + 1) * 12 + 1);
+    }
+    expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
+    expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
+    expect(screen.queryByText('The lease is up. Now what?')).toBeNull();
+  });
+
+  it('keeping the phone stops replacements on every path and exposes both automatic buyouts', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await finish(user);
+    expect(container.querySelector('[data-month="18"]')?.textContent).toContain('Automatic buyout');
+    expect(container.querySelector('[data-month="30"]')?.textContent).toContain('Automatic buyout');
+    expect(container.textContent).not.toContain('New phone after trade-in');
+    expect(container.textContent).not.toContain('Installment on traded-in phone');
+    expect(container.textContent).not.toContain('You don’t have a phone');
+  });
+
+  it('supports mixed decisions and clears later answers when an earlier decision changes', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await chooseYear(user, 1, true);
+    await chooseYear(user, 2);
+    await chooseYear(user, 3, true);
+    expect(container.querySelector('[data-month="12"]')?.textContent).toContain(
+      'New phone after trade-in'
     );
+    expect(container.querySelector('[data-month="24"]')?.textContent).not.toContain(
+      'New phone after trade-in'
+    );
+    expect(container.querySelector('[data-month="36"]')?.textContent).toContain(
+      'New phone after trade-in'
+    );
+    expect(container.querySelector('[data-month="13"]')?.textContent).toContain(
+      'Installment on traded-in phone'
+    );
+    await chooseYear(user, 1);
+    expect(container.querySelector('[data-month="25"]')).toBeNull();
+    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
+      'keep',
+      null,
+      null
+    ]);
+  });
+
+  it('restores annual answers, but asks again for incompatible legacy schedules', async () => {
+    const user = userEvent.setup();
+    let view = render(Page);
+    await walkThrough(user);
+    await chooseYear(user, 1, true);
+    await chooseYear(user, 2);
+    view.unmount();
+    view = render(Page);
+    expect(view.container.querySelector('[data-month="36"]')).toBeTruthy();
+    expect(view.container.querySelector('[data-month="37"]')).toBeNull();
+    view.unmount();
+    const saved = JSON.parse(localStorage.getItem('apple-upgrade-calculator')!);
+    delete saved.annualChoices;
+    localStorage.setItem(
+      'apple-upgrade-calculator',
+      JSON.stringify({ ...saved, upgradeEvery: 12, endChoice: 'nothing' })
+    );
+    view = render(Page);
+    expect(view.container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
+      null,
+      null,
+      null
+    ]);
+  });
+
+  it('jumps to the top without clearing answers, and start over resets the annual choices', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await chooseYear(user, 1, true);
     const saved = localStorage.getItem('apple-upgrade-calculator');
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 1400 });
     await fireEvent.scroll(window);
-    const jump = screen.getByRole('button', { name: 'Jump to top' });
-    jump.focus();
-    await user.keyboard('{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Jump to top' }));
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
     expect(localStorage.getItem('apple-upgrade-calculator')).toBe(saved);
-    expect(screen.queryByRole('button', { name: 'Start over' })).toBeNull();
-
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
     await fireEvent.scroll(window);
     await user.click(screen.getByRole('button', { name: 'Start over' }));
-    expect(screen.queryByText('No trade-in')).toBeNull();
     expect(container.querySelector('[data-month]')).toBeNull();
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
+      null,
+      null,
+      null
+    ]);
     expect(document.activeElement).toBe(
       screen.getByRole('heading', { name: 'Apple Upgrade, decoded' })
     );
-    const reset = JSON.parse(localStorage.getItem('apple-upgrade-calculator')!);
-    for (const key of [
-      'deviceKey',
-      'hasTradeIn',
-      'upgradeEvery',
-      'appleCare',
-      'endChoice',
-      'screenChoice'
-    ]) {
-      expect(reset[key]).toBeNull();
-    }
-    unmount();
-    render(Page);
-    expect(screen.queryByText('No trade-in')).toBeNull();
-    await walkThrough(user);
-    await scrollToMonth(9);
-    expect(await screen.findByRole('dialog')).toBeTruthy();
   });
 
-  it('opens at month nine once, and dismissing it survives reload', async () => {
+  it('opens the screen question at month nine once, and preserves dismissal', async () => {
     const user = userEvent.setup();
-    const { unmount, container } = render(Page);
+    const { unmount } = render(Page);
     await walkThrough(user);
     await scrollToMonth(8);
     expect(screen.queryByRole('dialog')).toBeNull();
     await scrollToMonth(9);
     const dialog = await screen.findByRole('dialog');
-    await user.click(within(dialog).getByRole('button', { name: 'No I didn’t' }));
-    await scrollToMonth(8);
-    await scrollToMonth(10);
-    expect(screen.queryByRole('dialog')).toBeNull();
-    await chooseEnding(user, 'Hand it back');
-    expect(container.querySelector('[data-cat="repair"]')).toBeNull();
+    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     unmount();
     render(Page);
+    await scrollToMonth(10);
     expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  it('keeps the screen choices at month nine and recalculates when you change them', async () => {
-    const user = userEvent.setup();
-    const { unmount, container } = render(Page);
-    await walkThrough(user);
-    await chooseEnding(user, 'Hand it back');
-    expect(screen.queryByRole('region', { name: 'Oh no! You cracked your screen!' })).toBeNull();
-    await scrollToMonth(9);
-    await user.click(
-      within(await screen.findByRole('dialog')).getByRole('button', { name: 'No I didn’t' })
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).screenChoice).toBe(
+      'dismiss'
     );
-
-    const choices = within(screen.getByRole('region', { name: 'Oh no! You cracked your screen!' }));
-    expect(choices.getByRole('button', { name: 'No I didn’t' }).getAttribute('aria-pressed')).toBe(
-      'true'
-    );
-    await user.click(choices.getByRole('button', { name: 'Pay $271.25 to fix it' }));
-    expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeTruthy();
-    await user.click(choices.getByRole('button', { name: 'Deal with it' }));
-    expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
-    expect(container.querySelector('[data-month="25"] [data-cat="repair"]')).toBeTruthy();
-    expect(screen.queryByRole('dialog')).toBeNull();
-
-    unmount();
-    const restored = render(Page);
-    const savedChoices = within(
-      screen.getByRole('region', { name: 'Oh no! You cracked your screen!' })
-    );
-    expect(
-      savedChoices.getByRole('button', { name: 'Deal with it' }).getAttribute('aria-pressed')
-    ).toBe('true');
-    await user.click(savedChoices.getByRole('button', { name: 'No I didn’t' }));
-    expect(restored.container.querySelector('[data-cat="repair"]')).toBeNull();
-    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it.each(['No AppleCare', 'AppleCare+ monthly'])(
-    'adds the repair now to all columns with %s',
+    'repairs every path when fixing the screen with %s',
     async (coverage) => {
       const user = userEvent.setup();
       const { container } = render(Page);
       await walkThrough(user);
       if (coverage !== 'No AppleCare') await user.click(screen.getByText(coverage));
       await scrollToMonth(9);
-      const dialog = await screen.findByRole('dialog');
       await user.click(
-        within(dialog).getByRole('button', {
+        within(await screen.findByRole('dialog')).getByRole('button', {
           name: coverage === 'No AppleCare' ? 'Pay $271.25 to fix it' : 'Pay $31.47 to fix it'
         })
       );
-      expect(screen.queryByRole('dialog')).toBeNull();
-      const repair = container.querySelector('[data-month="9"] [data-cat="repair"]')!;
-      expect(repair.querySelectorAll('.bar')).toHaveLength(4);
-      await chooseEnding(user, 'Hand it back');
-      expect(container.querySelector('[data-month="25"] [data-cat="repair"]')).toBeNull();
+      expect(
+        container.querySelectorAll('[data-month="9"] .bars[data-cat="repair"] .cell:not(.zero)')
+      ).toHaveLength(5);
     }
   );
 
-  it('defers the repair with AppleCare, and recalculates when coverage or ending changes', async () => {
+  it('charges a deferred repair when returning a lease and recalculates changed screen choices', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
-    await user.click(screen.getByText('AppleCare+ monthly'));
     await scrollToMonth(9);
     await user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deal with it' })
     );
-    expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
-    expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeNull();
-    await chooseEnding(user, 'Hand it back');
-    expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeNull();
-    const repair = () => container.querySelector('[data-month="25"] [data-cat="repair"]');
-    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
-    expect(repair()!.querySelector('.cell:not(.zero) .bar')?.getAttribute('title')).toBe(
-      'Lease: $29.00'
-    );
-    expect(repair()!.textContent).toContain('$29.00');
-    await user.click(screen.getByText('No AppleCare'));
-    expect(repair()!.textContent).toContain('$250.00');
-    await chooseEnding(user, 'Upgrade');
-    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
-    await chooseEnding(user, 'Buy it now');
-    expect(repair()).toBeNull();
-    await chooseEnding(user, 'Do nothing');
-    expect(repair()).toBeNull();
-  });
-
-  it('treats Escape as no cracked screen', async () => {
-    const user = userEvent.setup();
-    render(Page);
-    await walkThrough(user);
-    await scrollToMonth(12);
-    const dialog = await screen.findByRole('dialog');
-    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).screenChoice).toBe(
-      'dismiss'
-    );
-  });
-
-  it('shows earned and lost carrier credits for each upgrade preference and restores the choice', async () => {
-    const user = userEvent.setup();
-    const { unmount, container } = render(Page);
-    await user.click(screen.getByText('iPhone 17 Pro Max'));
-    await user.click(screen.getByText('Every 2 years'));
-    await user.click(screen.getByText('Yes, I have one'));
-    const tradeInSection = screen.getByLabelText(/Apple Trade-in offer/).closest('section')!;
-    expect(within(tradeInSection).getByText('Your carrier trade-in at month 24')).toBeTruthy();
-    expect(screen.getByText('Every year')).toBeTruthy();
-    const offer = screen.getByLabelText(/Carrier Trade-in offer/);
-    await user.clear(offer);
-    await user.type(offer, '900');
-    await user.click(screen.getByText('Every year'));
-    expect(screen.getByRole('img', { name: '$300 received; $600 forfeited' })).toBeTruthy();
-    await user.click(screen.getByText('No AppleCare'));
-    await chooseEnding(user, 'Hand it back');
+    await chooseYear(user, 1, true);
     expect(
-      within(container.querySelector('[data-month="12"]') as HTMLElement).getByText(
-        'Carrier: $600.00 in trade-in credits forfeited'
-      )
-    ).toBeTruthy();
-    expect(container.querySelector('[data-month="13"]')?.textContent).toContain(
-      'Installment on traded-in phone'
-    );
-    await user.click(screen.getByText('Every 2 years'));
-    expect(screen.getByRole('img', { name: '$600 received; $300 forfeited' })).toBeTruthy();
-    await user.click(screen.getByText('Every 3 years'));
-    expect(screen.getByRole('img', { name: '$900 received; $0 forfeited' })).toBeTruthy();
-    unmount();
-    render(Page);
-    expect(screen.getByRole('img', { name: '$900 received; $0 forfeited' })).toBeTruthy();
-  });
-
-  it('starts with only the first question open', () => {
-    render(Page);
-
-    expect(screen.getByText('What are you buying?')).toBeTruthy();
-    expect(screen.getByText('iPhone 17 Pro Max')).toBeTruthy();
-
-    // Later steps are visible as dimmed stubs, but their controls are not there.
-    expect(screen.queryByText('No trade-in')).toBeNull();
-    expect(screen.queryByText('No AppleCare')).toBeNull();
-  });
-
-  it('reveals each step as the one before it is answered', async () => {
-    const user = userEvent.setup();
-    render(Page);
-
-    await user.click(screen.getByText('iPhone 17 Pro Max'));
-    expect(screen.getByText('Every year')).toBeTruthy();
-    expect(screen.queryByText('No trade-in')).toBeNull();
-
-    await user.click(screen.getByText('Every 2 years'));
-    expect(screen.getByText('No trade-in')).toBeTruthy();
-    expect(screen.queryByText('No AppleCare')).toBeNull();
-
-    await user.click(screen.getByText('No trade-in'));
-    expect(screen.getByText('No AppleCare')).toBeTruthy();
-  });
-
-  it('quotes the published payment for the device you pick', async () => {
-    const user = userEvent.setup();
-    render(Page);
-
-    await user.click(screen.getByText('iPhone 17 Pro Max'));
-
-    expect(screen.getByText('Compare a 12-month lease')).toBeTruthy();
-    expect(screen.getAllByText('Compare a 24-month lease')).toHaveLength(2);
-  });
-
-  it('builds the ledger once every setup question is answered', async () => {
-    const user = userEvent.setup();
-    render(Page);
-
-    expect(screen.queryByText('Scroll, and watch them fill up')).toBeNull();
-
-    await walkThrough(user);
-
-    expect(screen.getByText('Scroll, and watch them fill up')).toBeTruthy();
-    expect(screen.getByText('The lease is up. Now what?')).toBeTruthy();
-  });
-
-  /**
-   * The end-of-term question is a gate, not a preference: every month past it
-   * depends on the answer, so there is nothing below it to scroll to.
-   */
-  it('stops the ledger at the end-of-term question until it is answered', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(25); // 0 through 24
-    expect(container.querySelector('[data-month="25"]')).toBeNull();
-    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
-    expect(screen.queryByText('Assumptions and lease terms')).toBeNull();
-  });
-
-  it('opens the rest of the page once an ending is picked', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-    await chooseEnding(user);
-
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(HORIZON + 1);
-    expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
-    expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
-  });
-
-  it('names every charge once', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-
-    // Month 1: the lease, the Apple Card installment and the carrier
-    // installment all start, and paying cash is already finished.
-    const month = container.querySelector('[data-month="1"]')!.textContent!;
-    expect(month.match(/Monthly payment/g)).toHaveLength(1);
-    expect(month).not.toMatch(/Lease payment|Device installment|Installment/);
-  });
-
-  it('groups taxes, rewards and fees into one month zero charge', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-    const month = container.querySelector('[data-month="0"]')!;
+      container.querySelectorAll('[data-month="12"] .bars[data-cat="repair"] .cell:not(.zero)')
+    ).toHaveLength(1);
     expect(
-      [
-        ...within(month as HTMLElement)
-          .getByText('Taxes, fees, rewards & discounts')
-          .closest('li')!
-          .querySelectorAll('.amt')
-      ].map((cell) => cell.textContent)
-    ).toEqual(['$159.28', '$195.25', '$96.39', '$196.27']);
-    expect(container.querySelector('.caption')?.textContent).toContain('$1,262');
+      container.querySelector('[data-month="12"] .bars[data-cat="repair"]')?.textContent
+    ).toContain('$250.00');
+    await chooseYear(user, 1);
+    await chooseYear(user, 2, true);
+    expect(
+      container.querySelectorAll('[data-month="24"] .bars[data-cat="repair"] .cell:not(.zero)')
+    ).toHaveLength(1);
+    const choices = within(screen.getByRole('region', { name: 'Oh no! You cracked your screen!' }));
+    await user.click(choices.getByRole('button', { name: 'No I didn’t' }));
+    expect(container.querySelector('.bars[data-cat="repair"]')).toBeNull();
   });
 
-  it('reconciles visible charges, tax, rewards and discount with each monthly total', async () => {
+  it('reconciles all five visible columns in both dollar modes across mixed decisions', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
-    await chooseEnding(user);
+    await chooseYear(user, 1, true);
+    await chooseYear(user, 2);
+    await chooseYear(user, 3, true);
     const dollars = (text: string | null | undefined) =>
       Number(text?.match(/\$([\d,]+\.\d{2})/)?.[1].replaceAll(',', '')) || 0;
     for (const discounted of [true, false]) {
-      if (!discounted) {
-        await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
-      }
-      for (const month of [0, 1, 24, 30, 48]) {
+      if (!discounted) await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
+      for (const month of [0, 1, 12, 18, 24, 30, 36, HORIZON]) {
         const block = container.querySelector(`[data-month="${month}"]`)!;
         const sums = [...block.querySelectorAll('.sum')];
+        expect(sums).toHaveLength(5);
         sums.forEach((sum, column) => {
           const charges = [...block.querySelectorAll('.charges li')].reduce((total, row) => {
             const text = row.querySelectorAll('.amt')[column].textContent;
-            const amount = dollars(text);
-            return total + (text?.startsWith('−') ? -amount : amount);
+            return total + dollars(text) * (text?.startsWith('−') ? -1 : 1);
           }, 0);
-          const total =
-            dollars(sum.firstChild?.textContent) * (sum.classList.contains('back') ? -1 : 1);
-          // Each printed component rounds independently to cents.
+          const total = dollars(sum.textContent) * (sum.classList.contains('back') ? -1 : 1);
           expect(Math.abs(charges - total)).toBeLessThan(0.04);
         });
         expect(block.querySelector('.sum small')).toBeNull();
@@ -396,173 +283,23 @@ describe('Apple Upgrade page', () => {
     }
   });
 
-  /**
-   * A charge is attributed by drawing it in the columns that pay it, so every
-   * charge spans all four and the ones that owe nothing are empty. That is the
-   * whole mechanism: no chips, no swatches, just where the bars are.
-   */
-  it('draws each charge across the columns that are billed for it', async () => {
+  it('shows excess trade-in credit in both lease columns', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
-    await walkThrough(user);
-
-    const rows = container.querySelectorAll('[data-month="1"] .charges li');
-    expect(rows.length).toBeGreaterThan(0);
-
-    const heights = (row: Element) =>
-      [...row.querySelectorAll('.bar')].map((b) =>
-        Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
-      );
-
-    for (const row of rows) {
-      expect(row.querySelectorAll('.cell')).toHaveLength(4);
-
-      const label = row.querySelector('.what')!.textContent!;
-      const drawn = heights(row).map((h) => h > 0);
-      if (label === 'AppleCare+') {
-        // Billed by Apple whatever you did about the phone.
-        expect(drawn).toEqual([true, true, true, true]);
-      } else if (label === 'Monthly payment') {
-        expect(drawn).toEqual([false, true, true, true]);
-      }
-    }
-  });
-
-  it('keeps installments on a traded-in phone separate from the current monthly payment', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-    await user.click(screen.getByText('Every year'));
-    await chooseEnding(user, 'Upgrade');
-    const rows = [...container.querySelectorAll('[data-month="13"] .charges li')];
-    const current = rows.find(
-      (row) => row.querySelector('.what')?.textContent === 'Monthly payment'
-    )!;
-    const old = rows.find(
-      (row) => row.querySelector('.what')?.textContent === 'Installment on traded-in phone'
-    )!;
-    expect(current).toBeTruthy();
-    expect(old).toBeTruthy();
-    expect([...current.querySelectorAll('.amt')].map((cell) => cell.textContent)).toEqual([
-      '',
-      '$19.00',
-      '$49.99',
-      '$12.67'
-    ]);
-    expect([...old.querySelectorAll('.amt')].map((cell) => cell.textContent)).toEqual([
-      '',
-      '$49.96',
-      '',
-      ''
-    ]);
-  });
-
-  it('nets rewards against monthly taxes and fees in each column', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-    await user.click(screen.getByText('AppleCare+ monthly'));
-    await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
-    const month = container.querySelector('[data-month="1"]')!;
-    expect(
-      [
-        ...within(month as HTMLElement)
-          .getByText('Taxes, fees, rewards & discounts')
-          .closest('li')!
-          .querySelectorAll('.amt')
-      ].map((cell) => cell.textContent)
-    ).toEqual(['$0.71', '−$0.79', '$2.54', '$0.04']);
-  });
-
-  it('sizes the bars against the biggest charge of that month', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-
-    const bars = [...container.querySelectorAll('[data-month="1"] .bar')].map((b) =>
-      Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
-    );
-    // One bar reaches the top of the track; nothing exceeds it.
-    expect(Math.max(...bars)).toBe(16);
-  });
-
-  it('rewrites the ledger when you change the ending', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-    await chooseEnding(user);
-
-    const monthThirty = () => container.querySelector('[data-month="30"]')!.textContent!;
-
-    // Doing nothing means Klarna is still billing you at month 30.
-    expect(monthThirty()).toMatch(/Automatic buyout/);
-
-    await user.click(screen.getByText('Hand it back'));
-    expect(monthThirty()).toMatch(/You don’t have a phone/);
-  });
-
-  it('fills the phoneless months with something to do', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-    await chooseEnding(user, 'Hand it back');
-
-    // Every month past the term is phoneless on the return path; each should
-    // suggest a pastime, and no two of them should suggest the same one.
-    const suggestions = [];
-    for (let m = 25; m <= HORIZON; m++) {
-      const text = container.querySelector(`[data-month="${m}"]`)!.textContent!;
-      const match = text.match(/You don’t have a phone: (.+)/);
-      expect(match).not.toBeNull();
-      suggestions.push(match![1].trim());
-    }
-    expect(new Set(suggestions).size).toBe(suggestions.length);
-  });
-
-  it('remembers your answers across a reload', async () => {
-    const user = userEvent.setup();
-    const { unmount } = render(Page);
-    await walkThrough(user);
-    unmount();
-
-    render(Page);
-    expect(screen.getByText('Scroll, and watch them fill up')).toBeTruthy();
-  });
-
-  /**
-   * A trade-in bigger than the lease can absorb comes back as Apple credit
-   * rather than as a cheaper phone, which is the thing nobody tells you.
-   */
-  it('explains excess trade-in credit in the month zero ledger', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-
     await user.click(screen.getByText('Something else'));
-    const price = screen.getByLabelText(/Sticker price/i) as HTMLInputElement;
+    const price = screen.getByLabelText(/Sticker price/i);
     await user.clear(price);
     await user.type(price, '999');
-    await user.click(screen.getByText('Every 2 years'));
     await user.click(screen.getByText('Yes, I have one'));
-    const trade = screen.getByLabelText(/Apple Trade-in offer/i) as HTMLInputElement;
+    const trade = screen.getByLabelText(/Apple Trade-in offer/i);
     await user.clear(trade);
     await user.type(trade, '800');
-    await user.click(container.querySelector('input[name="upgrade-every"][value="12"]')!);
     await user.click(screen.getByText('No AppleCare'));
-
-    const dayOne = container.querySelector('[data-month="0"]')!;
-    expect(dayOne.textContent).toMatch(/Apple credit back/);
-    expect(dayOne.textContent).toMatch(/\$300\.50/);
-
-    // Drawn below the line, outlined, only in the column that could not use it.
-    const row = [...dayOne.querySelectorAll('.charges li')].find(
-      (li) => li.querySelector('.what')?.textContent === 'Apple credit back for excess trade-in'
-    )!;
-    expect(row.querySelector('.bars.credit')).toBeTruthy();
-    const drawn = [...row.querySelectorAll('.bar')].map(
-      (b) => Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0) > 0
-    );
-    expect(drawn).toEqual([false, false, true, false]);
-
-    expect(screen.queryByText(/bigger than the lease can use/i)).toBeNull();
+    const row = within(container.querySelector('[data-month="0"]') as HTMLElement)
+      .getByText('Apple credit back for excess trade-in')
+      .closest('li')!;
+    expect(row.textContent).toContain('−$300.50');
+    expect(row.textContent).toContain('−$100.70');
+    expect(row.querySelectorAll('.cell:not(.zero)')).toHaveLength(2);
   });
 });

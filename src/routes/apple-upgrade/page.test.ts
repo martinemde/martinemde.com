@@ -259,7 +259,7 @@ describe('Apple Upgrade page', () => {
     await chooseYear(user, 1, true);
     expect(
       container.querySelectorAll('[data-month="12"] .bars[data-cat="repair"] .cell:not(.zero)')
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(
       container.querySelector('[data-month="12"] .bars[data-cat="repair"]')?.textContent
     ).toContain('$250.00');
@@ -269,10 +269,10 @@ describe('Apple Upgrade page', () => {
       within(container.querySelector('[data-month="24"]') as HTMLElement)
         .getByText('New phone after trade-in')
         .closest('li')!;
-    expect(replacement().querySelector('.amt')?.textContent).toBe('$909.00');
+    expect(replacement().querySelector('.amt')?.textContent).toBe('$659.00');
     expect(
       container.querySelectorAll('[data-month="24"] .bars[data-cat="repair"] .cell:not(.zero)')
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     const choices = within(screen.getByRole('region', { name: 'Oh no! You cracked your screen!' }));
     await user.click(choices.getByRole('button', { name: 'No I didn’t' }));
     expect(container.querySelector('.bars[data-cat="repair"]')).toBeNull();

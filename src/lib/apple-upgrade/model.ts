@@ -576,12 +576,82 @@ function summarize(
   };
 }
 
+/** Identify the cost of unrepaired trade-in damage without changing any cash flow.
+ * Loans collect it through installments; promotions collect it as smaller credits.
+ */
+function attributeDeferredDamage(input: Inputs, build: (input: Inputs) => Scenario): Scenario {
+  const scenario = build(input);
+  if (input.screenChoice !== 'defer') return scenario;
+  const intact = build({ ...input, screenChoice: 'dismiss' });
+  const running = zeroTotals();
+  const runningNpv = zeroTotals();
+  const rate = monthlyDiscount(input.discountRate);
+  const key = (item: LineItem) => `${item.category}:${item.biller}:${item.label}`;
+  scenario.rows = scenario.rows.map((row, month) => {
+    const originals = new Map(intact.rows[month].items.map((item) => [key(item), item]));
+    const items: LineItem[] = [];
+    const split = (item: LineItem, baseline: LineItem | undefined) => {
+      const damage = item.amount - (baseline?.amount ?? 0);
+      if ((item.category === 'phone' || item.category === 'rent') && damage > 0.005) {
+        const reward = (item.reward ?? 0) - (baseline?.reward ?? 0);
+        const remainder = {
+          ...item,
+          amount: item.amount - damage,
+          reward: (item.reward ?? 0) - reward
+        };
+        if (Math.abs(remainder.amount) > 0.005) items.push(remainder);
+        items.push({
+          label: 'Screen damage at trade-in',
+          amount: damage,
+          reward,
+          biller: item.biller,
+          category: 'repair'
+        });
+      } else items.push(item);
+    };
+    for (const item of row.items) {
+      split(item, originals.get(key(item)));
+      originals.delete(key(item));
+    }
+    // Damage can consume an entire surplus trade-in refund.
+    for (const item of originals.values()) {
+      if (item.category === 'phone' && item.amount < -0.005)
+        split({ ...item, amount: 0, reward: 0 }, item);
+    }
+    for (const item of items) {
+      const net = item.amount - (item.reward ?? 0);
+      running[item.category] += net;
+      runningNpv[item.category] += pv(net, month, rate);
+    }
+    return {
+      ...row,
+      items,
+      runningByCategory: { ...running },
+      runningNpvByCategory: { ...runningNpv }
+    };
+  });
+  return scenario;
+}
+
+export function appleUpgrade(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildAppleUpgrade);
+}
+export function outright(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildOutright);
+}
+export function appleCardFinancing(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildAppleCardFinancing);
+}
+export function carrierFinancing(input: Inputs): Scenario {
+  return attributeDeferredDamage(input, buildCarrierFinancing);
+}
+
 /**
  * The lease. Payments start ~30 days after pickup, the trade-in credit is
  * smeared across the initial term only, and the interesting stuff all happens
  * the month a term runs out — which, on the upgrade path, happens over and over.
  */
-export function appleUpgrade(input: Inputs): Scenario {
+function buildAppleUpgrade(input: Inputs): Scenario {
   if (input.upgradeMonths !== undefined) return scheduledLease(input);
   const { listPrice, term, tradeIn, endChoice } = input;
   const tax = 1 + input.taxRate / 100;
@@ -922,7 +992,7 @@ function purchaseTerms(input: Inputs, tradeIn: number) {
 }
 
 /** A fresh cash purchase and trade-in at each chosen upgrade. */
-export function outright(input: Inputs): Scenario {
+function buildOutright(input: Inputs): Scenario {
   const purchases = purchaseMonths(input);
   const items = (month: number): LineItem[] => {
     const out: LineItem[] = [];
@@ -977,7 +1047,7 @@ export function outright(input: Inputs): Scenario {
  * Tax is billed to the card at purchase, outside the interest-free installment plan.
  * https://support.apple.com/en-us/104950
  */
-export function appleCardFinancing(input: Inputs): Scenario {
+function buildAppleCardFinancing(input: Inputs): Scenario {
   const months = purchaseMonths(input);
   const purchases = months.map((month, index) => ({
     month,
@@ -1055,7 +1125,7 @@ export function carrierTradeInDeal(
  * This excludes paid early-upgrade add-ons and offers with upfront trade-in portions.
  * https://www.verizon.com/support/device-payment-faqs/
  */
-export function carrierFinancing(input: Inputs): Scenario {
+function buildCarrierFinancing(input: Inputs): Scenario {
   const n = input.carrierTerm;
   const months = purchaseMonths(input);
   const purchases = months.map((month, index) => ({

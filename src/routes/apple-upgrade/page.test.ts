@@ -146,9 +146,9 @@ describe('Apple Upgrade page', () => {
     const { unmount, container } = render(Page);
     await user.click(screen.getByText('iPhone 17 Pro Max'));
     await user.click(screen.getByText('Yes, I have one'));
-    expect(screen.queryByText('Every year')).toBeNull();
-    await user.click(screen.getByText('Yes, a bigger offer'));
-    const offer = screen.getByLabelText(/Carrier’s total trade-in offer/);
+    expect(screen.getByLabelText(/Apple Trade-in offer/)).toBeTruthy();
+    expect(screen.getByText('Every year')).toBeTruthy();
+    const offer = screen.getByLabelText(/Carrier Trade-in offer/);
     await user.clear(offer);
     await user.type(offer, '900');
     await user.click(screen.getByText('Every year'));
@@ -402,12 +402,11 @@ describe('Apple Upgrade page', () => {
     await user.clear(price);
     await user.type(price, '999');
     await user.click(screen.getByText('Yes, I have one'));
-    const trade = screen.getByLabelText(/Trade-in credit/i) as HTMLInputElement;
+    const trade = screen.getByLabelText(/Apple Trade-in offer/i) as HTMLInputElement;
     await user.clear(trade);
     await user.type(trade, '800');
     // By the radio, not by its text: the surplus warning this test is about
     // names the terms too.
-    await user.click(screen.getByText('No, use regular trade-in'));
     await user.click(container.querySelector('input[name="upgrade-every"][value="12"]')!);
     await user.click(screen.getByText('No AppleCare'));
 

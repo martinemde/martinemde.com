@@ -43,7 +43,6 @@
     hasTradeIn: 'no' | 'yes' | null;
     tradeIn: number;
     upgradeEvery: UpgradeInterval | null;
-    hasCarrierOffer: 'no' | 'yes' | null;
     appleCare: AppleCarePlan | null;
     endChoice: EndChoice | null;
     appleCareMonthly: number;
@@ -68,7 +67,6 @@
     hasTradeIn: null,
     tradeIn: 375,
     upgradeEvery: null,
-    hasCarrierOffer: null,
     appleCare: null,
     endChoice: null,
     appleCareMonthly: 13.49,
@@ -94,14 +92,19 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return DEFAULTS;
-      const saved = JSON.parse(raw) as Partial<Saved> & { term?: Term; carrierCredits?: number };
+      const saved = JSON.parse(raw) as Partial<Saved> & {
+        term?: Term;
+        carrierCredits?: number;
+        hasCarrierOffer?: 'no' | 'yes' | null;
+      };
       return {
         ...DEFAULTS,
         ...saved,
         upgradeEvery: saved.upgradeEvery ?? saved.term ?? null,
-        hasCarrierOffer: saved.hasCarrierOffer ?? ((saved.carrierCredits ?? 0) > 0 ? 'yes' : null),
         carrierOffer:
-          saved.carrierOffer ??
+          (saved.hasCarrierOffer === 'no'
+            ? (saved.tradeIn ?? DEFAULTS.tradeIn)
+            : saved.carrierOffer) ??
           ((saved.carrierCredits ?? 0) > 0
             ? saved.carrierCredits! + (saved.hasTradeIn === 'yes' ? (saved.tradeIn ?? 0) : 0)
             : DEFAULTS.carrierOffer)
@@ -118,7 +121,6 @@
   let hasTradeIn = $state(initial.hasTradeIn);
   let tradeIn = $state(initial.tradeIn);
   let upgradeEvery = $state(initial.upgradeEvery);
-  let hasCarrierOffer = $state(initial.hasCarrierOffer);
   const term = $derived(upgradeEvery === null ? null : leaseTermForUpgrade(upgradeEvery));
   let appleCare = $state(initial.appleCare);
   let endChoice = $state(initial.endChoice);
@@ -175,7 +177,6 @@
       hasTradeIn,
       tradeIn,
       upgradeEvery,
-      hasCarrierOffer,
       appleCare,
       endChoice,
       appleCareMonthly,
@@ -197,9 +198,7 @@
   });
 
   // ---- Step gating --------------------------------------------------------
-  const tradeInAnswered = $derived(
-    hasTradeIn === 'no' || (hasTradeIn === 'yes' && hasCarrierOffer !== null)
-  );
+  const tradeInAnswered = $derived(hasTradeIn !== null);
   const step = $derived(
     !deviceKey ? 1 : !tradeInAnswered ? 2 : upgradeEvery === null ? 3 : appleCare === null ? 4 : 5
   );
@@ -253,7 +252,7 @@
     discountRate,
     resaleAtTerm,
     resaleAtHorizon,
-    carrierOffer: hasTradeIn === 'yes' && hasCarrierOffer === 'yes' ? carrierOffer : null,
+    carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
     upgradeEvery: upgradeEvery ?? undefined,
     upgradeTradeIn: resaleAtTerm,
     carrierTerm: 36
@@ -389,34 +388,19 @@
     />
 
     {#if hasTradeIn === 'yes'}
-      <div class="fields one">
+      <div class="fields">
         <Field
-          label="Trade-in credit"
+          label="Apple Trade-in offer"
           bind:value={tradeIn}
           step={25}
           hint="Apple's quoted value for your old device."
         />
-      </div>
-      <div class="aside">
-        <h3>Did your carrier offer a bigger trade-in?</h3>
-        <Tiles
-          options={[
-            { value: 'no', label: 'No, use regular trade-in' },
-            { value: 'yes', label: 'Yes, a bigger offer' }
-          ]}
-          bind:value={hasCarrierOffer}
-          name="carrier-offer"
+        <Field
+          label="Carrier Trade-in offer"
+          bind:value={carrierOffer}
+          step={50}
+          hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
         />
-        {#if hasCarrierOffer === 'yes'}
-          <div class="fields one">
-            <Field
-              label="Carrier’s total trade-in offer"
-              bind:value={carrierOffer}
-              step={50}
-              hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
-            />
-          </div>
-        {/if}
       </div>
     {/if}
 
@@ -445,7 +429,7 @@
       : undefined}
   >
     <Tiles options={upgradeOptions} bind:value={upgradeEvery} name="upgrade-every" min="180px" />
-    {#if upgradeEvery && hasTradeIn === 'yes' && hasCarrierOffer === 'yes'}
+    {#if upgradeEvery && hasTradeIn === 'yes'}
       <div class="aside">
         <h3>Your carrier trade-in at month {upgradeEvery}</h3>
         <div

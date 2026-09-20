@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import Page from './+page.svelte';
 import { HORIZON } from '$lib/apple-upgrade/model';
@@ -9,8 +9,30 @@ import { HORIZON } from '$lib/apple-upgrade/model';
  * previous answer and only builds the scrolling ledger once all four are in.
  */
 describe('Apple Upgrade page', () => {
+  let scrolledMonth = -1;
   beforeEach(() => {
     localStorage.clear();
+    scrolledMonth = -1;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: Element
+    ) {
+      const month = this.getAttribute('data-month');
+      return {
+        top: month !== null && Number(month) <= scrolledMonth ? 0 : 1000,
+        height: 0
+      } as DOMRect;
+    });
+    // Native layout and dialog behavior are browser boundaries absent in jsdom.
+    HTMLDialogElement.prototype.showModal = function () {
+      this.setAttribute('open', '');
+    };
+    HTMLDialogElement.prototype.close = function () {
+      this.removeAttribute('open');
+    };
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
 
     // jsdom has none of these, and the sticky column panel leans on all of them.
     const noopObserver = class {
@@ -36,6 +58,88 @@ describe('Apple Upgrade page', () => {
   async function chooseEnding(user: ReturnType<typeof userEvent.setup>, label = 'Do nothing') {
     await user.click(screen.getByText(label));
   }
+
+  async function scrollToMonth(month: number) {
+    scrolledMonth = month;
+    await fireEvent.scroll(window);
+  }
+
+  it('opens at month nine once, and dismissing it survives reload', async () => {
+    const user = userEvent.setup();
+    const { unmount, container } = render(Page);
+    await walkThrough(user);
+    await scrollToMonth(8);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await scrollToMonth(9);
+    const dialog = await screen.findByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'No I didn’t' }));
+    await scrollToMonth(8);
+    await scrollToMonth(10);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await chooseEnding(user, 'Hand it back');
+    expect(container.querySelector('[data-cat="repair"]')).toBeNull();
+    unmount();
+    render(Page);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it.each(['No AppleCare', 'AppleCare+ monthly'])(
+    'adds the repair now to all columns with %s',
+    async (coverage) => {
+      const user = userEvent.setup();
+      const { container } = render(Page);
+      await walkThrough(user);
+      if (coverage !== 'No AppleCare') await user.click(screen.getByText(coverage));
+      await scrollToMonth(9);
+      const dialog = await screen.findByRole('dialog');
+      await user.click(
+        within(dialog).getByRole('button', {
+          name: coverage === 'No AppleCare' ? 'Pay $271.25 to fix it' : 'Pay $31.47 to fix it'
+        })
+      );
+      expect(screen.queryByRole('dialog')).toBeNull();
+      const repair = container.querySelector('[data-month="9"] [data-cat="repair"]')!;
+      expect(repair.querySelectorAll('.bar')).toHaveLength(4);
+      await chooseEnding(user, 'Hand it back');
+      expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeNull();
+    }
+  );
+
+  it('defers the repair with AppleCare, and recalculates when coverage or ending changes', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await user.click(screen.getByText('AppleCare+ monthly'));
+    await scrollToMonth(9);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deal with it' })
+    );
+    expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
+    await chooseEnding(user, 'Hand it back');
+    const repair = () => container.querySelector('[data-month="24"] [data-cat="repair"]');
+    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
+    expect(repair()!.querySelector('.cell:not(.zero) .bar')?.getAttribute('title')).toBe(
+      'Lease: $31.47'
+    );
+    expect(repair()!.textContent).toContain('$31.47');
+    await user.click(screen.getByText('No AppleCare'));
+    expect(repair()!.textContent).toContain('$271.25');
+    await chooseEnding(user, 'Do nothing');
+    expect(repair()).toBeNull();
+  });
+
+  it('treats Escape as no cracked screen', async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await walkThrough(user);
+    await scrollToMonth(12);
+    const dialog = await screen.findByRole('dialog');
+    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).screenChoice).toBe(
+      'dismiss'
+    );
+  });
 
   it('starts with only the first question open', () => {
     render(Page);

@@ -23,13 +23,13 @@
      * months below it depend on the answer.
      */
     limit?: number;
+    /** -1 before the first month crosses the reading line. */
+    activeMonth?: number;
   }
 
-  let { scenarios, beats, questions = {}, limit }: Props = $props();
+  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('cash');
-  /** -1 is the empty state: nothing counted until the first month goes past. */
-  let activeMonth = $state(-1);
   let stuck = $state(false);
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
   let chartPx = $state(190);
@@ -670,6 +670,7 @@
     --cat-rent: light-dark(#882e9b, #a264b0);
     --cat-care: light-dark(#2b9667, #4f9f77);
     --cat-fees: light-dark(#9a3c00, #e86518);
+    --cat-repair: light-dark(#665d16, #d8c86b);
   }
   [data-cat='phone'] {
     --fill: var(--cat-phone);
@@ -679,6 +680,13 @@
   }
   [data-cat='care'] {
     --fill: var(--cat-care);
+  }
+  [data-cat='repair'] {
+    --fill: repeating-linear-gradient(
+      135deg,
+      var(--cat-repair) 0 4px,
+      color-mix(in oklch, var(--cat-repair) 65%, var(--surface)) 4px 6px
+    );
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);

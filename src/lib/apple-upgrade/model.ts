@@ -31,6 +31,9 @@ export type AppleCarePlan = 'none' | 'monthly' | 'annual' | 'one';
 
 export type Biller = 'apple' | 'klarna' | 'carrier';
 
+export type ScreenChoice = 'repair' | 'defer' | 'dismiss';
+export const SCREEN_CRACK_MONTH = 9;
+
 /**
  * What a dollar is doing, which is the only thing that separates these four
  * paths once the totals converge. `phone` buys equity. `rent` buys a month of
@@ -41,22 +44,24 @@ export type Biller = 'apple' | 'klarna' | 'carrier';
  * so on the buy-it and do-nothing endings the payments really did buy the
  * phone, and on the hand-it-back and upgrade endings they really did not.
  */
-export type Category = 'phone' | 'rent' | 'care' | 'fees';
+export type Category = 'phone' | 'rent' | 'care' | 'fees' | 'repair';
 
-export const CATEGORIES: Category[] = ['phone', 'rent', 'care', 'fees'];
+export const CATEGORIES: Category[] = ['phone', 'rent', 'care', 'fees', 'repair'];
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   phone: 'Toward owning it',
   rent: 'Rent',
   care: 'AppleCare',
-  fees: 'Fees and extras'
+  fees: 'Fees and extras',
+  repair: 'Screen repair'
 };
 
 export const CATEGORY_NOTES: Record<Category, string> = {
   phone: 'Money that ends with the phone belonging to you.',
   rent: 'Money that buys a month of use and leaves you with nothing.',
   care: 'Coverage, billed by Apple and separate from everything else.',
-  fees: 'Tax due up front, activation, the case, a damage estimate.'
+  fees: 'Tax due up front, activation and the case.',
+  repair: 'Fixing the screen, now or before returning the leased phone.'
 };
 
 export interface Inputs {
@@ -74,10 +79,11 @@ export interface Inputs {
   appleCareOneMonthly: number;
   /** Billed once a year by Apple, used by the 'annual' plan. */
   appleCareAnnual: number;
-  /** What a return inspection costs you if you skipped AppleCare and cracked it. */
-  damageFee: number;
-  /** Odds you actually incur that fee, 0-100. Applied as an expected value. */
-  damageOdds: number;
+  /** One cracked screen, at month nine. Null until the reader answers. */
+  screenChoice: ScreenChoice | null;
+  /** Estimated screen repair before tax, with and without coverage. */
+  screenRepairCost: number;
+  appleCareRepairCost: number;
 
   /** Sales tax, percent. */
   taxRate: number;
@@ -286,14 +292,40 @@ export const CHARGE_NOTES: Record<string, string> = {
   'Carrier activation':
     'One-time, at signup, and required — you cannot complete a lease without attaching a carrier.',
   Case: 'Case and glass. Not financed, not optional in practice.',
-  'Expected damage fee':
-    '“Good working condition” is the standard and Apple has not said what failing it costs. This is your guess times your odds.'
+  'Screen repair':
+    'One cracked screen at month nine, repaired in all four paths. The estimate depends on your AppleCare choice.',
+  'Screen repair before return':
+    'You lived with the crack, but the leased phone needs a repair before its first return. AppleCare changes the estimate; it does not make the repair free.'
 };
 
-const CATEGORY_OF_ZERO: CategoryTotals = { phone: 0, rent: 0, care: 0, fees: 0 };
+const CATEGORY_OF_ZERO: CategoryTotals = { phone: 0, rent: 0, care: 0, fees: 0, repair: 0 };
 
 function zeroTotals(): CategoryTotals {
   return { ...CATEGORY_OF_ZERO };
+}
+
+/** A configurable estimate, not a quoted return-inspection fee. */
+export function screenRepairPrice(input: Inputs): number {
+  const price = input.appleCare === 'none' ? input.screenRepairCost : input.appleCareRepairCost;
+  return Math.max(0, price) * (1 + input.taxRate / 100);
+}
+
+function screenRepairItems(input: Inputs, month: number, leased = false): LineItem[] {
+  const now = input.screenChoice === 'repair' && month === SCREEN_CRACK_MONTH;
+  const atReturn =
+    leased &&
+    input.screenChoice === 'defer' &&
+    month === input.term &&
+    (input.endChoice === 'return' || input.endChoice === 'upgrade');
+  if (!now && !atReturn) return [];
+  return [
+    {
+      label: atReturn ? 'Screen repair before return' : 'Screen repair',
+      amount: screenRepairPrice(input),
+      biller: 'apple',
+      category: 'repair'
+    }
+  ];
 }
 
 /** Apple prices every lease payment at some x.99. */
@@ -622,20 +654,7 @@ export function appleUpgrade(input: Inputs): Scenario {
       });
     }
 
-    // A damage fee lands every time you hand a device back without AppleCare.
-    const handsBack =
-      month > 0 &&
-      month % term === 0 &&
-      (endChoice === 'upgrade' || (endChoice === 'return' && month === term)) &&
-      input.appleCare === 'none';
-    if (handsBack && input.damageFee > 0 && input.damageOdds > 0) {
-      out.push({
-        label: 'Expected damage fee',
-        amount: input.damageFee * (input.damageOdds / 100),
-        biller: 'klarna',
-        category: 'fees'
-      });
-    }
+    out.push(...screenRepairItems(input, month, true));
 
     // AppleCare stops when the device does, except on the upgrade path where
     // there is always a device.
@@ -746,7 +765,7 @@ export function outright(input: Inputs): Scenario {
           category: 'fees'
         });
     }
-    out.push(...appleCareItems(input, month));
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
   };
 
@@ -790,7 +809,7 @@ export function appleCardFinancing(input: Inputs): Scenario {
     if (month >= 1 && month <= 24) {
       out.push({ label: 'Installment', amount: payment, biller: 'apple', category: 'phone' });
     }
-    out.push(...appleCareItems(input, month));
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
   };
 
@@ -847,7 +866,7 @@ export function carrierFinancing(input: Inputs): Scenario {
         category: 'phone'
       });
     }
-    out.push(...appleCareItems(input, month));
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
   };
 

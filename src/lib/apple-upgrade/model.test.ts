@@ -30,8 +30,9 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
-    damageFee: 0,
-    damageOdds: 0,
+    screenChoice: null,
+    screenRepairCost: 250,
+    appleCareRepairCost: 29,
     taxRate: 0,
     activationFee: 0,
     caseCost: 0,
@@ -598,14 +599,61 @@ describe('the treadmill', () => {
     expect(scenario.rows[36].buyout).toBeCloseTo(buyoutAfter(1199, 0, gross * 12), 2);
   });
 
-  it('re-runs the damage gamble at every handback', () => {
-    const scenario = appleUpgrade(
-      inputs({ term: 12, endChoice: 'upgrade', damageFee: 250, damageOdds: 20 })
-    );
-    const hits = scenario.rows.filter((r) =>
-      r.items.some((i) => i.label === 'Expected damage fee')
-    );
-    expect(hits.map((r) => r.month)).toEqual([12, 24, 36, 48]);
+  describe('one cracked screen at month nine', () => {
+    for (const appleCare of ['none', 'monthly', 'annual', 'one'] as const) {
+      const price = appleCare === 'none' ? 250 : 29;
+      it(`charges all four paths once for an immediate repair with ${appleCare} coverage`, () => {
+        for (const scenario of allScenarios(
+          inputs({ appleCare, screenChoice: 'repair', endChoice: 'upgrade' })
+        )) {
+          const repairs = scenario.rows.flatMap((r) =>
+            r.items
+              .filter((i) => i.category === 'repair')
+              .map((i) => ({ month: r.month, amount: i.amount }))
+          );
+          expect(repairs).toEqual([{ month: 9, amount: price }]);
+          expect(scenario.rows[48].runningByCategory.repair).toBe(price);
+        }
+      });
+      for (const term of [12, 24] as const) {
+        for (const endChoice of ['return', 'upgrade', 'buyout', 'nothing'] as const) {
+          it(`defers a repair with ${appleCare} coverage on ${term}-month ${endChoice}`, () => {
+            for (const scenario of allScenarios(
+              inputs({ appleCare, term, endChoice, screenChoice: 'defer' })
+            )) {
+              const repairs = scenario.rows.flatMap((r) =>
+                r.items
+                  .filter((i) => i.category === 'repair')
+                  .map((i) => ({ month: r.month, amount: i.amount }))
+              );
+              expect(repairs).toEqual(
+                scenario.key.startsWith('upgrade') && ['return', 'upgrade'].includes(endChoice)
+                  ? [{ month: term, amount: price }]
+                  : []
+              );
+            }
+          });
+        }
+      }
+    }
+    it('charges nothing when the crack is dismissed or unanswered', () => {
+      for (const screenChoice of [null, 'dismiss'] as const) {
+        for (const scenario of allScenarios(inputs({ screenChoice, endChoice: 'upgrade' }))) {
+          expect(
+            scenario.rows.flatMap((r) => r.items.filter((i) => i.category === 'repair'))
+          ).toEqual([]);
+        }
+      }
+    });
+    it('includes repair tax, rewards and discounting in the separate band', () => {
+      const scenario = appleUpgrade(
+        inputs({ screenChoice: 'repair', taxRate: 10, appleCardBack: 3, discountRate: 6 })
+      );
+      const row = scenario.rows[9];
+      expect(row.items.find((i) => i.category === 'repair')?.amount).toBeCloseTo(275);
+      expect(row.runningByCategory.repair).toBeCloseTo(275 * 0.97);
+      expect(row.runningNpvByCategory.repair).toBeCloseTo((275 * 0.97) / 1.005 ** 9);
+    });
   });
 
   it('stops the carrier and the Apple Card at their own terms', () => {

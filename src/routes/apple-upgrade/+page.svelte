@@ -11,6 +11,9 @@
     buyoutAfter,
     EXTENSION_MONTHS,
     HORIZON,
+    SCREEN_CRACK_MONTH,
+    screenRepairPrice,
+    type ScreenChoice,
     leasePayment,
     LEASE_SHARE,
     leaseTerms,
@@ -45,8 +48,9 @@
     appleCareMonthly: number;
     appleCareOneMonthly: number;
     appleCareAnnual: number;
-    damageFee: number;
-    damageOdds: number;
+    screenChoice: ScreenChoice | null;
+    screenRepairCost: number;
+    appleCareRepairCost: number;
     taxRate: number;
     activationFee: number;
     caseCost: number;
@@ -68,8 +72,9 @@
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
-    damageFee: 250,
-    damageOdds: 20,
+    screenChoice: null,
+    screenRepairCost: 250,
+    appleCareRepairCost: 29,
     taxRate: 8.5,
     activationFee: 35,
     caseCost: 59,
@@ -106,8 +111,27 @@
   let appleCareMonthly = $state(initial.appleCareMonthly);
   let appleCareOneMonthly = $state(initial.appleCareOneMonthly);
   let appleCareAnnual = $state(initial.appleCareAnnual);
-  let damageFee = $state(initial.damageFee);
-  let damageOdds = $state(initial.damageOdds);
+  let screenChoice = $state(initial.screenChoice);
+  let screenRepairCost = $state(initial.screenRepairCost);
+  let appleCareRepairCost = $state(initial.appleCareRepairCost);
+  let activeMonth = $state(-1);
+  let screenDialog: HTMLDialogElement;
+
+  $effect(() => {
+    if (
+      activeMonth >= SCREEN_CRACK_MONTH &&
+      screenChoice === null &&
+      screenDialog &&
+      !screenDialog.open
+    ) {
+      screenDialog.showModal();
+    }
+  });
+
+  function chooseScreen(choice: ScreenChoice) {
+    screenChoice = choice;
+    screenDialog.close();
+  }
   let taxRate = $state(initial.taxRate);
   let activationFee = $state(initial.activationFee);
   let caseCost = $state(initial.caseCost);
@@ -140,8 +164,9 @@
       appleCareMonthly,
       appleCareOneMonthly,
       appleCareAnnual,
-      damageFee,
-      damageOdds,
+      screenChoice,
+      screenRepairCost,
+      appleCareRepairCost,
       taxRate,
       activationFee,
       caseCost,
@@ -204,8 +229,9 @@
     appleCareMonthly,
     appleCareOneMonthly,
     appleCareAnnual,
-    damageFee,
-    damageOdds,
+    screenChoice,
+    screenRepairCost,
+    appleCareRepairCost,
     taxRate,
     activationFee,
     caseCost,
@@ -219,6 +245,7 @@
     carrierTerm: 36
   });
 
+  const repairPrice = $derived(screenRepairPrice(inputs));
   const scenarios = $derived(allScenarios(inputs));
   const story = $derived(beats(inputs));
 
@@ -524,21 +551,18 @@
       {#if appleCare === 'annual'}
         <Field label="Yearly price" bind:value={appleCareAnnual} step={10} />
       {/if}
-      {#if appleCare === 'none'}
-        <Field
-          label="Damage fee if it's dinged"
-          bind:value={damageFee}
-          step={25}
-          hint="Apple hasn't published a schedule. This is your guess."
-        />
-        <Field
-          label="Odds you'd owe it"
-          bind:value={damageOdds}
-          unit="%"
-          step={5}
-          hint="Charged as an expected value at return."
-        />
-      {/if}
+      <Field
+        label="Screen repair without AppleCare"
+        bind:value={screenRepairCost}
+        step={25}
+        hint="Estimate before tax; enter the repair quote for your device."
+      />
+      <Field
+        label="Screen repair with AppleCare"
+        bind:value={appleCareRepairCost}
+        step={1}
+        hint="Estimated service fee before tax; check your coverage."
+      />
     </div>
 
     <div class="aside">
@@ -664,7 +688,13 @@
         </p>
       </div>
 
-      <Ledger {scenarios} beats={story} limit={ledgerLimit} questions={{ [term]: decisionCard }} />
+      <Ledger
+        bind:activeMonth
+        {scenarios}
+        beats={story}
+        limit={ledgerLimit}
+        questions={{ [term]: decisionCard }}
+      />
     </section>
 
     {#snippet decisionCard()}
@@ -686,10 +716,10 @@
             <p>
               <strong>Hand it back.</strong> You have paid {money0(
                 gross * (term ?? 24) - (hasTradeIn === 'yes' ? tradeIn : 0)
-              )} in cash plus whatever you traded in, you owe nothing more, and you were only ever taxed
-              on the {Math.round((term ?? 24) === 12 ? 50 : 70)}% you actually paid. The lease
-              column stops growing here, which looks like winning until you notice the other three
-              still have a phone in them.
+              )} in cash plus whatever you traded in, plus any deferred screen repair, and you were only
+              ever taxed on the {Math.round((term ?? 24) === 12 ? 50 : 70)}% you actually paid. The
+              lease column stops growing here, which looks like winning until you notice the other
+              three still have a phone in them.
             </p>
           {:else if endChoice === 'upgrade'}
             <p>
@@ -844,7 +874,7 @@
             <p>
               &ldquo;Good working condition&rdquo; is the standard and Apple has not published what
               failing it costs. That is an open-ended liability on every lease without AppleCare,
-              and it lands every single time you hand a device back.
+              and is separate from the screen repair modeled here.
             </p>
           </li>
           <li>
@@ -909,8 +939,9 @@
             cost. Present values discount monthly at your annual rate divided by twelve.
           </li>
           <li>
-            The four bands are ours, not Apple&rsquo;s. <em>Toward owning it</em> is any dollar that
-            ends with the phone in your name &mdash; the cash purchase, an installment, a buyout.
+            The charge bands are ours, not Apple&rsquo;s. <em>Toward owning it</em> is any dollar
+            that ends with the phone in your name &mdash; the cash purchase, an installment, a
+            buyout.
             <em>Rent</em> is a lease payment. The split is the argument this page is making, so it is
             worth disagreeing with if you think a lease payment buys you something.
           </li>
@@ -935,7 +966,79 @@
   {/if}
 </article>
 
+<dialog
+  bind:this={screenDialog}
+  aria-labelledby="screen-title"
+  aria-describedby="screen-description"
+  oncancel={(event) => {
+    event.preventDefault();
+    chooseScreen('dismiss');
+  }}
+>
+  <div class="eyebrow">// month 09</div>
+  <h2 id="screen-title">Oh no! You cracked your screen!</h2>
+  <p id="screen-description">
+    Fixing it is an estimated {money(repairPrice)} including tax
+    {appleCare === 'none' ? 'without AppleCare' : 'with your AppleCare coverage'}. Pay now in all
+    four columns, or live with the crack. If you return or upgrade the leased phone, we’ll add the
+    repair to that column at the end of the lease — with or without AppleCare.
+  </p>
+  <div class="screen-actions">
+    <button type="button" onclick={() => chooseScreen('repair')}
+      >Pay {money(repairPrice)} to fix it</button
+    >
+    <button type="button" onclick={() => chooseScreen('defer')}>Deal with it</button>
+    <button type="button" onclick={() => chooseScreen('dismiss')}>No I didn’t</button>
+  </div>
+</dialog>
+
 <style>
+  dialog {
+    margin: auto;
+    width: min(480px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 26px;
+    box-shadow: 0 24px 80px #0006;
+  }
+  dialog::backdrop {
+    background: #0008;
+  }
+  dialog h2 {
+    margin: 12px 0;
+    font-size: 26px;
+    line-height: 1.15;
+  }
+  dialog p {
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .screen-actions {
+    display: grid;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .screen-actions button {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .screen-actions button:first-child {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .screen-actions button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
   article {
     padding-bottom: 96px;
   }

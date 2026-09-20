@@ -1,13 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
-  import {
-    money,
-    type Beat,
-    type Biller,
-    type Category,
-    type Scenario
-  } from '$lib/apple-upgrade/model';
+  import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
 
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */
@@ -67,7 +61,6 @@
    */
   interface Charge {
     label: string;
-    billers: Biller[];
     category: Category;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
@@ -92,13 +85,11 @@
           : item.label;
         const charge = (byLabel[label] ??= {
           label,
-          billers: [],
           category: item.category,
           credit: item.amount < 0,
           categories: scenarios.map(() => item.category),
           amounts: scenarios.map(() => 0)
         });
-        if (!charge.billers.includes(item.biller)) charge.billers.push(item.biller);
         charge.amounts[column] += Math.abs(item.amount);
         charge.categories[column] = item.category;
       }
@@ -115,7 +106,6 @@
       if (back.some((amount) => amount > 0.005)) {
         charges.push({
           label: 'Apple credit back for excess trade-in',
-          billers: ['apple'],
           category: 'phone',
           credit: true,
           amounts: back,
@@ -299,7 +289,6 @@
             <li>
               <span class="head">
                 <span class="what">{charge.label}</span>
-                <span class="biller">{charge.billers.join(' / ')}</span>
               </span>
 
               <!-- The attribution and the amount in one mark: a bar in every
@@ -469,16 +458,6 @@
     font-size: 13.5px;
     font-weight: 500;
     letter-spacing: -0.005em;
-  }
-  .biller {
-    border-radius: 4px;
-    background: color-mix(in oklch, var(--border) 55%, transparent);
-    padding: 1px 5px;
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    text-transform: uppercase;
   }
 
   /*

@@ -131,4 +131,3 @@ That era of hand editing has ended. I wouldn't trade my new powers for the sore 
 My mastery of VIm has become vestigial.
 
 :wq
-

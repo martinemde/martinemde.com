@@ -190,4 +190,3 @@ migrating all your commands now to take advantage of the newly combined set of f
 [skillet]: https://github.com/martinemde/skillet 'Run claude skills as beautiful shell scripts'
 [slash-commands]: https://code.claude.com/docs/en/slash-commands 'The old link to slash command documentation'
 [skills]: https://code.claude.com/docs/en/skills 'The new skills documentation'
-

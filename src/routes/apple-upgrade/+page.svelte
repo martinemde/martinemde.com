@@ -21,6 +21,62 @@
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
 
+  // Apple maximum offers from the supplied 2026-09-20 trade-in list.
+  const TRADE_IN_DEVICES = [
+    ['iPhone 17 Pro Max', 885],
+    ['iPhone 17 Pro', 785],
+    ['iPhone Air', 585],
+    ['iPhone 17', 585],
+    ['iPhone 16 Pro Max', 610],
+    ['iPhone 16 Pro', 510],
+    ['iPhone 16 Plus', 430],
+    ['iPhone 16', 430],
+    ['iPhone 16e', 270],
+    ['iPhone 15 Pro Max', 455],
+    ['iPhone 15 Pro', 370],
+    ['iPhone 15 Plus', 315],
+    ['iPhone 15', 305],
+    ['iPhone 14 Pro Max', 360],
+    ['iPhone 14 Pro', 285],
+    ['iPhone 14 Plus', 210],
+    ['iPhone 14', 195],
+    ['iPhone SE (3rd generation)', 75],
+    ['iPhone 13 Pro Max', 320],
+    ['iPhone 13 Pro', 255],
+    ['iPhone 13', 175],
+    ['iPhone 13 mini', 145],
+    ['iPhone 12 Pro Max', 210],
+    ['iPhone 12 Pro', 165],
+    ['iPhone 12', 120],
+    ['iPhone 12 mini', 80],
+    ['iPhone SE (2nd generation)', 40],
+    ['iPhone 11 Pro Max', 140],
+    ['iPhone 11 Pro', 125],
+    ['iPhone 11', 100],
+    ['iPhone XS Max', 85],
+    ['iPhone XS', 60],
+    ['iPhone XR', 75],
+    ['iPhone X', 50],
+    ['iPhone 8 Plus', 35],
+    ['Galaxy S22 Ultra 5G', 125],
+    ['Galaxy S22+ 5G', 80],
+    ['Galaxy S22 5G', 80],
+    ['Galaxy S21 Ultra 5G', 95],
+    ['Galaxy S21+ 5G', 70],
+    ['Galaxy S21 5G', 55],
+    ['Google Pixel 9 Pro XL', 290],
+    ['Google Pixel 9 Pro', 275],
+    ['Google Pixel 9', 200],
+    ['Google Pixel 8 Pro', 150],
+    ['Google Pixel 8', 115],
+    ['Google Pixel 8a', 105],
+    ['Google Pixel 7 Pro', 90],
+    ['Google Pixel 7', 65],
+    ['OnePlus 13', 250],
+    ['OnePlus 13R', 165],
+    ['Other — Recycling', 0]
+  ] as const;
+
   // September 2026 lineup; iPhone 16 is not eligible for Apple Upgrade.
   // Apple’s US maximum trade-in quotes, checked 2026-09-20:
   // https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values
@@ -48,6 +104,7 @@
     listPrice: number;
     hasTradeIn: 'no' | 'yes' | null;
     tradeIn: number;
+    tradeInDevice: string;
     privateSaleValues: number[] | null;
     annualChoices: ('upgrade' | 'keep' | null)[];
     appleCare: AppleCarePlan | null;
@@ -72,6 +129,7 @@
     listPrice: 1199,
     hasTradeIn: null,
     tradeIn: 375,
+    tradeInDevice: '',
     privateSaleValues: null,
     annualChoices: [null, null, null],
     appleCare: null,
@@ -114,6 +172,7 @@
       return {
         ...DEFAULTS,
         ...saved,
+        tradeInDevice: saved.tradeInDevice ?? (saved.hasTradeIn === 'yes' ? 'custom' : ''),
         appleCareMonthly:
           saved.appleCareMonthly ??
           (saved.deviceKey === 'iphone-duo' ? 19.99 : DEFAULTS.appleCareMonthly),
@@ -149,6 +208,14 @@
   let listPrice = $state(initial.listPrice);
   let hasTradeIn = $state(initial.hasTradeIn);
   let tradeIn = $state(initial.tradeIn);
+  let tradeInDevice = $state(initial.tradeInDevice);
+  const selectedTradeIn = $derived(
+    tradeInDevice === ''
+      ? ''
+      : TRADE_IN_DEVICES.some(([name, value]) => name === tradeInDevice && value === tradeIn)
+        ? tradeInDevice
+        : 'custom'
+  );
   let annualChoices = $state(initial.annualChoices);
   let appleCare = $state(initial.appleCare);
 
@@ -213,6 +280,7 @@
     listPrice = DEFAULTS.listPrice;
     hasTradeIn = DEFAULTS.hasTradeIn;
     tradeIn = DEFAULTS.tradeIn;
+    tradeInDevice = DEFAULTS.tradeInDevice;
     annualChoices = [...DEFAULTS.annualChoices];
     appleCare = DEFAULTS.appleCare;
     appleCareMonthly = DEFAULTS.appleCareMonthly;
@@ -240,6 +308,7 @@
       listPrice,
       hasTradeIn,
       tradeIn,
+      tradeInDevice,
       privateSaleValues,
       annualChoices,
       appleCare,
@@ -262,14 +331,36 @@
   });
 
   // ---- Step gating --------------------------------------------------------
-  const tradeInAnswered = $derived(hasTradeIn !== null);
+  const tradeInAnswered = $derived(
+    hasTradeIn === 'no' || (hasTradeIn === 'yes' && tradeInDevice !== '')
+  );
   const step = $derived(!deviceKey ? 1 : !tradeInAnswered ? 2 : appleCare === null ? 3 : 4);
 
   // -1 until the first effect run, so restoring a finished form doesn't fling
   // you down the page on load. Only genuine forward progress scrolls.
   let seen = -1;
+  let previousAnswers: (string | null)[] | undefined;
   $effect(() => {
     const now = step;
+    const answers = [deviceKey, hasTradeIn, tradeInDevice, appleCare];
+    const previous = previousAnswers;
+    previousAnswers = answers;
+    const focusId = !previous
+      ? null
+      : deviceKey === 'custom' && deviceKey !== previous[0]
+        ? 'custom-price'
+        : hasTradeIn === 'yes' && hasTradeIn !== previous[1]
+          ? 'trade-in-phone'
+          : tradeInDevice === 'custom' && tradeInDevice !== previous[2]
+            ? 'trade-in-value'
+            : appleCare !== null && appleCare !== 'none' && appleCare !== previous[3]
+              ? 'care-price'
+              : null;
+    if (focusId) {
+      seen = Math.max(seen, now);
+      void tick().then(() => document.getElementById(focusId)?.focus());
+      return;
+    }
     if (seen === -1 || now <= seen) {
       seen = Math.max(seen, now);
       return;
@@ -327,6 +418,12 @@
   });
 
   const repairPrice = $derived(screenRepairPrice(inputs));
+  const alternativeRepairPrice = $derived(
+    screenRepairPrice({
+      ...inputs,
+      appleCare: appleCare === 'none' ? 'monthly' : 'none'
+    })
+  );
   const scenarios = $derived(allScenarios(inputs));
   const story = $derived(beats(inputs));
 
@@ -379,7 +476,7 @@
 </script>
 
 <svelte:head>
-  <title>Apple Upgrade, decoded - Martin Emde</title>
+  <title>Apple Upgrade Broken Down - Martin Emde</title>
   <meta
     name="description"
     content="Four ways to buy the same iPhone, run side by side for forty-eight months. Answer the questions Apple's checkout asks, then scroll and watch the columns fill up: cash, Apple Card financing, the Klarna-backed Apple Upgrade lease, and carrier installments."
@@ -394,11 +491,13 @@
 
 <article>
   <header class="hero">
-    <div class="eyebrow">// you never pay more than full price</div>
-    <h1 bind:this={pageTitle} tabindex="-1">Apple Upgrade, decoded</h1>
+    <div class="eyebrow">// an interactive cost comparison</div>
+    <h1 bind:this={pageTitle} tabindex="-1">Apple Upgrade Broken Down</h1>
     <p class="lede">
-      Pick your phone, then decide each year whether to upgrade. Compare cash, financing, both lease
-      terms, and a carrier plan on the same timeline.
+      Pick the device, pick your trade in, and then scroll and make the choices you would make.
+      Watch the costs accumulate on the floating bar graph and notice which graph has the highest
+      spend at any given moment. Pay attention to how they jump around and click on the months with
+      big charges to see why.
     </p>
   </header>
 
@@ -408,7 +507,13 @@
 
     {#if deviceKey === 'custom'}
       <div class="fields one">
-        <Field label="Sticker price" bind:value={listPrice} step={50} hint="Before tax." />
+        <Field
+          id="custom-price"
+          label="Sticker price"
+          bind:value={listPrice}
+          step={50}
+          hint="Before tax."
+        />
       </div>
     {/if}
   </Step>
@@ -418,7 +523,11 @@
     n={2}
     title="Do you have something to trade in?"
     locked={step < 2}
-    answer={hasTradeIn === 'yes' ? money0(tradeIn) : hasTradeIn === 'no' ? 'none' : undefined}
+    answer={hasTradeIn === 'yes' && tradeInAnswered
+      ? money0(tradeIn)
+      : hasTradeIn === 'no'
+        ? 'none'
+        : undefined}
   >
     <Tiles
       options={[
@@ -430,20 +539,41 @@
     />
 
     {#if hasTradeIn === 'yes'}
-      <div class="fields">
-        <Field
-          label="Apple Trade-in offer"
-          bind:value={tradeIn}
-          step={25}
-          hint="Apple's quoted value for your old device."
-        />
-        <Field
-          label="Carrier Trade-in offer"
-          bind:value={carrierOffer}
-          step={50}
-          hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
-        />
-      </div>
+      <label class="trade-in-picker">
+        <span>Pick the phone you want to trade in</span>
+        <select
+          id="trade-in-phone"
+          value={selectedTradeIn}
+          onchange={(event) => {
+            tradeInDevice = event.currentTarget.value;
+            const device = TRADE_IN_DEVICES.find(([name]) => name === tradeInDevice);
+            if (device) tradeIn = device[1];
+          }}
+        >
+          <option value="" disabled>Choose your trade-in</option>
+          <option value="custom">Enter your own value</option>
+          {#each TRADE_IN_DEVICES as [name, value] (name)}
+            <option value={name}>{name} — up to {money0(value)}</option>
+          {/each}
+        </select>
+      </label>
+      {#if selectedTradeIn !== ''}
+        <div class="fields">
+          <Field
+            id="trade-in-value"
+            label="Apple Trade-in offer"
+            bind:value={tradeIn}
+            step={25}
+            hint="Edit this if Apple quotes a different amount. Maximum offers depend on condition."
+          />
+          <Field
+            label="Carrier Trade-in offer"
+            bind:value={carrierOffer}
+            step={50}
+            hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
+          />
+        </div>
+      {/if}
     {/if}
   </Step>
 
@@ -458,10 +588,11 @@
 
     <div class="fields">
       {#if appleCare === 'monthly'}
-        <Field label="Monthly price" bind:value={appleCareMonthly} step={1} />
+        <Field id="care-price" label="Monthly price" bind:value={appleCareMonthly} step={1} />
       {/if}
       {#if appleCare === 'one'}
         <Field
+          id="care-price"
           label="Monthly price"
           bind:value={appleCareOneMonthly}
           step={1}
@@ -469,7 +600,7 @@
         />
       {/if}
       {#if appleCare === 'annual'}
-        <Field label="Yearly price" bind:value={appleCareAnnual} step={10} />
+        <Field id="care-price" label="Yearly price" bind:value={appleCareAnnual} step={10} />
       {/if}
     </div>
   </Step>
@@ -650,7 +781,16 @@
           <h2>What the scroll adds up to</h2>
         </div>
 
-        <Compare {scenarios} privateSale={privateSaleValues !== null} />
+        <Compare
+          {scenarios}
+          privateSale={privateSaleValues !== null}
+          repairPrices={screenChoice === 'repair' || screenChoice === 'defer'
+            ? {
+                withCare: screenRepairPrice({ ...inputs, appleCare: 'monthly' }),
+                withoutCare: screenRepairPrice({ ...inputs, appleCare: 'none' })
+              }
+            : undefined}
+        />
       </section>
 
       <details class="assumptions">
@@ -743,7 +883,7 @@
       type="button"
       aria-pressed={screenChoice === 'repair'}
       onclick={() => chooseScreen('repair')}
-      >Pay {money(repairPrice)} to fix it {appleCare === 'none'
+      >Pay {money0(repairPrice)} to fix it {appleCare === 'none'
         ? 'without AppleCare'
         : 'with AppleCare'}</button
     >
@@ -758,9 +898,31 @@
       onclick={() => chooseScreen('dismiss')}>No I didn’t</button
     >
   </div>
+  <p>
+    This would cost {money0(alternativeRepairPrice)}
+    {appleCare === 'none' ? 'with' : 'without'} AppleCare.
+  </p>
 {/snippet}
 
 <style>
+  .trade-in-picker {
+    display: grid;
+    gap: 6px;
+    margin-top: 16px;
+    font-size: 13.5px;
+    font-weight: 520;
+  }
+  .trade-in-picker select {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg);
+    padding: 9px 12px;
+    color: var(--text);
+    font: inherit;
+  }
+
   .page-control {
     position: fixed;
     right: max(16px, env(safe-area-inset-right));
@@ -848,7 +1010,7 @@
   }
   h1 {
     margin: 0 0 18px;
-    max-width: 16ch;
+    text-wrap: balance;
     font-family: var(--font-body);
     font-weight: 600;
     font-size: 46px;

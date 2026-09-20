@@ -1,14 +1,17 @@
 <script lang="ts">
   import { HORIZON, money0, type Scenario } from '$lib/apple-upgrade/model';
+  import { careAndRepairPaid } from '$lib/apple-upgrade/presentation';
 
   interface Props {
     scenarios: Scenario[];
     /** Key of the path the reader has been configuring, so it reads as "theirs". */
     highlight?: string;
     privateSale?: boolean;
+    repairPrices?: { withCare: number; withoutCare: number };
   }
 
-  let { scenarios, highlight, privateSale = false }: Props = $props();
+  let { scenarios, highlight, privateSale = false, repairPrices }: Props = $props();
+  const paid = $derived(new Map(scenarios.map((s) => [s.key, careAndRepairPaid(s.rows)])));
 
   type Row = {
     label: string;
@@ -38,6 +41,30 @@
       hint: `Nominal dollars over ${HORIZON} months, net of card rewards`,
       value: (s) => money0(s.summary.cash)
     },
+    {
+      label: 'AppleCare premiums paid',
+      hint: `${HORIZON} months of coverage, including tax, before card rewards`,
+      value: (s) => money0(paid.get(s.key)!.care)
+    },
+    {
+      label: 'Repairs paid',
+      hint: 'Actual repair charges including tax, before rewards. Unrepaired damage reduces phone value instead.',
+      value: (s) => money0(paid.get(s.key)!.repair)
+    },
+    ...(repairPrices
+      ? [
+          {
+            label: 'One screen repair with AppleCare',
+            hint: 'Estimated service fee including tax; premiums are separate',
+            value: () => money0(repairPrices!.withCare)
+          },
+          {
+            label: 'One screen repair without AppleCare',
+            hint: 'Estimated full repair price including tax; for comparison, not an additional charge',
+            value: () => money0(repairPrices!.withoutCare)
+          }
+        ]
+      : []),
     {
       label: 'Cost in today’s dollars',
       hint: 'The same stream discounted back to now',

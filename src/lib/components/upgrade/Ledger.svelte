@@ -393,6 +393,22 @@
           {/each}
         </div>
       </div>
+      {#each scenarios as scenario (scenario.key)}
+        {@const returned = scenario.rows[month].leaseReturn}
+        {#if returned}
+          <p class="nothing lease-return">
+            {scenario.shortName}: returning this phone clears a {money(returned.buyout)} buyout (including
+            tax), but gives you no trade-in credit. Its estimated
+            {returned.privateSale ? 'private-sale' : 'Apple trade-in'} value is
+            {money(returned.value)}{#if returned.value > returned.buyout}
+              &nbsp;— {money(returned.value - returned.buyout)} more than the buyout. That value is given
+              up when you return it; it is not an extra bill.
+            {:else}. The buyout is at least as much as that value, so returning it gives up no
+              positive equity.
+            {/if}
+          </p>
+        {/if}
+      {/each}
       <div class="totals">
         {#each cells as cell (cell.key)}
           <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>

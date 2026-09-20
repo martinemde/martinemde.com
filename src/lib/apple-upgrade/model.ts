@@ -1329,7 +1329,7 @@ export function beats(input: Inputs): Map<number, Beat> {
     for (const term of [12, 24] as const) {
       for (const row of appleUpgrade({ ...input, term }).rows) {
         if (row.items.some((item) => item.label.startsWith('Automatic buyout')))
-          map.set(row.month, { title: `The ${term}-month lease becomes yours` });
+          map.set(row.month, { title: `Pay off the ${term} month lease, now you own it` });
         if (
           row.items.some((item) => item.label === 'Month-to-month payment') &&
           row.month % 12 === 1

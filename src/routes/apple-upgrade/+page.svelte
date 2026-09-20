@@ -737,9 +737,8 @@
   <p id="{id}-description">
     One of the big risks with a leased phone is breaking it. You have to return it in good condition
     or buy it outright. What would you do if you broke your screen a few months before the new
-    iphone? Estimated repair: {money(repairPrice)}. If you want to trade it in, you will be forced
-    to repair it and it's much more expensive without AppleCare. Fine for people with liquid cash,
-    maybe not for everyone.
+    iphone? If you want to trade it in, you will be forced to repair it and it's much more expensive
+    without AppleCare. Fine for people with liquid cash, maybe not for everyone.
   </p>
   <div class="screen-actions">
     <button

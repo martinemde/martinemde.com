@@ -511,51 +511,60 @@
   </Step>
 
   <div id="step-5"></div>
-  <Step n={5} title="Tax, fees, and estimates" locked={step < 5}>
-    <div class="fields">
-      <Field label="Sales tax" bind:value={taxRate} unit="%" step={0.25} />
-      <Field
-        label="Carrier activation"
-        bind:value={activationFee}
-        step={5}
-        hint="One-time, at signup."
-      />
-      <Field label="Case and glass" bind:value={caseCost} step={10} />
-      <Field
-        label="Card rewards at Apple"
-        bind:value={appleCardBack}
-        unit="%"
-        step={0.5}
-        hint="Apple Card pays 3%."
-      />
-      <Field
-        label="Card rewards at Klarna"
-        bind:value={klarnaCardBack}
-        unit="%"
-        step={0.5}
-        hint="Apple Card pays 3% here too."
-      />
-      <Field
-        label="Card rewards on the carrier bill"
-        bind:value={carrierCardBack}
-        unit="%"
-        step={0.5}
-      />
-      <Field
-        label="Discount rate"
-        bind:value={discountRate}
-        unit="%"
-        step={0.5}
-        hint="What your unspent cash earns."
-      />
-      <Field
-        label="Trade-in at month {upgradeEvery ?? 24}"
-        bind:value={resaleAtTerm}
-        step={25}
-        hint="Estimated trade-in for each replacement. Future phone prices stay the same."
-      />
-      <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
-    </div>
+  <Step n={5} title="Nitpicky stuff if you want to account for every penny." locked={step < 5}>
+    <details class="fine-tuning">
+      <summary>Rates</summary>
+      <div class="fields">
+        <Field label="Sales tax" bind:value={taxRate} unit="%" step={0.25} />
+        <Field
+          label="Card rewards at Apple"
+          bind:value={appleCardBack}
+          unit="%"
+          step={0.5}
+          hint="Apple Card pays 3%."
+        />
+        <Field
+          label="Card rewards at Klarna"
+          bind:value={klarnaCardBack}
+          unit="%"
+          step={0.5}
+          hint="Apple Card pays 3% here too."
+        />
+        <Field
+          label="Card rewards on the carrier bill"
+          bind:value={carrierCardBack}
+          unit="%"
+          step={0.5}
+        />
+      </div>
+    </details>
+    <details class="fine-tuning">
+      <summary>Expenses</summary>
+      <p>These costs repeat each time you get a new phone.</p>
+      <div class="fields">
+        <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
+        <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
+      </div>
+    </details>
+    <details class="fine-tuning">
+      <summary>Estimates</summary>
+      <div class="fields">
+        <Field
+          label="Discount rate"
+          bind:value={discountRate}
+          unit="%"
+          step={0.5}
+          hint="What your unspent cash earns."
+        />
+        <Field
+          label="Trade-in at month {upgradeEvery ?? 24}"
+          bind:value={resaleAtTerm}
+          step={25}
+          hint="Estimated trade-in for each replacement. Future phone prices stay the same."
+        />
+        <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
+      </div>
+    </details>
   </Step>
 
   {#if step >= 5 && term}
@@ -831,6 +840,29 @@
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 16px;
     padding-top: 18px;
+  }
+  .fine-tuning {
+    border-bottom: 1px solid var(--border);
+  }
+  .fine-tuning summary {
+    padding: 14px 0;
+    min-height: 48px;
+    cursor: pointer;
+    font-weight: 520;
+    color: var(--text);
+  }
+  .fine-tuning summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  .fine-tuning .fields {
+    padding: 4px 0 20px;
+  }
+  .fine-tuning p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: 13px;
   }
   .fields.one {
     max-width: 260px;

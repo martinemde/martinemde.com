@@ -346,9 +346,8 @@ describe('Apple Upgrade page', () => {
     // Month 1: the lease, the Apple Card installment and the carrier
     // installment all start, and paying cash is already finished.
     const month = container.querySelector('[data-month="1"]')!.textContent!;
-    expect(month).toMatch(/Lease payment/);
-    expect(month).toMatch(/Installment/);
-    expect(month).toMatch(/Device installment/);
+    expect(month.match(/Monthly payment/g)).toHaveLength(1);
+    expect(month).not.toMatch(/Lease payment|Device installment|Installment/);
   });
 
   it('includes upfront tax in a compact note under each month zero total', async () => {
@@ -392,11 +391,39 @@ describe('Apple Upgrade page', () => {
       if (label === 'AppleCare+') {
         // Billed by Apple whatever you did about the phone.
         expect(drawn).toEqual([true, true, true, true]);
-      } else if (label === 'Lease payment') {
-        // Only the lease column, and it is the third.
-        expect(drawn).toEqual([false, false, true, false]);
+      } else if (label === 'Monthly payment') {
+        expect(drawn).toEqual([false, true, true, true]);
       }
     }
+  });
+
+  it('keeps installments on a traded-in phone separate from the current monthly payment', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await user.click(screen.getByText('Every year'));
+    await chooseEnding(user, 'Upgrade');
+    const rows = [...container.querySelectorAll('[data-month="13"] .charges li')];
+    const current = rows.find(
+      (row) => row.querySelector('.what')?.textContent === 'Monthly payment'
+    )!;
+    const old = rows.find(
+      (row) => row.querySelector('.what')?.textContent === 'Installment on traded-in phone'
+    )!;
+    expect(current).toBeTruthy();
+    expect(old).toBeTruthy();
+    expect([...current.querySelectorAll('.amt')].map((cell) => cell.textContent)).toEqual([
+      '',
+      '$19.00',
+      '$49.99',
+      '$12.67'
+    ]);
+    expect([...old.querySelectorAll('.amt')].map((cell) => cell.textContent)).toEqual([
+      '',
+      '$49.96',
+      '',
+      ''
+    ]);
   });
 
   it('combines monthly lease and AppleCare tax under the totals', async () => {

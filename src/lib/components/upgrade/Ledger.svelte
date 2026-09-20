@@ -71,6 +71,7 @@
     category: Category;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
+    categories: Category[];
     /** Money coming back rather than going out: drawn below the line, outlined. */
     credit?: boolean;
   }
@@ -80,15 +81,26 @@
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
         if (item.category === 'tax') continue;
-        const charge = (byLabel[item.label] ??= {
-          label: item.label,
+        const label = [
+          'Installment',
+          'Device installment',
+          'Lease payment',
+          'New lease payment',
+          'Month-to-month payment'
+        ].includes(item.label)
+          ? 'Monthly payment'
+          : item.label;
+        const charge = (byLabel[label] ??= {
+          label,
           billers: [],
           category: item.category,
           credit: item.amount < 0,
+          categories: scenarios.map(() => item.category),
           amounts: scenarios.map(() => 0)
         });
         if (!charge.billers.includes(item.biller)) charge.billers.push(item.biller);
         charge.amounts[column] += Math.abs(item.amount);
+        charge.categories[column] = item.category;
       }
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
@@ -106,7 +118,8 @@
           billers: ['apple'],
           category: 'phone',
           credit: true,
-          amounts: back
+          amounts: back,
+          categories: scenarios.map(() => 'phone')
         });
       }
     }
@@ -294,7 +307,7 @@
                    biggest single bill of the month. -->
               <div class="bars" class:credit={charge.credit} data-cat={charge.category}>
                 {#each charge.amounts as amount, i (cells[i].key)}
-                  <span class="cell" class:zero={amount <= 0.005}>
+                  <span class="cell" class:zero={amount <= 0.005} data-cat={charge.categories[i]}>
                     <span class="track">
                       <i
                         class="bar"

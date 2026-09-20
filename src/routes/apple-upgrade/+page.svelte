@@ -511,9 +511,10 @@
   </Step>
 
   <div id="step-5"></div>
-  <Step n={5} title="Nitpicky stuff if you want to account for every penny." locked={step < 5}>
+  {#if step >= 5}
     <details class="fine-tuning">
-      <summary>Rates</summary>
+      <summary>Nitpicky stuff if you want to account for every penny</summary>
+      <h3>Rates</h3>
       <div class="fields">
         <Field label="Sales tax" bind:value={taxRate} unit="%" step={0.25} />
         <Field
@@ -537,17 +538,13 @@
           step={0.5}
         />
       </div>
-    </details>
-    <details class="fine-tuning">
-      <summary>Expenses</summary>
+      <h3>Expenses</h3>
       <p>These costs repeat each time you get a new phone.</p>
       <div class="fields">
         <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
         <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
       </div>
-    </details>
-    <details class="fine-tuning">
-      <summary>Estimates</summary>
+      <h3>Estimates</h3>
       <div class="fields">
         <Field
           label="Discount rate"
@@ -565,7 +562,7 @@
         <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
       </div>
     </details>
-  </Step>
+  {/if}
 
   {#if step >= 5 && term}
     <section class="ledger-section">
@@ -842,7 +839,8 @@
     padding-top: 18px;
   }
   .fine-tuning {
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    padding: 18px 0;
   }
   .fine-tuning summary {
     padding: 14px 0;
@@ -855,6 +853,12 @@
     outline: 2px solid var(--accent);
     outline-offset: 3px;
     border-radius: 4px;
+  }
+  .fine-tuning h3 {
+    margin: 18px 0 12px;
+    font-size: 17px;
+    font-weight: 520;
+    color: var(--text);
   }
   .fine-tuning .fields {
     padding: 4px 0 20px;

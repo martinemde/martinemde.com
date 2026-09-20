@@ -39,6 +39,10 @@
       {step}
       {min}
       inputmode="decimal"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck={false}
       oninput={onInput}
       onblur={onBlur}
     />

@@ -211,6 +211,25 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText('$34.99/mo on a 24-month lease')).toBeTruthy();
   });
 
+  it('reveals individual charges on tap or keyboard activation while keeping subtotals visible', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    const month = container.querySelector('[data-month="0"]')!;
+    const bars = [...month.querySelectorAll<HTMLButtonElement>('.cell:not(.zero)')];
+    const amounts = [...month.querySelectorAll<HTMLElement>('.amt')];
+    const totals = [...month.querySelectorAll<HTMLElement>('.sum')];
+    expect(amounts.every((amount) => amount.hidden)).toBe(true);
+    expect(totals.every((total) => !total.hidden && total.textContent?.trim())).toBe(true);
+    await user.click(bars[0]);
+    expect(bars[0].querySelector<HTMLElement>('.amt')!.hidden).toBe(false);
+    expect(bars[1].querySelector<HTMLElement>('.amt')!.hidden).toBe(true);
+    await user.keyboard('{Enter}');
+    expect(bars[0].querySelector<HTMLElement>('.amt')!.hidden).toBe(true);
+    await user.keyboard(' ');
+    expect(bars[0].querySelector<HTMLElement>('.amt')!.hidden).toBe(false);
+  });
+
   it('gates each year and only shows final totals after all three annual decisions', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);

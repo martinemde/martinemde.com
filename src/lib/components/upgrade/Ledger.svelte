@@ -38,6 +38,7 @@
 
   let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
+  let revealed = $state<Record<string, boolean>>({});
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
   let chartPx = $state(112);
 
@@ -324,27 +325,27 @@
                 style="--track-height: {barPx(Math.max(...charge.amounts.map(Math.abs)), peak)}px"
               >
                 {#each charge.amounts as amount, i (cells[i].key)}
-                  <span
+                  {@const key = `${month}:${charge.label}:${cells[i].key}`}
+                  <button
+                    type="button"
                     class="cell"
+                    disabled={Math.abs(amount) <= 0.005}
+                    aria-label={`${cells[i].name}: ${charge.label}`}
+                    aria-expanded={!!revealed[key]}
+                    onclick={() => (revealed[key] = !revealed[key])}
                     class:zero={Math.abs(amount) <= 0.005}
                     class:credit={charge.credit || amount < 0}
                     data-cat={charge.categories[i]}
                   >
                     <span class="track">
-                      <i
-                        class="bar"
-                        style="height: {barPx(Math.abs(amount), peak)}px"
-                        title={Math.abs(amount) > 0.005
-                          ? `${cells[i].name}: ${money(amount)}`
-                          : `${cells[i].name}: nothing`}
-                      ></i>
+                      <i class="bar" style="height: {barPx(Math.abs(amount), peak)}px"></i>
                     </span>
-                    <span class="amt"
+                    <span class="amt" hidden={!revealed[key]}
                       >{Math.abs(amount) > 0.005
                         ? `${charge.credit || amount < 0 ? '−' : ''}${money(Math.abs(amount))}`
                         : ''}</span
                     >
-                  </span>
+                  </button>
                 {/each}
               </div>
             </li>
@@ -510,10 +511,25 @@
     padding: 0 var(--gutter);
   }
   .cell {
+    appearance: none;
+    border: 0;
+    padding: 4px 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    min-height: 28px;
     display: grid;
     justify-items: center;
     gap: 2px;
     min-width: 0;
+  }
+  .cell:disabled {
+    cursor: default;
+  }
+  .cell:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
   }
   .track {
     display: flex;

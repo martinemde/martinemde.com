@@ -5,6 +5,7 @@ import {
   appleUpgrade,
   buyoutAfter,
   carrierFinancing,
+  leaseTerms,
   CATEGORIES,
   beats,
   EXTENSION_MONTHS,
@@ -81,41 +82,114 @@ describe('trade-in credit', () => {
     expect(leasePayment(1199, 24) - 375 / 24).toBeCloseTo(19.37, 2);
   });
 
+  it('bills the payment Apple quotes', () => {
+    expect(leaseTerms(1199, 12, 375).payment).toBeCloseTo(18.74, 2);
+    expect(leaseTerms(1199, 24, 375).payment).toBeCloseTo(19.37, 2);
+  });
+
   it('comes straight off the buyout on day one', () => {
-    expect(buyoutAfter(0, 1199, 34.99, 375, 24)).toBeCloseTo(1199 - 375, 2);
+    const { credit } = leaseTerms(1199, 24, 375);
+    expect(buyoutAfter(1199, credit, 0)).toBeCloseTo(1199 - 375, 2);
   });
 
   it('is fully consumed by the end of the term', () => {
-    expect(buyoutAfter(24, 1199, 34.99, 375, 24)).toBeCloseTo(
-      buyoutAfter(24, 1199, 34.99, 0, 24),
-      2
-    );
+    const withTrade = leaseTerms(1199, 24, 375);
+    const without = leaseTerms(1199, 24, 0);
+    expect(withTrade.buyoutAtTerm).toBeCloseTo(without.buyoutAtTerm, 1);
+  });
+
+  /**
+   * A lease only ever collects half or seventy percent of the sticker, so a
+   * trade-in can run out of payments to reduce. What happens then is what the
+   * first cut of this model got wrong: it quietly swallowed the surplus, so a
+   * big enough trade-in had you paying more than the phone ever cost.
+   */
+  describe('when it covers the whole lease', () => {
+    it('drops the payment to nothing rather than to loose change', () => {
+      // A 12-month lease on a $999 phone collects $499.50. Trade in $500 and
+      // there is nothing left to bill, x.99 rounding notwithstanding.
+      expect(leaseTerms(999, 12, 500).payment).toBe(0);
+    });
+
+    it('leaves the sticker less the trade-in to buy out', () => {
+      const { credit, payment, buyoutAtTerm } = leaseTerms(999, 12, 500);
+      expect(credit).toBeCloseTo(499.5, 2);
+      expect(payment).toBe(0);
+      expect(buyoutAtTerm).toBeCloseTo(999 - 499.5, 2);
+    });
+
+    it('hands the surplus back as Apple credit', () => {
+      // $800 against a $999 phone: the same $0 payment, and a gift card for
+      // the $300.50 the lease had no room for.
+      const { payment, refund } = leaseTerms(999, 12, 800);
+      expect(payment).toBe(0);
+      expect(refund).toBeCloseTo(300.5, 2);
+    });
+
+    it('never lets you pay more than the phone, trade-in included', () => {
+      for (const tradeIn of [0, 250, 500, 800, 1500]) {
+        for (const endChoice of ['buyout', 'nothing'] as const) {
+          const scenario = appleUpgrade(inputs({ listPrice: 999, term: 12, tradeIn, endChoice }));
+          const { credit, refund } = leaseTerms(999, 12, tradeIn);
+          expect(scenario.summary.cash + credit).toBeCloseTo(999, 2);
+          expect(scenario.summary.tradeInRefund).toBeCloseTo(refund, 2);
+          // Cash out, plus what you traded in, less what came back as credit.
+          expect(scenario.summary.cash + tradeIn - refund).toBeCloseTo(999, 2);
+        }
+      }
+    });
+
+    it('runs the six-month extension at the full rate, then the remainder', () => {
+      const scenario = appleUpgrade(
+        inputs({ listPrice: 999, term: 12, tradeIn: 500, endChoice: 'nothing' })
+      );
+      const gross = leasePayment(999, 12);
+      for (let m = 1; m <= 12; m++) expect(scenario.rows[m].outflow).toBe(0);
+      for (let m = 13; m <= 17; m++) expect(scenario.rows[m].outflow).toBeCloseTo(gross, 2);
+      // Month 18 carries the sixth extension payment and then the balloon,
+      // which is whatever those six payments did not cover.
+      const balloon = 999 - 499.5 - 6 * gross;
+      expect(scenario.rows[18].outflow).toBeCloseTo(gross + balloon, 2);
+      expect(scenario.summary.cash).toBeCloseTo(999 - 499.5, 2);
+    });
+
+    it('hands surplus back on the purchase paths too', () => {
+      const input = inputs({ listPrice: 999, tradeIn: 1500, taxRate: 0 });
+      expect(outright(input).summary.tradeInRefund).toBeCloseTo(501, 2);
+      expect(carrierFinancing(input).summary.tradeInRefund).toBeCloseTo(501, 2);
+      expect(outright(input).rows[0].outflow).toBe(0);
+    });
+
+    it('lets a purchase absorb more of a trade-in than a lease can', () => {
+      const input = inputs({ listPrice: 999, term: 12, tradeIn: 800, taxRate: 0 });
+      // The whole point: buying uses all $800, the lease can only use $499.50.
+      expect(outright(input).summary.tradeInRefund).toBe(0);
+      expect(appleUpgrade(input).summary.tradeInRefund).toBeCloseTo(300.5, 2);
+    });
   });
 });
 
 describe('buyout', () => {
   it('drops by exactly what you paid that month', () => {
-    const gross = leasePayment(1199, 24);
-    const net = gross - 375 / 24;
+    const { credit, payment } = leaseTerms(1199, 24, 375);
     for (let m = 1; m <= 24; m++) {
-      const drop = buyoutAfter(m - 1, 1199, gross, 375, 24) - buyoutAfter(m, 1199, gross, 375, 24);
-      expect(drop).toBeCloseTo(net, 6);
+      const drop =
+        buyoutAfter(1199, credit, payment * (m - 1)) - buyoutAfter(1199, credit, payment * m);
+      expect(drop).toBeCloseTo(payment, 6);
     }
   });
 
   it('keeps falling through the six-month extension', () => {
     const gross = leasePayment(1199, 24);
-    expect(buyoutAfter(30, 1199, gross, 0, 24)).toBeCloseTo(1199 - 30 * gross, 2);
+    expect(buyoutAfter(1199, 0, gross * 30)).toBeCloseTo(1199 - 30 * gross, 2);
   });
 
   it('leaves 30% of sticker on the table at the end of a 24-month term', () => {
-    const gross = leasePayment(1199, 24);
-    expect(buyoutAfter(24, 1199, gross, 0, 24) / 1199).toBeCloseTo(0.3, 2);
+    expect(leaseTerms(1199, 24, 0).buyoutAtTerm / 1199).toBeCloseTo(0.3, 2);
   });
 
   it('leaves 50% on the table at the end of a 12-month term', () => {
-    const gross = leasePayment(1199, 12);
-    expect(buyoutAfter(12, 1199, gross, 0, 12) / 1199).toBeCloseTo(0.5, 2);
+    expect(leaseTerms(1199, 12, 0).buyoutAtTerm / 1199).toBeCloseTo(0.5, 2);
   });
 });
 
@@ -159,6 +233,7 @@ describe('timing', () => {
 
   it('raises the payment once the trade-in credit runs out', () => {
     const scenario = appleUpgrade(inputs({ tradeIn: 375, endChoice: 'nothing' }));
+    // Apple's quoted number right through the term, then the full rate.
     expect(scenario.rows[24].outflow).toBeCloseTo(19.37, 2);
     expect(scenario.rows[25].outflow).toBeCloseTo(34.99, 2);
   });
@@ -422,7 +497,7 @@ describe('category split', () => {
     for (const endChoice of ['buyout', 'nothing'] as const) {
       const last = appleUpgrade(inputs({ endChoice })).rows[HORIZON].runningByCategory;
       expect(last.rent).toBe(0);
-      expect(last.phone).toBeCloseTo(1199, 2);
+      expect(last.phone).toBeCloseTo(1199, 1);
     }
   });
 
@@ -437,7 +512,7 @@ describe('category split', () => {
   it('splits the hand-back ending into exactly the lease share', () => {
     const scenario = appleUpgrade(inputs({ endChoice: 'return' }));
     expect(scenario.rows[HORIZON].runningByCategory.rent).toBeCloseTo(
-      leasePayment(1199, 24) * 24,
+      leaseTerms(1199, 24, 0).payment * 24,
       2
     );
   });
@@ -479,6 +554,13 @@ describe('the treadmill', () => {
     const scenario = appleUpgrade(inputs({ tradeIn: 375, endChoice: 'upgrade' }));
     expect(scenario.rows[24].outflow).toBeCloseTo(gross - 375 / 24, 2);
     expect(scenario.rows[25].outflow).toBeCloseTo(gross, 2);
+  });
+
+  it('gives a replacement lease no trade-in credit to work with', () => {
+    const gross = leasePayment(1199, 24);
+    const scenario = appleUpgrade(inputs({ tradeIn: 375, endChoice: 'upgrade' }));
+    // Month 36 is twelve payments into the second lease, all at the full rate.
+    expect(scenario.rows[36].buyout).toBeCloseTo(buyoutAfter(1199, 0, gross * 12), 2);
   });
 
   it('re-runs the damage gamble at every handback', () => {

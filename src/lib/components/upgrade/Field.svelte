@@ -10,13 +10,38 @@
   }
 
   let { label, value = $bindable(), unit = '$', hint, step = 1, min = 0 }: Props = $props();
+
+  /**
+   * A number input reports an empty box as null, and `bind:value` would push
+   * that straight into the model — so clearing a field to retype it took the
+   * whole page down. Only finite numbers go upstream; the box keeps whatever
+   * you are part-way through typing, and an empty one is restored on blur.
+   */
+  function onInput(event: Event & { currentTarget: HTMLInputElement }) {
+    const next = event.currentTarget.valueAsNumber;
+    if (Number.isFinite(next)) value = next;
+  }
+
+  function onBlur(event: FocusEvent & { currentTarget: HTMLInputElement }) {
+    if (!Number.isFinite(event.currentTarget.valueAsNumber)) {
+      event.currentTarget.value = String(value);
+    }
+  }
 </script>
 
 <label class="field">
-  <span class="label">{label}</span>
+  <span class="field-name">{label}</span>
   <span class="wrap" class:money={unit === '$'} class:pct={unit === '%'}>
     {#if unit === '$'}<span class="unit left" aria-hidden="true">$</span>{/if}
-    <input type="number" bind:value {step} {min} inputmode="decimal" />
+    <input
+      type="number"
+      {value}
+      {step}
+      {min}
+      inputmode="decimal"
+      oninput={onInput}
+      onblur={onBlur}
+    />
     {#if unit === '%'}<span class="unit right" aria-hidden="true">%</span>{/if}
   </span>
   {#if hint}<span class="hint">{hint}</span>{/if}
@@ -28,7 +53,8 @@
     flex-direction: column;
     gap: 6px;
   }
-  .label {
+  /* Not `.label` — a global form class owns that name. */
+  .field-name {
     font-family: var(--font-body);
     font-weight: 520;
     font-size: 13.5px;

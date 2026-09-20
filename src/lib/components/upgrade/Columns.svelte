@@ -27,11 +27,20 @@
     stuck = false
   }: Props = $props();
 
+  const empty = { phone: 0, rent: 0, care: 0, fees: 0 };
+
   const bars = $derived(
     scenarios.map((s) => {
-      const row = s.rows[Math.min(month, s.rows.length - 1)];
-      const split = basis === 'npv' ? row.runningNpvByCategory : row.runningByCategory;
-      const total = basis === 'npv' ? row.runningNpv : row.runningCash;
+      // Month -1 is the state before the first month has been scrolled past:
+      // four empty columns, so the first thing the reader sees arrive is the
+      // day-one cost rather than a chart that was already part-full.
+      const row = month < 0 ? undefined : s.rows[Math.min(month, s.rows.length - 1)];
+      const split = !row
+        ? empty
+        : basis === 'npv'
+          ? row.runningNpvByCategory
+          : row.runningByCategory;
+      const total = !row ? 0 : basis === 'npv' ? row.runningNpv : row.runningCash;
       return {
         key: s.key,
         name: s.shortName,
@@ -45,7 +54,12 @@
     })
   );
 
-  const leader = $derived(bars.reduce((best, b, i) => (b.total < bars[best].total ? i : best), 0));
+  // Nothing is cheapest before anything has been spent.
+  const leader = $derived(
+    bars.every((b) => b.total <= 0)
+      ? -1
+      : bars.reduce((best, b, i) => (b.total < bars[best].total ? i : best), 0)
+  );
 
   /**
    * A band's share of its own bar. The bar is already sized against the
@@ -57,10 +71,6 @@
     return total > 0 ? (amount / total) * 100 : 0;
   }
 
-  const legendUsed = $derived(
-    CATEGORIES.filter((c) => bars.some((b) => b.bands.some((x) => x.category === c)))
-  );
-
   const refPct = $derived(
     reference && ceiling > 0 ? Math.min(92, (reference.value / ceiling) * 100) : null
   );
@@ -69,7 +79,8 @@
 <div class="panel" class:stuck>
   <div class="top">
     <span class="eyebrow"
-      >// month {String(month).padStart(2, '0')} of {scenarios[0].rows.length - 1}</span
+      >// month {month < 0 ? '--' : String(month).padStart(2, '0')} of {scenarios[0].rows.length -
+        1}</span
     >
     <button
       class="basis"
@@ -85,7 +96,9 @@
     class="chart"
     style="height: {height}px"
     role="img"
-    aria-label={`Paid to date through month ${month}: ${bars.map((b) => `${b.name} ${money0(b.total)}`).join(', ')}`}
+    aria-label={month < 0
+      ? 'Nothing paid yet'
+      : `Paid to date through month ${month}: ${bars.map((b) => `${b.name} ${money0(b.total)}`).join(', ')}`}
   >
     <!-- Every cell is placed explicitly: the reference line spans the whole
          plot row, and auto-placement would shove the bars out of it. -->
@@ -121,14 +134,11 @@
     {/each}
   </div>
 
-  <ul class="legend">
-    {#each legendUsed as category (category)}
-      <li><i data-cat={category}></i>{CATEGORY_LABELS[category]}</li>
-    {/each}
-    {#if refPct !== null && reference}
-      <li class="ref"><i class="dash"></i>{money0(reference.value)} &middot; {reference.label}</li>
-    {/if}
-  </ul>
+  {#if reference}
+    <p class="caption">
+      <i aria-hidden="true"></i>{money0(reference.value)} &middot; {reference.label}
+    </p>
+  {/if}
 </div>
 
 <style>
@@ -141,8 +151,10 @@
    *   dark   worst CVD ΔE 11.5 · normal-vision ΔE 19.2 · min contrast 4.22:1
    * Both clear the ΔE 8 target, the ΔE 15 normal-vision floor and 3:1 contrast,
    * so identity survives protanopia and deuteranopia in either theme. Every
-   * band is also labelled in the legend and named in its tooltip; colour is
-   * never the only channel. Re-run the validator before touching a value.
+   * band is also named in its tooltip, and the ledger below prints every charge
+   * beside a swatch of its own colour as it arrives — which is what teaches the
+   * mapping, and why this panel carries no legend of its own. Re-run the
+   * validator before touching a value.
    */
   .panel {
     --cat-phone: light-dark(#1289e7, #1795fa);
@@ -245,8 +257,7 @@
   /*
    * Where the phone has been paid for outright, which is what the empty top of
    * the plot is counting down to. Drawn over the bars the way a target line
-   * normally is, and named in the legend rather than on a chip in the plot —
-   * a chip there sits on top of whichever band happens to reach that height.
+   * normally is, with its label on a chip at the right-hand end.
    */
   .plot-marker {
     position: relative;
@@ -259,6 +270,25 @@
     position: absolute;
     right: 0;
     left: 0;
+    border-top: 1px dashed color-mix(in oklch, var(--faint) 75%, transparent);
+  }
+
+  /* One line, naming the dashed line only. Not a colour key: the ledger below
+     prints every charge beside a swatch of its own colour as it arrives. */
+  .caption {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.02em;
+    color: var(--faint);
+  }
+  .caption i {
+    height: 0;
+    width: 14px;
+    flex: none;
     border-top: 1px dashed color-mix(in oklch, var(--faint) 75%, transparent);
   }
   .stack {
@@ -294,41 +324,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px 12px;
-    margin: 0;
-    border-top: 1px solid color-mix(in oklch, var(--border) 50%, transparent);
-    padding: 7px 0 0;
-    list-style: none;
-  }
-  .legend li {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 10.5px;
-    line-height: 1.3;
-    color: var(--muted);
-  }
-  .legend i {
-    height: 8px;
-    width: 8px;
-    flex: none;
-    border-radius: 2px;
-    background: var(--fill);
-  }
-  .legend .ref {
-    color: var(--faint);
-  }
-  .legend i.dash {
-    height: 0;
-    width: 12px;
-    border-top: 1px dashed color-mix(in oklch, var(--faint) 75%, transparent);
-    border-radius: 0;
-    background: none;
-  }
-
   [data-cat='phone'] {
     --fill: var(--cat-phone);
   }
@@ -344,7 +339,7 @@
 
   @media (max-width: 560px) {
     .panel {
-      --bar-w: 100%;
+      --bar-w: 62px;
 
       border-radius: 11px;
       padding: 9px 10px 8px;
@@ -356,12 +351,6 @@
       font-size: 11.5px;
     }
     .name {
-      font-size: 9.5px;
-    }
-    .legend {
-      gap: 2px 10px;
-    }
-    .legend li {
       font-size: 9.5px;
     }
   }

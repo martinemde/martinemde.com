@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import Columns from './Columns.svelte';
-import { allScenarios, CATEGORIES, HORIZON, type Inputs } from '$lib/apple-upgrade/model';
+import { allScenarios, CATEGORIES, HORIZON, money0, type Inputs } from '$lib/apple-upgrade/model';
 
 function inputs(overrides: Partial<Inputs> = {}): Inputs {
   return {
@@ -91,11 +91,31 @@ describe('Columns', () => {
     }
   });
 
-  it('legends only the bands actually on screen', () => {
-    const { container } = mount(0);
-    const legend = [...container.querySelectorAll('.legend li')].map((l) => l.textContent?.trim());
-    // Day one is the phone plus the case, the activation fee and up-front tax.
-    expect(legend).toEqual(['Toward owning it', 'Fees and extras']);
+  /**
+   * The reader has to see the first month land, so the panel opens with four
+   * empty columns rather than with day one already counted.
+   */
+  it('starts empty, before any month has been scrolled past', () => {
+    const { container } = mount(-1);
+    expect(container.querySelectorAll('.band')).toHaveLength(0);
+    expect([...container.querySelectorAll('.total')].map((t) => t.textContent)).toEqual([
+      '$0',
+      '$0',
+      '$0',
+      '$0'
+    ]);
+  });
+
+  it('counts day one as soon as month zero goes past', () => {
+    const { container, scenarios } = mount(0);
+    expect(container.querySelectorAll('.band').length).toBeGreaterThan(0);
+    const totals = [...container.querySelectorAll('.total')].map((t) => t.textContent);
+    expect(totals[0]).toBe(money0(scenarios[0].rows[0].runningCash));
+  });
+
+  it('carries no legend — the ledger below names every charge in its own colour', () => {
+    const { container } = mount(24);
+    expect(container.querySelector('.legend')).toBeNull();
   });
 
   it('marks the cheapest column so far without recolouring it', () => {

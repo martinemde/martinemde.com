@@ -164,7 +164,13 @@ export interface Summary {
   monthsPaying: number;
   /** What you could liquidate at the horizon: resale value less any buyout owed. */
   equityAtHorizon: number;
-  /** NPV of cash out, less the present value of that closing equity. */
+  /**
+   * Trade-in value this path could not absorb, handed back as Apple credit.
+   * Only the lease usually has any: it collects half or seventy percent of the
+   * sticker, so it runs out of payments to discount long before a purchase does.
+   */
+  tradeInRefund: number;
+  /** NPV of cash out, less that credit and the present value of closing equity. */
   netCost: number;
   /** `netCost` spread over the months you actually had a phone. */
   perMonth: number;
@@ -297,24 +303,69 @@ export function leasePayment(listPrice: number, term: Term): number {
 }
 
 /**
- * Cost to buy the device outright after `month` lease payments.
+ * Cost to own the device outright, given the credit already against it and the
+ * cash paid so far.
  *
- * Apple describes this as "the list price minus any lease payments you've made
- * minus any remaining discounts or trade-in credit." Read literally that would
- * charge you for the trade-in twice, so this models the reading that keeps
- * Apple's other promise true — that you never pay more than full price. Every
- * dollar of credit against the device, whether it arrived as a payment or as a
- * traded-in phone, comes off the buyout.
+ * Apple describes the purchase option fee as "the list price minus any lease
+ * payments you've made minus any remaining discounts or trade-in credit."
+ * Read literally that would charge you for the trade-in twice, so this models
+ * the reading that keeps Apple's other promise true: you never pay more than
+ * full price, and with a trade-in you never pay more than full price less what
+ * you traded in. Every dollar of credit against the device, whether it arrived
+ * as a payment or as a traded-in phone, comes off the buyout.
  */
-export function buyoutAfter(
-  month: number,
-  listPrice: number,
-  grossPayment: number,
-  tradeIn: number,
-  term: Term
-): number {
-  const unusedCredit = (tradeIn * Math.max(0, term - month)) / term;
-  return Math.max(0, listPrice - month * grossPayment - unusedCredit);
+export function buyoutAfter(listPrice: number, credit: number, cashPaid: number): number {
+  return Math.max(0, listPrice - credit - cashPaid);
+}
+
+export interface LeaseTerms {
+  /** What the schedule is built to collect, before tax: 50% or 70% of list. */
+  leaseTotal: number;
+  /** The advertised monthly payment, before any trade-in credit. */
+  gross: number;
+  /** How much of the trade-in this lease can actually absorb. */
+  credit: number;
+  /**
+   * Trade-in value the lease has no room for. A lease only ever collects half
+   * or seventy percent of the sticker, so a big trade-in runs out of payments
+   * to reduce, and the rest comes back as Apple credit rather than as a
+   * cheaper phone. This is the single biggest thing a trade-in does differently
+   * on a lease than on a purchase.
+   */
+  refund: number;
+  /** What you are actually billed each month of the initial term. */
+  payment: number;
+  /** Cost to own it the month the initial term ends. */
+  buyoutAtTerm: number;
+}
+
+/**
+ * Everything the lease schedule does with a price, a term and a trade-in.
+ *
+ * The trade-in is credited against the lease total rather than against the
+ * rounded payment schedule, which is what makes the edge case behave: trade in
+ * more than the lease will ever collect and the payment is zero, not the few
+ * cents the x.99 rounding would otherwise leave behind.
+ */
+export function leaseTerms(listPrice: number, term: Term, tradeIn: number): LeaseTerms {
+  const leaseTotal = listPrice * LEASE_SHARE[term];
+  const gross = leasePayment(listPrice, term);
+  const credit = Math.min(Math.max(0, tradeIn), leaseTotal);
+  const refund = Math.max(0, tradeIn - leaseTotal);
+
+  // Apple quotes the reduced payment as the advertised rate less the credit
+  // spread over the term, so that is what gets billed — except once the credit
+  // covers the whole lease total, where there is simply nothing left to collect.
+  const payment = credit >= leaseTotal ? 0 : Math.max(0, gross - credit / term);
+
+  return {
+    leaseTotal,
+    gross,
+    credit,
+    refund,
+    payment,
+    buyoutAtTerm: buyoutAfter(listPrice, credit, payment * term)
+  };
 }
 
 function monthlyDiscount(annualPercent: number): number {
@@ -443,12 +494,18 @@ function resaleAtAge(input: Inputs, ageMonths: number): number {
   return input.listPrice * usedFraction(ageMonths) * scale;
 }
 
-function summarize(input: Inputs, rows: MonthRow[], equityAtHorizon: number): Summary {
+function summarize(
+  input: Inputs,
+  rows: MonthRow[],
+  equityAtHorizon: number,
+  tradeInRefund = 0
+): Summary {
   const last = rows[rows.length - 1];
   const rate = monthlyDiscount(input.discountRate);
   const monthsWithPhone = rows.filter((r) => r.month >= 1 && r.hasPhone).length;
 
-  const netCost = last.runningNpv - pv(equityAtHorizon, HORIZON, rate);
+  // The refund arrives as store credit on day one, so it needs no discounting.
+  const netCost = last.runningNpv - tradeInRefund - pv(equityAtHorizon, HORIZON, rate);
 
   return {
     cash: last.runningCash,
@@ -458,6 +515,7 @@ function summarize(input: Inputs, rows: MonthRow[], equityAtHorizon: number): Su
     monthsWithPhone,
     monthsPaying: rows.filter((r) => r.month >= 1 && r.outflow > 0).length,
     equityAtHorizon,
+    tradeInRefund,
     netCost,
     perMonth: monthsWithPhone > 0 ? netCost / monthsWithPhone : 0
   };
@@ -471,14 +529,18 @@ function summarize(input: Inputs, rows: MonthRow[], equityAtHorizon: number): Su
 export function appleUpgrade(input: Inputs): Scenario {
   const { listPrice, term, tradeIn, endChoice } = input;
   const tax = 1 + input.taxRate / 100;
-  const gross = leasePayment(listPrice, term);
-  const creditPerMonth = tradeIn / term;
-  const net = Math.max(0, gross - creditPerMonth);
+  const { gross, credit, refund, payment, buyoutAtTerm } = leaseTerms(listPrice, term, tradeIn);
 
   // The extension: payments continue at the full rate because the trade-in
   // credit only ever covered the initial term.
   const extensionEnd = term + EXTENSION_MONTHS;
-  const buyoutAtTerm = buyoutAfter(term, listPrice, gross, tradeIn, term);
+
+  /** Cash the lease has collected by the end of `month`, before tax. */
+  const cashThrough = (month: number): number => {
+    const paid = payment * Math.max(0, Math.min(month, term));
+    if (endChoice !== 'nothing' || month <= term) return paid;
+    return paid + gross * Math.min(month - term, EXTENSION_MONTHS);
+  };
 
   /** Which lease you're on (0-indexed) and how far into it, for the upgrade path. */
   const cycle = (month: number) => {
@@ -489,7 +551,7 @@ export function appleUpgrade(input: Inputs): Scenario {
   // Every lease payment reduces the buyout, so whether it bought equity or
   // just bought a month comes down to whether you end up owning the thing.
   const owns = endChoice === 'buyout' || endChoice === 'nothing';
-  const payment = (label: string, amount: number): LineItem => ({
+  const leaseCharge = (label: string, amount: number): LineItem => ({
     label,
     amount,
     biller: 'klarna',
@@ -518,17 +580,17 @@ export function appleUpgrade(input: Inputs): Scenario {
       // rather than handed back as cash, so day one is remarkably cheap.
     }
 
-    if (month >= 1 && month <= term) {
-      out.push(payment('Lease payment', net * tax));
+    if (month >= 1 && month <= term && payment > 0) {
+      out.push(leaseCharge('Lease payment', payment * tax));
     }
 
     if (month > term) {
       if (endChoice === 'nothing' && month <= extensionEnd) {
-        out.push(payment('Month-to-month payment', gross * tax));
+        out.push(leaseCharge('Month-to-month payment', gross * tax));
       }
       if (endChoice === 'upgrade') {
         // Every term you hand it back and start again, at the full rate.
-        out.push(payment('New lease payment', gross * tax));
+        out.push(leaseCharge('New lease payment', gross * tax));
       }
     }
 
@@ -542,10 +604,9 @@ export function appleUpgrade(input: Inputs): Scenario {
     }
 
     if (month === extensionEnd && endChoice === 'nothing') {
-      const remaining = buyoutAfter(extensionEnd, listPrice, gross, tradeIn, term);
       out.push({
-        label: 'Automatic buyout — it’s yours',
-        amount: remaining * tax,
+        label: 'Automatic buyout — it\u2019s yours',
+        amount: buyoutAfter(listPrice, credit, cashThrough(extensionEnd)) * tax,
         biller: 'klarna',
         category: 'phone'
       });
@@ -577,7 +638,7 @@ export function appleUpgrade(input: Inputs): Scenario {
   const state = (month: number) => {
     if (month <= term) {
       return {
-        buyout: buyoutAfter(month, listPrice, gross, tradeIn, term),
+        buyout: buyoutAfter(listPrice, credit, cashThrough(month)),
         hasPhone: true,
         owns: false,
         note:
@@ -593,14 +654,15 @@ export function appleUpgrade(input: Inputs): Scenario {
           hasPhone: false,
           owns: false,
           note: undefined,
-          idleNote: `You don’t have a phone: ${PASTIMES[(month - term - 1) % PASTIMES.length]}`
+          idleNote: `You don\u2019t have a phone: ${PASTIMES[(month - term - 1) % PASTIMES.length]}`
         };
       case 'buyout':
         return { buyout: null, hasPhone: true, owns: true, note: undefined };
       case 'upgrade': {
         const { inLease } = cycle(month);
+        // A replacement lease gets no trade-in; Apple does not allow one.
         return {
-          buyout: buyoutAfter(inLease, listPrice, gross, 0, term),
+          buyout: buyoutAfter(listPrice, 0, gross * inLease),
           hasPhone: true,
           owns: false,
           note: inLease === term ? 'Another term up. Another four doors.' : undefined
@@ -609,7 +671,7 @@ export function appleUpgrade(input: Inputs): Scenario {
       case 'nothing':
         return month <= extensionEnd
           ? {
-              buyout: buyoutAfter(month, listPrice, gross, tradeIn, term),
+              buyout: buyoutAfter(listPrice, credit, cashThrough(month)),
               hasPhone: true,
               owns: false,
               note:
@@ -640,20 +702,22 @@ export function appleUpgrade(input: Inputs): Scenario {
     shortName: 'Lease',
     blurb: `${term} lease payments, then the choice.`,
     rows,
-    summary: summarize(input, rows, equityAtHorizon)
+    summary: summarize(input, rows, equityAtHorizon, refund)
   };
 }
 
 /** Hand over a card, own it that afternoon. */
 export function outright(input: Inputs): Scenario {
   const tax = 1 + input.taxRate / 100;
+  const owed = input.listPrice * tax;
+  const refund = Math.max(0, input.tradeIn - owed);
 
   const items = (month: number): LineItem[] => {
     const out: LineItem[] = [];
     if (month === 0) {
       out.push({
         label: 'Device',
-        amount: Math.max(0, input.listPrice * tax - input.tradeIn),
+        amount: Math.max(0, owed - input.tradeIn),
         biller: 'apple',
         category: 'phone'
       });
@@ -683,14 +747,16 @@ export function outright(input: Inputs): Scenario {
     shortName: 'Cash',
     blurb: 'One charge, no strings, no credit check.',
     rows,
-    summary: summarize(input, rows, input.resaleAtHorizon)
+    summary: summarize(input, rows, input.resaleAtHorizon, refund)
   };
 }
 
 /** Apple Card Monthly Installments: the tax-inclusive total, split 24 ways, 0% APR. */
 export function appleCardFinancing(input: Inputs): Scenario {
   const tax = 1 + input.taxRate / 100;
-  const financed = Math.max(0, input.listPrice * tax - input.tradeIn);
+  const owed = input.listPrice * tax;
+  const financed = Math.max(0, owed - input.tradeIn);
+  const refund = Math.max(0, input.tradeIn - owed);
   const payment = financed / 24;
 
   const items = (month: number): LineItem[] => {
@@ -725,7 +791,7 @@ export function appleCardFinancing(input: Inputs): Scenario {
     shortName: 'Card',
     blurb: 'Same total as cash, spread out, with 3% back on day one.',
     rows,
-    summary: summarize(input, rows, input.resaleAtHorizon)
+    summary: summarize(input, rows, input.resaleAtHorizon, refund)
   };
 }
 
@@ -734,6 +800,7 @@ export function carrierFinancing(input: Inputs): Scenario {
   const tax = input.taxRate / 100;
   const n = input.carrierTerm;
   const payment = Math.max(0, input.listPrice - input.tradeIn) / n;
+  const refund = Math.max(0, input.tradeIn - input.listPrice);
   const creditPerMonth = input.carrierCredits / n;
 
   const items = (month: number): LineItem[] => {
@@ -787,7 +854,7 @@ export function carrierFinancing(input: Inputs): Scenario {
     shortName: 'Carrier',
     blurb: 'Cheapest sticker, longest leash.',
     rows,
-    summary: summarize(input, rows, input.resaleAtHorizon)
+    summary: summarize(input, rows, input.resaleAtHorizon, refund)
   };
 }
 
@@ -811,7 +878,7 @@ export interface Beat {
 
 export function beats(input: Inputs): Map<number, Beat> {
   const { term, endChoice, carrierTerm } = input;
-  const gross = leasePayment(input.listPrice, term);
+  const { gross, payment, refund, leaseTotal } = leaseTerms(input.listPrice, term, input.tradeIn);
   const map = new Map<number, Beat>();
   const set = (month: number, beat: Beat) => {
     if (month >= 0 && month <= HORIZON && !map.has(month)) map.set(month, beat);
@@ -819,8 +886,9 @@ export function beats(input: Inputs): Map<number, Beat> {
 
   set(0, {
     title: 'You walk out of the store',
-    detail:
-      'Two columns have already taken a large bite and two have taken almost nothing. Nothing about the phone differs between them — only the moment the money moves.'
+    detail: refund
+      ? `Two columns have already taken a large bite and two have taken almost nothing. And your trade-in is bigger than a ${term}-month lease has room for: it only ever collects ${money0(leaseTotal)}.`
+      : 'Two columns have already taken a large bite and two have taken almost nothing. Nothing about the phone differs between them — only the moment the money moves.'
   });
 
   set(1, {
@@ -837,10 +905,10 @@ export function beats(input: Inputs): Map<number, Beat> {
     });
   }
 
-  if (input.tradeIn > 0 && endChoice !== 'return') {
+  if (input.tradeIn > 0 && endChoice !== 'return' && payment < gross) {
     set(term + 1, {
       title: 'The trade-in credit is spent',
-      detail: `The credit only ever covered the initial term. The lease payment snaps back to the full ${money(gross)}, and that is the number it stays at from here.`
+      detail: `The credit only ever covered the initial term. The lease payment goes from ${money(payment)} to the full ${money(gross)}, and that is the number it stays at from here.`
     });
   }
 

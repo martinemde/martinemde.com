@@ -18,15 +18,22 @@
     beats: Map<number, Beat>;
     /** Questions that only make sense once you have got there, keyed by month. */
     questions?: Record<number, Snippet>;
+    /**
+     * Last month to render. A question the reader has not answered yet stops
+     * the ledger dead rather than letting them scroll past it, because the
+     * months below it depend on the answer.
+     */
+    limit?: number;
   }
 
-  let { scenarios, beats, questions = {} }: Props = $props();
+  let { scenarios, beats, questions = {}, limit }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('cash');
-  let activeMonth = $state(0);
+  /** -1 is the empty state: nothing counted until the first month goes past. */
+  let activeMonth = $state(-1);
   let stuck = $state(false);
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
-  let chartPx = $state(260);
+  let chartPx = $state(190);
 
   let blockEls: HTMLElement[] = [];
   let sentinel: HTMLElement;
@@ -37,7 +44,8 @@
 
   const horizon = $derived(scenarios[0].rows.length - 1);
   const columns = $derived(scenarios.length);
-  const months = $derived(Array.from({ length: horizon + 1 }, (_, i) => i));
+  const lastMonth = $derived(Math.min(limit ?? horizon, horizon));
+  const months = $derived(Array.from({ length: lastMonth + 1 }, (_, i) => i));
 
   /**
    * One scale for the whole scroll: the tallest column at the horizon, plus a
@@ -158,6 +166,17 @@
     return undefined;
   }
 
+  /**
+   * Trade-in value a column could not absorb, handed back as Apple credit
+   * rather than as a cheaper phone. It is value received, not cash paid, so it
+   * gets a note on day one instead of a line in the schedule.
+   */
+  const refunds = $derived(
+    scenarios
+      .filter((s) => s.summary.tradeInRefund > 0.005)
+      .map((s) => ({ key: s.key, name: s.shortName, amount: s.summary.tradeInRefund }))
+  );
+
   const readLine = $derived(headerPx + (panelPx || chartPx + 96) + 20);
 
   /**
@@ -182,12 +201,8 @@
       const header = document.querySelector('header');
       if (header) headerPx = Math.round(header.getBoundingClientRect().height);
       const narrow = window.innerWidth <= 560;
-      chartPx = Math.round(
-        Math.max(
-          narrow ? 150 : 168,
-          Math.min(narrow ? 230 : 290, window.innerHeight * (narrow ? 0.3 : 0.32))
-        )
-      );
+      // A quarter of the screen. The panel is a running tally, not the page.
+      chartPx = Math.round(Math.max(112, Math.min(narrow ? 176 : 210, window.innerHeight * 0.25)));
     };
     measure();
     window.addEventListener('resize', measure);
@@ -221,8 +236,8 @@
     let queued = false;
     const sync = () => {
       queued = false;
-      let found = 0;
-      for (let m = 0; m <= horizon; m++) {
+      let found = -1;
+      for (let m = 0; m <= lastMonth; m++) {
         const el = blockEls[m];
         if (el && el.getBoundingClientRect().top <= line) found = m;
         else break;
@@ -281,6 +296,24 @@
         {/if}
       </header>
 
+      <!-- The aligned totals sit at the top of the month, level with the line
+           the panel reads from, so a slice lifts off exactly as its month is
+           counted rather than a screen-and-a-half later. -->
+      <div class="foot">
+        {#each cells as cell (cell.key)}
+          <div class="cell" class:zero={cell.net <= 0.005}>
+            <span class="track">
+              <span class="piece">
+                {#each cell.slices as slice (slice.category)}
+                  <i data-cat={slice.category} style="height: {piecePx(slice.amount, peak)}px"></i>
+                {/each}
+              </span>
+            </span>
+            <span class="amt">{cell.net > 0.005 ? money(cell.net) : '—'}</span>
+          </div>
+        {/each}
+      </div>
+
       {#if beat}
         <p class="story">{beat.detail}</p>
       {/if}
@@ -297,9 +330,9 @@
                 {/if}
                 <span class="biller">{charge.biller}</span>
               </span>
-              <span class="who">
+              <span class="paid">
                 {#each charge.paid as who (who.key)}
-                  <i class="chip"
+                  <i class="tag"
                     >{who.name}{#if charge.uniform === null}<b>{money(who.amount)}</b>{/if}</i
                   >
                 {/each}
@@ -314,24 +347,20 @@
         <p class="nothing">Nothing due anywhere. The phone just gets a year older.</p>
       {/if}
 
+      {#if month === 0 && refunds.length}
+        <p class="credit">
+          Your trade-in is worth more than {refunds.length === scenarios.length
+            ? 'any of these'
+            : 'some of these'} can use. The difference comes back as Apple credit, not as a cheaper phone:
+          {#each refunds as refund, i (refund.key)}{i > 0 ? ', ' : ''}<b
+              >{refund.name} {money(refund.amount)}</b
+            >{/each}.
+        </p>
+      {/if}
+
       {#if idle}
         <p class="nothing">{idle}</p>
       {/if}
-
-      <div class="foot">
-        {#each cells as cell (cell.key)}
-          <div class="cell" class:zero={cell.net <= 0.005}>
-            <span class="amt">{cell.net > 0.005 ? money(cell.net) : '—'}</span>
-            <span class="track">
-              <span class="piece">
-                {#each cell.slices as slice (slice.category)}
-                  <i data-cat={slice.category} style="height: {piecePx(slice.amount, peak)}px"></i>
-                {/each}
-              </span>
-            </span>
-          </div>
-        {/each}
-      </div>
     </section>
 
     {#if questions[month]}
@@ -379,12 +408,11 @@
   .month.quiet:not(.beat) {
     opacity: 0.6;
   }
-  /* The month being read. Tint plus an inset edge — nothing that changes the
-     box's width, so the ledger never widens the page. */
+  /* The month being read. A tint only: an inset edge sat on top of the month
+     number, and anything with width would widen the page. */
   .month.on {
     border-radius: 6px;
-    background: color-mix(in oklch, var(--accent) 6%, transparent);
-    box-shadow: inset 2px 0 0 color-mix(in oklch, var(--accent) 45%, transparent);
+    background: color-mix(in oklch, var(--accent) 7%, transparent);
   }
 
   header {
@@ -486,12 +514,13 @@
     color: var(--muted);
     text-transform: uppercase;
   }
-  .who {
+  .paid {
     display: flex;
     flex-wrap: wrap;
     gap: 4px 6px;
   }
-  .chip {
+  /* Not `.chip` — Skeleton ships a component under that name. */
+  .tag {
     display: inline-flex;
     align-items: baseline;
     gap: 5px;
@@ -505,7 +534,7 @@
     letter-spacing: 0.02em;
     color: var(--muted);
   }
-  .chip b {
+  .tag b {
     font-weight: 500;
     color: var(--text);
     font-variant-numeric: tabular-nums;
@@ -517,6 +546,23 @@
     color: var(--faint);
     text-wrap: pretty;
   }
+  .credit {
+    margin: 0;
+    max-width: 58ch;
+    border-left: 2px solid var(--cat-phone);
+    padding-left: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .credit b {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
   .nothing {
     margin: 0;
     max-width: 58ch;
@@ -535,13 +581,13 @@
     /* Matches the sticky panel's border + padding and its column gap, so a
        month's slice sits directly under the bar it is about to join. */
     gap: var(--col-gap);
-    border-top: 1px dashed color-mix(in oklch, var(--border) 60%, transparent);
-    padding: 6px var(--gutter) 0;
+    border-bottom: 1px dashed color-mix(in oklch, var(--border) 60%, transparent);
+    padding: 0 var(--gutter) 6px;
   }
   .cell {
     display: grid;
     justify-items: center;
-    gap: 3px;
+    gap: 2px;
     min-width: 0;
   }
   .amt {
@@ -662,7 +708,7 @@
     .ledger {
       --gutter: 11px;
       --col-gap: 6px;
-      --bar-w: 100%;
+      --bar-w: 62px;
     }
     .amt {
       font-size: 10px;

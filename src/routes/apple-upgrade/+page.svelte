@@ -12,6 +12,8 @@
     EXTENSION_MONTHS,
     HORIZON,
     leasePayment,
+    LEASE_SHARE,
+    leaseTerms,
     money,
     money0,
     type AppleCarePlan,
@@ -39,7 +41,7 @@
     tradeIn: number;
     term: Term | null;
     appleCare: AppleCarePlan | null;
-    endChoice: EndChoice;
+    endChoice: EndChoice | null;
     appleCareMonthly: number;
     appleCareOneMonthly: number;
     appleCareAnnual: number;
@@ -62,7 +64,7 @@
     tradeIn: 375,
     term: null,
     appleCare: null,
-    endChoice: 'nothing',
+    endChoice: null,
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
@@ -194,7 +196,10 @@
     listPrice,
     tradeIn: hasTradeIn === 'yes' ? tradeIn : 0,
     term: term ?? 24,
-    endChoice,
+    // The columns are identical across all four endings until the term runs
+    // out, and the ledger stops there until one is picked, so the placeholder
+    // never reaches the screen.
+    endChoice: endChoice ?? 'nothing',
     appleCare: appleCare ?? 'none',
     appleCareMonthly,
     appleCareOneMonthly,
@@ -217,21 +222,37 @@
   const scenarios = $derived(allScenarios(inputs));
   const story = $derived(beats(inputs));
 
-  const gross = $derived(leasePayment(listPrice, term ?? 24));
-  const credit = $derived(hasTradeIn === 'yes' ? tradeIn / (term ?? 24) : 0);
-  const netPayment = $derived(Math.max(0, gross - credit));
-  const residual = $derived(buyoutAfter(term ?? 24, listPrice, gross, 0, term ?? 24));
-  const extensionEnd = $derived((term ?? 24) + EXTENSION_MONTHS);
+  const lease = $derived(leaseTerms(listPrice, term ?? 24, hasTradeIn === 'yes' ? tradeIn : 0));
+  const gross = $derived(lease.gross);
+  const netPayment = $derived(lease.payment);
+  const residual = $derived(lease.buyoutAtTerm);
+  /** Cost to own it after riding the six-month extension out. */
+  const extensionResidual = $derived(
+    buyoutAfter(listPrice, lease.credit, lease.payment * (term ?? 24) + gross * EXTENSION_MONTHS)
+  );
+
+  /** How far down the ledger the reader is allowed before answering. */
+  const ledgerLimit = $derived(endChoice ? HORIZON : (term ?? 24));
+
+  /**
+   * What each lease term can absorb of the trade-in. A lease only collects
+   * half or seventy percent of the sticker, so a trade-in can run out of
+   * payments to reduce long before a purchase would.
+   */
+  const tradeInSurplus = $derived(
+    ([12, 24] as Term[])
+      .map((t) => ({ term: t, ...leaseTerms(listPrice, t, hasTradeIn === 'yes' ? tradeIn : 0) }))
+      .filter((t) => t.refund > 0.005)
+  );
 
   const termOptions = $derived(
     ([12, 24] as Term[]).map((t) => {
-      const g = leasePayment(listPrice, t);
-      const c = hasTradeIn === 'yes' ? tradeIn / t : 0;
+      const terms = leaseTerms(listPrice, t, hasTradeIn === 'yes' ? tradeIn : 0);
       return {
         value: t,
         label: `${t} months`,
-        sub: `${money(Math.max(0, g - c))}/mo`,
-        note: `${money0(g * t)} in payments, then ${money0(buyoutAfter(t, listPrice, g, 0, t))} to keep it`
+        sub: `${money(terms.payment)}/mo`,
+        note: `${money0(terms.payment * t)} in payments, then ${money0(terms.buyoutAtTerm)} to keep it`
       };
     })
   );
@@ -423,6 +444,30 @@
         {money(leasePayment(1199, 24))}. There is a month down the page that says so. You also
         cannot trade in again when you upgrade &mdash; the credit is a one-time enrollment thing.
       </p>
+
+      {#if tradeInSurplus.length}
+        <h3>This trade-in is bigger than the lease can use</h3>
+        <p>
+          A lease only ever collects {Math.round(LEASE_SHARE[12] * 100)}% of the sticker over twelve
+          months, or {Math.round(LEASE_SHARE[24] * 100)}% over twenty-four. Once the credit has
+          wiped out every payment there is nothing left to discount, and the rest comes back as
+          Apple credit rather than as a cheaper phone:
+        </p>
+        <ul class="surplus">
+          {#each tradeInSurplus as t (t.term)}
+            <li>
+              <strong>{t.term} months</strong> &mdash; collects {money0(t.leaseTotal)}, so
+              {money(t.payment)}/mo and <strong>{money(t.refund)}</strong> back as Apple credit. The
+              buyout at the end is {money0(t.buyoutAtTerm)}.
+            </li>
+          {/each}
+        </ul>
+        <p>
+          Paying cash or financing absorbs the whole thing against the price instead. If your
+          trade-in is this big, that difference is the entire decision, and it is not a number
+          anyone quotes you.
+        </p>
+      {/if}
     </div>
   </Step>
 
@@ -619,7 +664,7 @@
         </p>
       </div>
 
-      <Ledger {scenarios} beats={story} questions={{ [term]: decisionCard }} />
+      <Ledger {scenarios} beats={story} limit={ledgerLimit} questions={{ [term]: decisionCard }} />
     </section>
 
     {#snippet decisionCard()}
@@ -628,8 +673,9 @@
           <span class="eyebrow">// this one we do have to ask</span>
           <h3>The lease is up. Now what?</h3>
           <p>
-            Four doors, and Apple opens one of them for you if you ignore all four. Pick one and
-            every month from here down &mdash; and the lease column above &mdash; rewrites itself.
+            Four doors, and Apple opens one of them for you if you ignore all four. The rest of the
+            page is waiting on this: the next {HORIZON - (term ?? 24)} months, the lease column above,
+            and the comparison at the bottom all depend on which one you take.
           </p>
         </div>
 
@@ -677,9 +723,9 @@
               The lease converts to month-to-month and payments continue at {money(gross)} &mdash; the
               un-credited rate, so possibly more than you had been paying &mdash; for six more months.
               At the end of those six, Klarna charges the entire remaining
-              {money0(buyoutAfter(extensionEnd, listPrice, gross, 0, term ?? 24))} to your card in one
-              go and the phone is yours outright. You land in exactly the same place as buying it, for
-              the same total, {EXTENSION_MONTHS} months later, having decided nothing.
+              {money0(extensionResidual)} to your card in one go and the phone is yours outright. You
+              land in exactly the same place as buying it, for the same total, {EXTENSION_MONTHS} months
+              later, having decided nothing.
             </p>
           {/if}
         </div>
@@ -693,196 +739,199 @@
       </div>
     {/snippet}
 
-    <section class="compare-section">
-      <div class="head">
-        <div class="eyebrow">// the same four columns, totalled</div>
-        <h2>What the scroll adds up to</h2>
-        <p class="lede">
-          Same numbers, same {HORIZON} months, collapsed into one screen. The lease column uses the ending
-          you picked above.
+    {#if endChoice}
+      <section class="compare-section">
+        <div class="head">
+          <div class="eyebrow">// the same four columns, totalled</div>
+          <h2>What the scroll adds up to</h2>
+          <p class="lede">
+            Same numbers, same {HORIZON} months, collapsed into one screen. The lease column uses the
+            ending you picked above.
+          </p>
+          <p class="lede">
+            Watch the <strong>total paid</strong> row in particular. Pay cash, Apple Card financing
+            and the lease will often land on the identical number, because Apple built them to.
+            Every row below it is a consequence of <em>when</em> that identical number gets paid.
+          </p>
+        </div>
+
+        <Compare {scenarios} highlight={`upgrade-${term}`} />
+
+        <div class="notes">
+          <div class="note-card">
+            <h3>Pay cash</h3>
+            <p>
+              One tall block on day one and then a flat line for four years. The most expensive
+              option in today&rsquo;s dollars and the cheapest in every other sense: no credit
+              check, no carrier requirement, no return inspection, no Klarna.
+            </p>
+          </div>
+          <div class="note-card">
+            <h3>Apple Card, 24 months at 0%</h3>
+            <p>
+              The honest baseline. Financing the tax-inclusive total over 24 months at zero
+              interest, with the 3% Daily Cash paid up front: the same total as cash, spread over
+              two years, no lease, no carrier requirement, no inspection. Watch it stop growing at
+              month 24 while the lease is still going.
+            </p>
+          </div>
+          <div class="note-card">
+            <h3>Apple Upgrade, {term} months</h3>
+            <p>
+              The lowest monthly payment and the lowest day-one cost, in exchange for a device you
+              do not own, a carrier you must attach, and a decision waiting for you at the end. It
+              earns the same 3% and can total the same number as paying cash &mdash; it just pays
+              later, which is the entirety of its advantage. The option to walk away is worth real
+              money only if the phone depreciates faster than Apple assumed.
+            </p>
+          </div>
+          <div class="note-card">
+            <h3>Carrier financing, 36 months</h3>
+            <p>
+              Usually the lowest sticker of all, because the promo credits are enormous. They are
+              also the leash: the credits arrive monthly across three years and evaporate if you
+              leave, and you pay the entire sales tax bill on day one &mdash; which is the orange
+              block sitting under this column at month zero. Put a real promo in the credits field
+              above and this column will finish shortest, at the price of thirty-six months of
+              loyalty.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="catches">
+        <div class="head">
+          <div class="eyebrow">// read this part</div>
+          <h2>The catches, in plain language</h2>
+        </div>
+
+        <ol>
+          <li>
+            <h3>Leaving early costs the whole schedule</h3>
+            <p>
+              The early termination fee is the total of every unpaid monthly payment through the end
+              of the initial term, plus taxes and fees. Not a prorated buyout &mdash; the rest of
+              the contract. The only free exit is the 14-day window after you receive the device.
+            </p>
+          </li>
+          <li>
+            <h3>You must attach a carrier</h3>
+            <p>
+              AT&amp;T, T-Mobile, or Verizon, and no prepaid plans. The phone itself stays unlocked
+              and you can switch later, but you cannot complete the lease without picking one at
+              checkout. iPad, Mac, and Watch leases have no such requirement.
+            </p>
+          </li>
+          <li>
+            <h3>Klarna is picky about cards</h3>
+            <p>
+              No AMEX, no UnionPay, and no cards issued by Chase or Capital One. No Apple Pay, no
+              PayPal. Debit works, and so does Apple Card, which still pays its 3% on lease
+              payments. But if the card you were counting on for rewards is on that list, check
+              before you assume.
+            </p>
+          </li>
+          <li>
+            <h3>Losing the phone does not end the lease</h3>
+            <p>
+              Without AppleCare+ with Theft and Loss, a stolen device leaves you paying the early
+              termination fee or the purchase option fee on a phone you do not have. Payments
+              continue until you settle one of them.
+            </p>
+          </li>
+          <li>
+            <h3>The damage fee is undisclosed</h3>
+            <p>
+              &ldquo;Good working condition&rdquo; is the standard and Apple has not published what
+              failing it costs. That is an open-ended liability on every lease without AppleCare,
+              and it lands every single time you hand a device back.
+            </p>
+          </li>
+          <li>
+            <h3>You cannot buy the payment down</h3>
+            <p>
+              No down payments. The trade-in is the only lever, it only applies to the initial term,
+              and you cannot use another one when you upgrade.
+            </p>
+          </li>
+          <li>
+            <h3>Inaction has a default, and it is a purchase</h3>
+            <p>
+              Six months past the term with no decision and Klarna charges your card the purchase
+              option fee. This happens to be the mathematically fine outcome, which makes it easy to
+              miss that it happens without your say-so.
+            </p>
+          </li>
+          <li>
+            <h3>It is a lease, not a loan</h3>
+            <p>
+              Applying is a soft credit pull, but the resulting account is a lease with Klarna, and
+              you do not own the device at any point before the purchase option fee is paid. Not
+              available on refurbished devices, or through education, business, government, or
+              employee purchase programs.
+            </p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="assumptions">
+        <div class="head">
+          <div class="eyebrow">// show your work</div>
+          <h2>Assumptions</h2>
+        </div>
+        <ul>
+          <li>
+            Lease payments are derived as 50% (12-month) or 70% (24-month) of the sticker price,
+            divided by the term and rounded to the nearest x.99. This reproduces all four of
+            Apple&rsquo;s published iPhone examples exactly. If your actual quote differs, the shape
+            of the answer will not.
+          </li>
+          <li>
+            The purchase option fee is treated as list price minus every dollar of credit applied to
+            the device, including unused trade-in credit. Apple&rsquo;s wording &mdash; &ldquo;list
+            price minus any lease payments you&rsquo;ve made minus any remaining discounts or
+            trade-in credit&rdquo; &mdash; read strictly would charge you for the trade-in twice and
+            break Apple&rsquo;s own promise that you never pay more than full price. This is the
+            reading that keeps that promise true.
+          </li>
+          <li>
+            Sales tax is applied to each lease payment and to the buyout, which is how leases are
+            normally taxed. Buying outright taxes the whole thing on day one; carrier financing does
+            the same. Your state may differ, and a few tax the trade-in credit too.
+          </li>
+          <li>
+            Trade-in credit is modeled as a credit against the order total on the purchase paths,
+            and as a reduction to the monthly payment on the lease, per the FAQ.
+          </li>
+          <li>
+            Card rewards are netted against the charge that earned them, in the month it was earned,
+            which is why a column&rsquo;s coloured bands still add up to exactly what that column
+            cost. Present values discount monthly at your annual rate divided by twelve.
+          </li>
+          <li>
+            The four bands are ours, not Apple&rsquo;s. <em>Toward owning it</em> is any dollar that
+            ends with the phone in your name &mdash; the cash purchase, an installment, a buyout.
+            <em>Rent</em> is a lease payment. The split is the argument this page is making, so it is
+            worth disagreeing with if you think a lease payment buys you something.
+          </li>
+          <li>
+            Resale values are guesses seeded from the list price, and are the softest number on the
+            page. They only affect the &ldquo;net cost&rdquo; and &ldquo;per month&rdquo; rows
+            &mdash; everything above those is contractual.
+          </li>
+          <li>
+            The upgrade path assumes a replacement device at the same price on the same lease terms,
+            with no trade-in, because Apple does not allow one &mdash; and it assumes you keep doing
+            that for the full {HORIZON} months.
+          </li>
+        </ul>
+        <p class="disclaimer">
+          Not affiliated with Apple or Klarna. Every number here is derived from Apple&rsquo;s
+          published Apple Upgrade FAQ and footnotes; nothing is an offer, and your actual quote is
+          the one that counts. Check it against this and see if it lines up.
         </p>
-        <p class="lede">
-          Watch the <strong>total paid</strong> row in particular. Pay cash, Apple Card financing
-          and the lease will often land on the identical number, because Apple built them to. Every
-          row below it is a consequence of <em>when</em> that identical number gets paid.
-        </p>
-      </div>
-
-      <Compare {scenarios} highlight={`upgrade-${term}`} />
-
-      <div class="notes">
-        <div class="note-card">
-          <h3>Pay cash</h3>
-          <p>
-            One tall block on day one and then a flat line for four years. The most expensive option
-            in today&rsquo;s dollars and the cheapest in every other sense: no credit check, no
-            carrier requirement, no return inspection, no Klarna.
-          </p>
-        </div>
-        <div class="note-card">
-          <h3>Apple Card, 24 months at 0%</h3>
-          <p>
-            The honest baseline. Financing the tax-inclusive total over 24 months at zero interest,
-            with the 3% Daily Cash paid up front: the same total as cash, spread over two years, no
-            lease, no carrier requirement, no inspection. Watch it stop growing at month 24 while
-            the lease is still going.
-          </p>
-        </div>
-        <div class="note-card">
-          <h3>Apple Upgrade, {term} months</h3>
-          <p>
-            The lowest monthly payment and the lowest day-one cost, in exchange for a device you do
-            not own, a carrier you must attach, and a decision waiting for you at the end. It earns
-            the same 3% and can total the same number as paying cash &mdash; it just pays later,
-            which is the entirety of its advantage. The option to walk away is worth real money only
-            if the phone depreciates faster than Apple assumed.
-          </p>
-        </div>
-        <div class="note-card">
-          <h3>Carrier financing, 36 months</h3>
-          <p>
-            Usually the lowest sticker of all, because the promo credits are enormous. They are also
-            the leash: the credits arrive monthly across three years and evaporate if you leave, and
-            you pay the entire sales tax bill on day one &mdash; which is the orange block sitting
-            under this column at month zero. Put a real promo in the credits field above and this
-            column will finish shortest, at the price of thirty-six months of loyalty.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="catches">
-      <div class="head">
-        <div class="eyebrow">// read this part</div>
-        <h2>The catches, in plain language</h2>
-      </div>
-
-      <ol>
-        <li>
-          <h3>Leaving early costs the whole schedule</h3>
-          <p>
-            The early termination fee is the total of every unpaid monthly payment through the end
-            of the initial term, plus taxes and fees. Not a prorated buyout &mdash; the rest of the
-            contract. The only free exit is the 14-day window after you receive the device.
-          </p>
-        </li>
-        <li>
-          <h3>You must attach a carrier</h3>
-          <p>
-            AT&amp;T, T-Mobile, or Verizon, and no prepaid plans. The phone itself stays unlocked
-            and you can switch later, but you cannot complete the lease without picking one at
-            checkout. iPad, Mac, and Watch leases have no such requirement.
-          </p>
-        </li>
-        <li>
-          <h3>Klarna is picky about cards</h3>
-          <p>
-            No AMEX, no UnionPay, and no cards issued by Chase or Capital One. No Apple Pay, no
-            PayPal. Debit works, and so does Apple Card, which still pays its 3% on lease payments.
-            But if the card you were counting on for rewards is on that list, check before you
-            assume.
-          </p>
-        </li>
-        <li>
-          <h3>Losing the phone does not end the lease</h3>
-          <p>
-            Without AppleCare+ with Theft and Loss, a stolen device leaves you paying the early
-            termination fee or the purchase option fee on a phone you do not have. Payments continue
-            until you settle one of them.
-          </p>
-        </li>
-        <li>
-          <h3>The damage fee is undisclosed</h3>
-          <p>
-            &ldquo;Good working condition&rdquo; is the standard and Apple has not published what
-            failing it costs. That is an open-ended liability on every lease without AppleCare, and
-            it lands every single time you hand a device back.
-          </p>
-        </li>
-        <li>
-          <h3>You cannot buy the payment down</h3>
-          <p>
-            No down payments. The trade-in is the only lever, it only applies to the initial term,
-            and you cannot use another one when you upgrade.
-          </p>
-        </li>
-        <li>
-          <h3>Inaction has a default, and it is a purchase</h3>
-          <p>
-            Six months past the term with no decision and Klarna charges your card the purchase
-            option fee. This happens to be the mathematically fine outcome, which makes it easy to
-            miss that it happens without your say-so.
-          </p>
-        </li>
-        <li>
-          <h3>It is a lease, not a loan</h3>
-          <p>
-            Applying is a soft credit pull, but the resulting account is a lease with Klarna, and
-            you do not own the device at any point before the purchase option fee is paid. Not
-            available on refurbished devices, or through education, business, government, or
-            employee purchase programs.
-          </p>
-        </li>
-      </ol>
-    </section>
-
-    <section class="assumptions">
-      <div class="head">
-        <div class="eyebrow">// show your work</div>
-        <h2>Assumptions</h2>
-      </div>
-      <ul>
-        <li>
-          Lease payments are derived as 50% (12-month) or 70% (24-month) of the sticker price,
-          divided by the term and rounded to the nearest x.99. This reproduces all four of
-          Apple&rsquo;s published iPhone examples exactly. If your actual quote differs, the shape
-          of the answer will not.
-        </li>
-        <li>
-          The purchase option fee is treated as list price minus every dollar of credit applied to
-          the device, including unused trade-in credit. Apple&rsquo;s wording &mdash; &ldquo;list
-          price minus any lease payments you&rsquo;ve made minus any remaining discounts or trade-in
-          credit&rdquo; &mdash; read strictly would charge you for the trade-in twice and break
-          Apple&rsquo;s own promise that you never pay more than full price. This is the reading
-          that keeps that promise true.
-        </li>
-        <li>
-          Sales tax is applied to each lease payment and to the buyout, which is how leases are
-          normally taxed. Buying outright taxes the whole thing on day one; carrier financing does
-          the same. Your state may differ, and a few tax the trade-in credit too.
-        </li>
-        <li>
-          Trade-in credit is modeled as a credit against the order total on the purchase paths, and
-          as a reduction to the monthly payment on the lease, per the FAQ.
-        </li>
-        <li>
-          Card rewards are netted against the charge that earned them, in the month it was earned,
-          which is why a column&rsquo;s coloured bands still add up to exactly what that column
-          cost. Present values discount monthly at your annual rate divided by twelve.
-        </li>
-        <li>
-          The four bands are ours, not Apple&rsquo;s. <em>Toward owning it</em> is any dollar that
-          ends with the phone in your name &mdash; the cash purchase, an installment, a buyout.
-          <em>Rent</em> is a lease payment. The split is the argument this page is making, so it is worth
-          disagreeing with if you think a lease payment buys you something.
-        </li>
-        <li>
-          Resale values are guesses seeded from the list price, and are the softest number on the
-          page. They only affect the &ldquo;net cost&rdquo; and &ldquo;per month&rdquo; rows &mdash;
-          everything above those is contractual.
-        </li>
-        <li>
-          The upgrade path assumes a replacement device at the same price on the same lease terms,
-          with no trade-in, because Apple does not allow one &mdash; and it assumes you keep doing
-          that for the full {HORIZON} months.
-        </li>
-      </ul>
-      <p class="disclaimer">
-        Not affiliated with Apple or Klarna. Every number here is derived from Apple&rsquo;s
-        published Apple Upgrade FAQ and footnotes; nothing is an offer, and your actual quote is the
-        one that counts. Check it against this and see if it lines up.
-      </p>
-    </section>
+      </section>
+    {/if}
   {/if}
 </article>
 
@@ -990,6 +1039,25 @@
   }
   .aside em {
     font-style: italic;
+  }
+  .surplus {
+    margin: 0 0 11px;
+    max-width: 62ch;
+    padding-left: 18px;
+  }
+  .surplus li {
+    margin-bottom: 6px;
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  .surplus li::marker {
+    color: var(--accent);
+  }
+  .surplus strong {
+    color: var(--text);
+    font-weight: 560;
   }
 
   /* Section headers shared by the lower half of the page */

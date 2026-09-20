@@ -537,7 +537,7 @@
     margin-top: 3px;
     font-size: 9px;
     font-weight: 400;
-    color: var(--muted);
+    color: var(--cat-tax);
   }
   .sum.zero {
     color: var(--faint);
@@ -653,7 +653,8 @@
   .ledger {
     --cat-phone: light-dark(#1289e7, #1795fa);
     --cat-rent: light-dark(#882e9b, #a264b0);
-    --cat-care: light-dark(#2b9667, #4f9f77);
+    --cat-care: light-dark(#53616d, #b3c4d2);
+    --cat-tax: light-dark(#2b9667, #4f9f77);
     --cat-fees: light-dark(#9a3c00, #e86518);
     --cat-repair: light-dark(#665d16, #d8c86b);
   }

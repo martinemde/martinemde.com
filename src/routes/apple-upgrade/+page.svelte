@@ -6,7 +6,6 @@
   import Compare from '$lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
-    appleUpgrade,
     beats,
     buyoutAfter,
     EXTENSION_MONTHS,
@@ -306,32 +305,28 @@
     }
   ]);
 
-  const endOptions = $derived([
+  const endOptions = [
     {
       value: 'return' as const,
       label: 'Hand it back',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'return' }).summary.npv),
       note: 'Walk away with nothing'
     },
     {
       value: 'upgrade' as const,
       label: 'Upgrade',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'upgrade' }).summary.npv),
       note: 'New lease, no trade-in allowed'
     },
     {
       value: 'buyout' as const,
       label: 'Buy it now',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'buyout' }).summary.npv),
-      note: `${money0(residual)} in one shot`
+      note: 'Pay the remaining balance and own it'
     },
     {
       value: 'nothing' as const,
       label: 'Do nothing',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'nothing' }).summary.npv),
       note: 'Six more payments, then you own it'
     }
-  ]);
+  ];
 
   const deviceOptions = $derived(
     DEVICES.map((d) => ({

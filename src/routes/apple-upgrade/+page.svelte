@@ -21,21 +21,24 @@
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
 
+  // September 2026 lineup; iPhone 16 is not eligible for Apple Upgrade.
   // Apple’s US maximum trade-in quotes, checked 2026-09-20:
   // https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values
   // Age proxies: 17/16/15/14 of the same tier; Air uses regular 16/15/14 for older ages.
+  // Duo has no older generations, so it uses the Pro Max percentages, like custom phones.
   // These estimate future offers, not private-sale proceeds or guaranteed quotes.
   const DEVICES = [
-    { key: 'iphone-17', label: 'iPhone 17', price: 799, tradeIns: [585, 430, 305, 195] },
-    { key: 'iphone-air', label: 'iPhone Air', price: 999, tradeIns: [585, 430, 305, 195] },
-    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099, tradeIns: [785, 510, 370, 285] },
+    { key: 'iphone-17', label: 'iPhone 17', price: 899, tradeIns: [585, 430, 305, 195] },
+    { key: 'iphone-air', label: 'iPhone Air', price: 1099, tradeIns: [585, 430, 305, 195] },
+    { key: 'iphone-18-pro', label: 'iPhone 18 Pro', price: 1199, tradeIns: [785, 510, 370, 285] },
     {
-      key: 'iphone-17-pro-max',
-      label: 'iPhone 17 Pro Max',
-      price: 1199,
+      key: 'iphone-18-pro-max',
+      label: 'iPhone 18 Pro Max',
+      price: 1299,
       tradeIns: [885, 610, 455, 360]
     },
-    { key: 'custom', label: 'Something else', price: 0, tradeIns: [0, 0, 0, 0] }
+    { key: 'iphone-duo', label: 'iPhone Duo', price: 1999, tradeIns: null },
+    { key: 'custom', label: 'Something else', price: 0, tradeIns: null }
   ];
 
   /** Everything the page remembers between visits. Apple trade-in values
@@ -99,9 +102,24 @@
         carrierCredits?: number;
         hasCarrierOffer?: 'no' | 'yes' | null;
       };
+      if (saved.deviceKey && !DEVICES.some((device) => device.key === saved.deviceKey)) {
+        // Re-ask setup and yearly decisions, while preserving the reader's cost assumptions.
+        saved.deviceKey = null;
+        saved.hasTradeIn = null;
+        saved.appleCare = null;
+        saved.annualChoices = [...DEFAULTS.annualChoices];
+        saved.privateSaleValues = null;
+        saved.screenChoice = null;
+      }
       return {
         ...DEFAULTS,
         ...saved,
+        appleCareMonthly:
+          saved.appleCareMonthly ??
+          (saved.deviceKey === 'iphone-duo' ? 19.99 : DEFAULTS.appleCareMonthly),
+        appleCareAnnual:
+          saved.appleCareAnnual ??
+          (saved.deviceKey === 'iphone-duo' ? 199.99 : DEFAULTS.appleCareAnnual),
         // Old cadence and lease-ending answers described different timelines. Ask again.
         annualChoices: [0, 1, 2].map((index) => {
           const earlier = saved.annualChoices?.slice(0, index) ?? [];
@@ -169,9 +187,9 @@
   let carrierOffer = $state(initial.carrierOffer);
   const tradeInRates = $derived.by(() => {
     const device =
-      DEVICES.find((device) => device.key === deviceKey && device.price > 0) ??
-      DEVICES.find((device) => device.key === 'iphone-17-pro-max')!;
-    return device.tradeIns.map((value) => value / device.price);
+      DEVICES.find((device) => device.key === deviceKey && device.tradeIns !== null) ??
+      DEVICES.find((device) => device.key === 'iphone-18-pro-max')!;
+    return device.tradeIns!.map((value) => value / device.price);
   });
   let upgradeTradeIns = $derived(tradeInRates.map((rate) => Math.round(listPrice * rate)));
   let privateSaleValues = $state(initial.privateSaleValues);
@@ -264,7 +282,11 @@
   });
 
   function pickDevice(key: string | null) {
-    if (key !== previousDevice) privateSaleValues = null;
+    if (key !== previousDevice) {
+      privateSaleValues = null;
+      appleCareMonthly = key === 'iphone-duo' ? 19.99 : DEFAULTS.appleCareMonthly;
+      appleCareAnnual = key === 'iphone-duo' ? 199.99 : DEFAULTS.appleCareAnnual;
+    }
     previousDevice = key;
     const device = DEVICES.find((d) => d.key === key);
     if (device && device.price > 0) listPrice = device.price;
@@ -503,9 +525,10 @@
         These fields start with percentages of the phone’s price, based on
         <a href="https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values"
           >Apple’s trade-in values</a
-        > checked September 20, 2026. Adjust them to your expected offer. Custom phones start with the
-        Pro Max percentages; older Air estimates use regular iPhones. The same estimates set your final
-        phone’s value. Choose private sale below if you plan to sell it yourself.
+        > checked September 20, 2026. Adjust them to your expected offer. Duo and custom phones start
+        with the Pro Max percentages; Duo has no trade-in history of its own. Older Air estimates use
+        regular iPhones. The same estimates set your final phone’s value. Choose private sale below if
+        you plan to sell it yourself.
       </p>
       <div class="fields">
         {#each [1, 2, 3, 4] as age, index (age)}
@@ -643,6 +666,18 @@
           Payments and trade-in credit reduce the buyout. Future phones keep the same price.
           Returning a leased phone settles the lease without a trade-in credit; owned phones use
           Apple’s age-based trade-in values unless you choose a private sale.
+        </p>
+        <p>
+          The September 2026 iPhone 18 Pro at $1,199 gives $49.99 over 12 months and $34.99 over 24;
+          the $1,999 iPhone Duo gives $57.99 over 24. These match
+          <a href="https://www.apple.com/shop/apple-upgrade">Apple’s examples</a>. This calculator
+          is iPhone-only: Watch, iPad and Mac leases use different payment shares.
+        </p>
+        <p>
+          <a href="https://www.apple.com/applecare/">AppleCare One Family</a> is $49.99 a month for every
+          eligible device across up to six people, with no device cap and up to six theft-and-loss claims
+          a year. Choose AppleCare One and enter the extra monthly cost for this phone: $0 if your household
+          already subscribes, or $49.99 if you are adding the whole plan for it.
         </p>
         <p>
           Totals subtract card rewards. “Today’s dollars” applies your discount rate; net cost also

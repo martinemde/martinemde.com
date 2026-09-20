@@ -68,19 +68,28 @@ describe('roundTo99', () => {
 // The only hard data Apple publishes is in the Apple Upgrade footnotes. If the
 // 50% / 70% shares are right, these fall out exactly.
 describe('leasePayment matches Apple’s published iPhone examples', () => {
-  it('iPhone 17 Pro 256GB at $1099', () => {
-    expect(leasePayment(1099, 12)).toBeCloseTo(45.99, 2);
-    expect(leasePayment(1099, 24)).toBeCloseTo(31.99, 2);
-  });
-
-  it('iPhone 17 Pro Max at $1199', () => {
+  it('iPhone 18 Pro 256GB at $1199', () => {
     expect(leasePayment(1199, 12)).toBeCloseTo(49.99, 2);
     expect(leasePayment(1199, 24)).toBeCloseTo(34.99, 2);
+  });
+
+  it('iPhone Duo at $1999', () => {
+    expect(leasePayment(1999, 24)).toBeCloseTo(57.99, 2);
+  });
+
+  it.each([
+    [899, 36.99, 25.99],
+    [1099, 45.99, 31.99],
+    [1299, 53.99, 37.99],
+    [1999, 82.99, 57.99]
+  ])('derives both payments for a $%d iPhone', (price, annual, biennial) => {
+    expect(leasePayment(price, 12)).toBeCloseTo(annual, 2);
+    expect(leasePayment(price, 24)).toBeCloseTo(biennial, 2);
   });
 });
 
 describe('trade-in credit', () => {
-  // Apple quotes $18.74 and $19.37 for a $375 trade-in against a 17 Pro Max.
+  // A $375 trade-in against a $1,199 iPhone.
   it('is spread evenly across the initial term', () => {
     expect(leasePayment(1199, 12) - 375 / 12).toBeCloseTo(18.74, 2);
     expect(leasePayment(1199, 24) - 375 / 24).toBeCloseTo(19.37, 2);

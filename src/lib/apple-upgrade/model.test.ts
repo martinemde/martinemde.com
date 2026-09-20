@@ -760,6 +760,17 @@ describe('the treadmill', () => {
 });
 
 describe('beats', () => {
+  it('suggests upgrading at month 35 only when there were no earlier upgrades', () => {
+    for (const upgradeMonths of [[], [36]]) {
+      expect(beats(inputs({ upgradeMonths })).get(35)?.title).toBe(
+        'Carrier financing maxed. Consider upgrading.'
+      );
+    }
+    for (const upgradeMonths of [[12], [24], [12, 24, 36]]) {
+      expect(beats(inputs({ upgradeMonths })).has(35)).toBe(false);
+    }
+  });
+
   it('stops on the month the lease term runs out and on the last month', () => {
     const story = beats(inputs({ term: 24 }));
     expect(story.has(24)).toBe(true);

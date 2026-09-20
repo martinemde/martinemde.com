@@ -1320,6 +1320,8 @@ export function beats(input: Inputs): Map<number, Beat> {
       [7, { title: 'Tap any month for a breakdown' }],
       [48, { title: 'Four years in' }]
     ]);
+    if (!input.upgradeMonths.some((month) => month < 35))
+      map.set(35, { title: 'Carrier financing maxed. Consider upgrading.' });
     for (const month of [12, 24, 36])
       map.set(month, {
         title: input.upgradeMonths.includes(month)

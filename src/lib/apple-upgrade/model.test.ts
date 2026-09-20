@@ -693,7 +693,7 @@ describe('the treadmill', () => {
         for (const endChoice of ['return', 'upgrade', 'buyout', 'nothing'] as const) {
           it(`defers a repair with ${appleCare} coverage on ${term}-month ${endChoice}`, () => {
             for (const scenario of allScenarios(
-              inputs({ appleCare, term, endChoice, screenChoice: 'defer' })
+              inputs({ appleCare, term, upgradeEvery: term, endChoice, screenChoice: 'defer' })
             )) {
               const repairs = scenario.rows.flatMap((r) =>
                 r.items
@@ -702,7 +702,7 @@ describe('the treadmill', () => {
               );
               expect(repairs).toEqual(
                 scenario.key.startsWith('upgrade') && ['return', 'upgrade'].includes(endChoice)
-                  ? [{ month: term, amount: price }]
+                  ? [{ month: term + 1, amount: price }]
                   : []
               );
             }

@@ -150,7 +150,7 @@ describe('Apple Upgrade page', () => {
     expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeTruthy();
     await user.click(choices.getByRole('button', { name: 'Deal with it' }));
     expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
-    expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeTruthy();
+    expect(container.querySelector('[data-month="25"] [data-cat="repair"]')).toBeTruthy();
     expect(screen.queryByRole('dialog')).toBeNull();
 
     unmount();
@@ -184,7 +184,7 @@ describe('Apple Upgrade page', () => {
       const repair = container.querySelector('[data-month="9"] [data-cat="repair"]')!;
       expect(repair.querySelectorAll('.bar')).toHaveLength(4);
       await chooseEnding(user, 'Hand it back');
-      expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeNull();
+      expect(container.querySelector('[data-month="25"] [data-cat="repair"]')).toBeNull();
     }
   );
 
@@ -198,17 +198,23 @@ describe('Apple Upgrade page', () => {
       within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deal with it' })
     );
     expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
+    expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeNull();
     await chooseEnding(user, 'Hand it back');
-    const repair = () => container.querySelector('[data-month="24"] [data-cat="repair"]');
-    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(4);
+    expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeNull();
+    const repair = () => container.querySelector('[data-month="25"] [data-cat="repair"]');
+    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
     expect(repair()!.querySelector('.cell:not(.zero) .bar')?.getAttribute('title')).toBe(
-      'Cash: $29.00'
+      'Lease: $29.00'
     );
     expect(repair()!.textContent).toContain('$29.00');
     await user.click(screen.getByText('No AppleCare'));
     expect(repair()!.textContent).toContain('$250.00');
+    await chooseEnding(user, 'Upgrade');
+    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
+    await chooseEnding(user, 'Buy it now');
+    expect(repair()).toBeNull();
     await chooseEnding(user, 'Do nothing');
-    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(3);
+    expect(repair()).toBeNull();
   });
 
   it('treats Escape as no cracked screen', async () => {

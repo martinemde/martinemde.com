@@ -291,17 +291,12 @@ export function screenRepairPrice(input: Inputs): number {
   return Math.max(0, price) * (1 + input.taxRate / 100);
 }
 
-function screenRepairItems(
-  input: Inputs,
-  month: number,
-  leased = false,
-  returnMonth: number = input.term
-): LineItem[] {
+function screenRepairItems(input: Inputs, month: number, leased = false): LineItem[] {
   const now = input.screenChoice === 'repair' && month === SCREEN_CRACK_MONTH;
   const atReturn =
     leased &&
     input.screenChoice === 'defer' &&
-    month === returnMonth &&
+    month === input.term + 1 &&
     (input.endChoice === 'return' || input.endChoice === 'upgrade');
   if (!now && !atReturn) return [];
   return [
@@ -812,13 +807,6 @@ function purchaseTerms(input: Inputs, tradeIn: number) {
   };
 }
 
-function ownedPhoneRepairs(input: Inputs, month: number): LineItem[] {
-  if (input.screenChoice === 'defer' && input.upgradeEvery && month === input.upgradeEvery) {
-    return screenRepairItems({ ...input, endChoice: 'return' }, month, true, input.upgradeEvery);
-  }
-  return screenRepairItems(input, month);
-}
-
 /** A fresh cash purchase and trade-in at each chosen upgrade. */
 export function outright(input: Inputs): Scenario {
   const purchases = purchaseMonths(input);
@@ -842,7 +830,7 @@ export function outright(input: Inputs): Scenario {
         });
       out.push(...purchaseExtras(input));
     }
-    out.push(...appleCareItems(input, month), ...ownedPhoneRepairs(input, month));
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
   };
   const rows = assemble(input, items, () => ({ buyout: null, hasPhone: true, owns: true }));
@@ -895,7 +883,7 @@ export function appleCardFinancing(input: Inputs): Scenario {
         });
       }
     }
-    out.push(...appleCareItems(input, month), ...ownedPhoneRepairs(input, month));
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
   };
   const rows = assemble(input, items, () => ({ buyout: null, hasPhone: true, owns: true }));
@@ -978,7 +966,7 @@ export function carrierFinancing(input: Inputs): Scenario {
           category: 'phone'
         });
     });
-    out.push(...appleCareItems(input, month), ...ownedPhoneRepairs(input, month));
+    out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
   };
   const rows = assemble(input, items, (month) => ({

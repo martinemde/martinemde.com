@@ -304,25 +304,25 @@
           <div class="stack-column">
             <div
               class="stack-positive"
-              style={`height: ${(Math.max(...positive) / stackScale) * 64}px`}
+              style={`height: ${(Math.max(...positive) / stackScale) * 24}px`}
             >
               {#each stack.filter((item) => item.amount > 0.005) as item (item.label)}
                 <i
                   class="segment"
                   data-cat={item.category}
-                  style={`height: ${(item.amount / stackScale) * 64}px`}
+                  style={`height: ${(item.amount / stackScale) * 24}px`}
                 ></i>
               {/each}
             </div>
             <div
               class="stack-negative"
-              style={`height: ${(Math.max(...negative) / stackScale) * 64}px`}
+              style={`height: ${(Math.max(...negative) / stackScale) * 24}px`}
             >
               {#each stack.filter((item) => item.amount < -0.005) as item (item.label)}
                 <i
                   class="segment credit"
                   data-cat={item.category}
-                  style={`height: ${(-item.amount / stackScale) * 64}px`}
+                  style={`height: ${(-item.amount / stackScale) * 24}px`}
                 ></i>
               {/each}
             </div>
@@ -425,7 +425,7 @@
     outline-offset: 2px;
   }
   .stacked {
-    max-height: 130px;
+    max-height: 50px;
     overflow: hidden;
     transition:
       max-height 250ms ease,
@@ -509,6 +509,10 @@
   }
   .month.beat {
     padding-top: 10px;
+  }
+  .month:not(.expanded) {
+    gap: 2px;
+    padding: 4px 0;
   }
   /* Highlight the current card without changing its size. */
   .month.on {

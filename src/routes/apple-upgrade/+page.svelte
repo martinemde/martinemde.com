@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import Step from '$lib/components/upgrade/Step.svelte';
   import Tiles from '$lib/components/upgrade/Tiles.svelte';
   import Field from '$lib/components/upgrade/Field.svelte';
@@ -6,14 +7,16 @@
   import Compare from '$lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
-    appleUpgrade,
     beats,
-    buyoutAfter,
-    EXTENSION_MONTHS,
     HORIZON,
+    SCREEN_CRACK_MONTH,
+    screenRepairPrice,
+    type ScreenChoice,
     leasePayment,
-    LEASE_SHARE,
-    leaseTerms,
+    usedFraction,
+    leaseTermForUpgrade,
+    carrierTradeInDeal,
+    type UpgradeInterval,
     money,
     money0,
     type AppleCarePlan,
@@ -39,14 +42,15 @@
     listPrice: number;
     hasTradeIn: 'no' | 'yes' | null;
     tradeIn: number;
-    term: Term | null;
+    upgradeEvery: UpgradeInterval | null;
     appleCare: AppleCarePlan | null;
     endChoice: EndChoice | null;
     appleCareMonthly: number;
     appleCareOneMonthly: number;
     appleCareAnnual: number;
-    damageFee: number;
-    damageOdds: number;
+    screenChoice: ScreenChoice | null;
+    screenRepairCost: number;
+    appleCareRepairCost: number;
     taxRate: number;
     activationFee: number;
     caseCost: number;
@@ -54,7 +58,7 @@
     klarnaCardBack: number;
     carrierCardBack: number;
     discountRate: number;
-    carrierCredits: number;
+    carrierOffer: number;
   }
 
   const DEFAULTS: Saved = {
@@ -62,14 +66,15 @@
     listPrice: 1199,
     hasTradeIn: null,
     tradeIn: 375,
-    term: null,
+    upgradeEvery: null,
     appleCare: null,
     endChoice: null,
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
-    damageFee: 250,
-    damageOdds: 20,
+    screenChoice: null,
+    screenRepairCost: 250,
+    appleCareRepairCost: 29,
     taxRate: 8.5,
     activationFee: 35,
     caseCost: 59,
@@ -77,7 +82,7 @@
     klarnaCardBack: 3,
     carrierCardBack: 2,
     discountRate: 4,
-    carrierCredits: 0
+    carrierOffer: 1000
   };
 
   // Restore at init, like the loan calculator, so the page comes back the way
@@ -86,7 +91,24 @@
     if (typeof window === 'undefined') return DEFAULTS;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Saved>) } : DEFAULTS;
+      if (!raw) return DEFAULTS;
+      const saved = JSON.parse(raw) as Partial<Saved> & {
+        term?: Term;
+        carrierCredits?: number;
+        hasCarrierOffer?: 'no' | 'yes' | null;
+      };
+      return {
+        ...DEFAULTS,
+        ...saved,
+        upgradeEvery: saved.upgradeEvery ?? saved.term ?? null,
+        carrierOffer:
+          (saved.hasCarrierOffer === 'no'
+            ? (saved.tradeIn ?? DEFAULTS.tradeIn)
+            : saved.carrierOffer) ??
+          ((saved.carrierCredits ?? 0) > 0
+            ? saved.carrierCredits! + (saved.hasTradeIn === 'yes' ? (saved.tradeIn ?? 0) : 0)
+            : DEFAULTS.carrierOffer)
+      };
     } catch {
       return DEFAULTS; // A corrupt blob just means you get the defaults.
     }
@@ -98,7 +120,8 @@
   let listPrice = $state(initial.listPrice);
   let hasTradeIn = $state(initial.hasTradeIn);
   let tradeIn = $state(initial.tradeIn);
-  let term = $state(initial.term);
+  let upgradeEvery = $state(initial.upgradeEvery);
+  const term = $derived(upgradeEvery === null ? null : leaseTermForUpgrade(upgradeEvery));
   let appleCare = $state(initial.appleCare);
   let endChoice = $state(initial.endChoice);
 
@@ -106,8 +129,27 @@
   let appleCareMonthly = $state(initial.appleCareMonthly);
   let appleCareOneMonthly = $state(initial.appleCareOneMonthly);
   let appleCareAnnual = $state(initial.appleCareAnnual);
-  let damageFee = $state(initial.damageFee);
-  let damageOdds = $state(initial.damageOdds);
+  let screenChoice = $state(initial.screenChoice);
+  let screenRepairCost = $state(initial.screenRepairCost);
+  let appleCareRepairCost = $state(initial.appleCareRepairCost);
+  let activeMonth = $state(-1);
+  let screenDialog: HTMLDialogElement;
+
+  $effect(() => {
+    if (
+      activeMonth >= SCREEN_CRACK_MONTH &&
+      screenChoice === null &&
+      screenDialog &&
+      !screenDialog.open
+    ) {
+      screenDialog.showModal();
+    }
+  });
+
+  function chooseScreen(choice: ScreenChoice) {
+    screenChoice = choice;
+    if (screenDialog.open) screenDialog.close();
+  }
   let taxRate = $state(initial.taxRate);
   let activationFee = $state(initial.activationFee);
   let caseCost = $state(initial.caseCost);
@@ -115,16 +157,57 @@
   let klarnaCardBack = $state(initial.klarnaCardBack);
   let carrierCardBack = $state(initial.carrierCardBack);
   let discountRate = $state(initial.discountRate);
-  let carrierCredits = $state(initial.carrierCredits);
+  let carrierOffer = $state(initial.carrierOffer);
   let resaleAtTerm = $state(Math.round(initial.listPrice * 0.45));
   let resaleAtHorizon = $state(Math.round(initial.listPrice * 0.24));
+
+  let scrollY = $state(0);
+  let pageTitle: HTMLHeadingElement;
+  const atTop = $derived(scrollY <= 8);
+
+  async function navigateOrReset() {
+    if (!atTop) {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduced ? 'instant' : 'smooth' });
+      return;
+    }
+
+    if (screenDialog.open) screenDialog.close();
+    activeMonth = -1;
+    seen = -1;
+    deviceKey = DEFAULTS.deviceKey;
+    listPrice = DEFAULTS.listPrice;
+    hasTradeIn = DEFAULTS.hasTradeIn;
+    tradeIn = DEFAULTS.tradeIn;
+    upgradeEvery = DEFAULTS.upgradeEvery;
+    appleCare = DEFAULTS.appleCare;
+    endChoice = DEFAULTS.endChoice;
+    appleCareMonthly = DEFAULTS.appleCareMonthly;
+    appleCareOneMonthly = DEFAULTS.appleCareOneMonthly;
+    appleCareAnnual = DEFAULTS.appleCareAnnual;
+    screenChoice = DEFAULTS.screenChoice;
+    screenRepairCost = DEFAULTS.screenRepairCost;
+    appleCareRepairCost = DEFAULTS.appleCareRepairCost;
+    taxRate = DEFAULTS.taxRate;
+    activationFee = DEFAULTS.activationFee;
+    caseCost = DEFAULTS.caseCost;
+    appleCardBack = DEFAULTS.appleCardBack;
+    klarnaCardBack = DEFAULTS.klarnaCardBack;
+    carrierCardBack = DEFAULTS.carrierCardBack;
+    discountRate = DEFAULTS.discountRate;
+    carrierOffer = DEFAULTS.carrierOffer;
+    resaleAtTerm = Math.round(DEFAULTS.listPrice * usedFraction(24));
+    resaleAtHorizon = Math.round(DEFAULTS.listPrice * 0.24);
+    await tick();
+    pageTitle.focus({ preventScroll: true });
+  }
 
   // Resale estimates follow the device and the term. Change either and these
   // re-derive; they're guesses either way, so tune them after you pick.
   $effect(() => {
     const price = listPrice;
-    const months = term ?? 24;
-    resaleAtTerm = Math.round(price * (months === 12 ? 0.62 : 0.45));
+    const months = upgradeEvery ?? 24;
+    resaleAtTerm = Math.round(price * usedFraction(months));
     resaleAtHorizon = Math.round(price * 0.24);
   });
 
@@ -134,14 +217,15 @@
       listPrice,
       hasTradeIn,
       tradeIn,
-      term,
+      upgradeEvery,
       appleCare,
       endChoice,
       appleCareMonthly,
       appleCareOneMonthly,
       appleCareAnnual,
-      damageFee,
-      damageOdds,
+      screenChoice,
+      screenRepairCost,
+      appleCareRepairCost,
       taxRate,
       activationFee,
       caseCost,
@@ -149,22 +233,15 @@
       klarnaCardBack,
       carrierCardBack,
       discountRate,
-      carrierCredits
+      carrierOffer
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   });
 
   // ---- Step gating --------------------------------------------------------
+  const tradeInAnswered = $derived(hasTradeIn !== null);
   const step = $derived(
-    appleCare !== null
-      ? 5
-      : term !== null
-        ? 4
-        : hasTradeIn !== null
-          ? 3
-          : deviceKey !== null
-            ? 2
-            : 1
+    !deviceKey ? 1 : upgradeEvery === null ? 2 : !tradeInAnswered ? 3 : appleCare === null ? 4 : 5
   );
 
   // -1 until the first effect run, so restoring a finished form doesn't fling
@@ -204,8 +281,9 @@
     appleCareMonthly,
     appleCareOneMonthly,
     appleCareAnnual,
-    damageFee,
-    damageOdds,
+    screenChoice,
+    screenRepairCost,
+    appleCareRepairCost,
     taxRate,
     activationFee,
     caseCost,
@@ -215,47 +293,25 @@
     discountRate,
     resaleAtTerm,
     resaleAtHorizon,
-    carrierCredits,
+    carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
+    upgradeEvery: upgradeEvery ?? undefined,
+    upgradeTradeIn: resaleAtTerm,
     carrierTerm: 36
   });
 
+  const repairPrice = $derived(screenRepairPrice(inputs));
   const scenarios = $derived(allScenarios(inputs));
+  const carrierDeal = $derived(carrierTradeInDeal(inputs));
   const story = $derived(beats(inputs));
-
-  const lease = $derived(leaseTerms(listPrice, term ?? 24, hasTradeIn === 'yes' ? tradeIn : 0));
-  const gross = $derived(lease.gross);
-  const netPayment = $derived(lease.payment);
-  const residual = $derived(lease.buyoutAtTerm);
-  /** Cost to own it after riding the six-month extension out. */
-  const extensionResidual = $derived(
-    buyoutAfter(listPrice, lease.credit, lease.payment * (term ?? 24) + gross * EXTENSION_MONTHS)
-  );
 
   /** How far down the ledger the reader is allowed before answering. */
   const ledgerLimit = $derived(endChoice ? HORIZON : (term ?? 24));
 
-  /**
-   * What each lease term can absorb of the trade-in. A lease only collects
-   * half or seventy percent of the sticker, so a trade-in can run out of
-   * payments to reduce long before a purchase would.
-   */
-  const tradeInSurplus = $derived(
-    ([12, 24] as Term[])
-      .map((t) => ({ term: t, ...leaseTerms(listPrice, t, hasTradeIn === 'yes' ? tradeIn : 0) }))
-      .filter((t) => t.refund > 0.005)
-  );
-
-  const termOptions = $derived(
-    ([12, 24] as Term[]).map((t) => {
-      const terms = leaseTerms(listPrice, t, hasTradeIn === 'yes' ? tradeIn : 0);
-      return {
-        value: t,
-        label: `${t} months`,
-        sub: `${money(terms.payment)}/mo`,
-        note: `${money0(terms.payment * t)} in payments, then ${money0(terms.buyoutAtTerm)} to keep it`
-      };
-    })
-  );
+  const upgradeOptions = ([12, 24, 36] as UpgradeInterval[]).map((months) => ({
+    value: months,
+    label: months === 12 ? 'Every year' : `Every ${months / 12} years`,
+    note: `Compare a ${leaseTermForUpgrade(months)}-month lease`
+  }));
 
   const careOptions = $derived([
     { value: 'none' as const, label: 'No AppleCare', sub: '$0', note: 'You own the damage risk' },
@@ -279,32 +335,28 @@
     }
   ]);
 
-  const endOptions = $derived([
+  const endOptions = [
     {
       value: 'return' as const,
       label: 'Hand it back',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'return' }).summary.npv),
       note: 'Walk away with nothing'
     },
     {
       value: 'upgrade' as const,
       label: 'Upgrade',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'upgrade' }).summary.npv),
       note: 'New lease, no trade-in allowed'
     },
     {
       value: 'buyout' as const,
       label: 'Buy it now',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'buyout' }).summary.npv),
-      note: `${money0(residual)} in one shot`
+      note: 'Pay the remaining balance and own it'
     },
     {
       value: 'nothing' as const,
       label: 'Do nothing',
-      sub: money0(appleUpgrade({ ...inputs, endChoice: 'nothing' }).summary.npv),
       note: 'Six more payments, then you own it'
     }
-  ]);
+  ];
 
   const deviceOptions = $derived(
     DEVICES.map((d) => ({
@@ -331,51 +383,21 @@
   />
 </svelte:head>
 
+<svelte:window bind:scrollY />
+
+<button class="page-control" type="button" onclick={navigateOrReset}>
+  {atTop ? 'Start over' : 'Jump to top'}
+</button>
+
 <article>
   <header class="hero">
     <div class="eyebrow">// you never pay more than full price</div>
-    <h1>Apple Upgrade, decoded</h1>
-    <p class="lede">
-      Apple Upgrade is Apple&rsquo;s new device lease, underwritten by Klarna. Twelve or twenty-four
-      months of low payments, then you hand the phone back &mdash; or don&rsquo;t. The question
-      everyone asks about it is <em>should I lease or should I buy</em>, and that is the one
-      question this page will not put to you.
-    </p>
-    <p class="lede">
-      Instead: answer the things Apple&rsquo;s checkout asks anyway &mdash; which phone, what
-      coverage, what you&rsquo;re trading in, what the case and the activation fee cost. Then
-      scroll. Four columns, one per way of paying, fill up a month at a time for four years. Every
-      charge is named, described, and dropped into whichever columns get handed it.
-    </p>
-
-    <div class="thesis">
-      <p>
-        The whole program is one sentence in the FAQ: <em
-          >&ldquo;Will I pay more than the full price of the device? No.&rdquo;</em
-        >
-      </p>
-      <p>
-        A 24-month lease collects 70% of the sticker. If you then do nothing at all, Klarna keeps
-        billing you for six months and charges the remaining balance, and you own the phone having
-        paid exactly list price. That is 0% financing stretched over thirty months, with a free
-        option to walk away at month 24 instead.
-      </p>
-      <p>
-        Which is why the columns are worth watching rather than totalling. They mostly end up the
-        same height. What differs is <strong>when</strong> each one grows, and
-        <strong>what the money was doing</strong> on the way &mdash; whether it bought you a phone or
-        bought you a month.
-      </p>
-    </div>
+    <h1 bind:this={pageTitle} tabindex="-1">Apple Upgrade, decoded</h1>
+    <p class="lede">Pick your phone, then compare four ways to pay over four years.</p>
   </header>
 
   <div id="step-1"></div>
-  <Step
-    n={1}
-    title="What are you buying?"
-    lede="Not how you're paying for it — that's the whole point. Just which phone. The payment on every path is a fixed function of this one number."
-    answer={deviceKey ? money0(listPrice) : undefined}
-  >
+  <Step n={1} title="What are you buying?" answer={deviceKey ? money0(listPrice) : undefined}>
     <Tiles options={deviceOptions} bind:value={deviceKey} name="device" min="168px" />
 
     {#if deviceKey === 'custom'}
@@ -383,31 +405,25 @@
         <Field label="Sticker price" bind:value={listPrice} step={50} hint="Before tax." />
       </div>
     {/if}
-
-    <div class="aside">
-      <h3>Where the payment comes from</h3>
-      <p>
-        Apple publishes four example payments in the Apple Upgrade footnotes and never explains the
-        formula. Work backwards from them and it&rsquo;s boring: a 12-month iPhone lease collects
-        <strong>50%</strong>
-        of the sticker price and a 24-month lease collects <strong>70%</strong>. Divide by the term,
-        round to the nearest x.99, done.
-      </p>
-      <p>
-        An iPhone 17 Pro at $1,099 gives $45.99 and $31.99. A Pro Max at $1,199 gives $49.99 and
-        $34.99. All four match Apple&rsquo;s published numbers exactly, which is the only reason to
-        trust anything else on this page. iPad and Mac leases use different shares, so this
-        calculator sticks to iPhone.
-      </p>
-    </div>
   </Step>
 
   <div id="step-2"></div>
   <Step
     n={2}
-    title="Do you have something to trade in?"
-    lede="On the paths where you buy the phone, a trade-in is a credit against the order. On the lease it is not: Klarna takes its value, slices it across the payments in your initial term, and stops."
+    title="How often do you want a new phone?"
     locked={step < 2}
+    answer={upgradeEvery
+      ? `Every ${upgradeEvery / 12} ${upgradeEvery === 12 ? 'year' : 'years'}`
+      : undefined}
+  >
+    <Tiles options={upgradeOptions} bind:value={upgradeEvery} name="upgrade-every" min="180px" />
+  </Step>
+
+  <div id="step-3"></div>
+  <Step
+    n={3}
+    title="Do you have something to trade in?"
+    locked={step < 3}
     answer={hasTradeIn === 'yes' ? money0(tradeIn) : hasTradeIn === 'no' ? 'none' : undefined}
   >
     <Tiles
@@ -420,90 +436,45 @@
     />
 
     {#if hasTradeIn === 'yes'}
-      <div class="fields one">
+      <div class="fields">
         <Field
-          label="Trade-in credit"
+          label="Apple Trade-in offer"
           bind:value={tradeIn}
           step={25}
           hint="Apple's quoted value for your old device."
         />
+        <Field
+          label="Carrier Trade-in offer"
+          bind:value={carrierOffer}
+          step={50}
+          hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
+        />
       </div>
     {/if}
-
-    <div class="aside">
-      <h3>The word doing the work is &ldquo;initial&rdquo;</h3>
-      <p>
-        A $375 trade-in against a Pro Max makes the 12-month lease {money(
-          Math.max(0, leasePayment(1199, 12) - 375 / 12)
-        )} a month and the 24-month lease {money(Math.max(0, leasePayment(1199, 24) - 375 / 24))}.
-        The shorter lease ends up cheaper per month, because the same credit is spread over half as
-        many payments.
-      </p>
-      <p>
-        Then the term ends, the credit is spent, and the payment snaps back to the full
-        {money(leasePayment(1199, 24))}. There is a month down the page that says so. You also
-        cannot trade in again when you upgrade &mdash; the credit is a one-time enrollment thing.
-      </p>
-
-      {#if tradeInSurplus.length}
-        <h3>This trade-in is bigger than the lease can use</h3>
+    {#if upgradeEvery && hasTradeIn === 'yes'}
+      <div class="aside">
+        <h3>Your carrier trade-in at month {upgradeEvery}</h3>
+        <div
+          class="offer-bar"
+          class:forfeited={carrierDeal.forfeited > 0}
+          role="img"
+          aria-label={`${money0(carrierDeal.earned)} received; ${money0(carrierDeal.forfeited)} forfeited`}
+        >
+          <span
+            style:width={`${carrierDeal.offered > 0 ? (carrierDeal.earned / carrierDeal.offered) * 100 : 0}%`}
+          ></span>
+        </div>
         <p>
-          A lease only ever collects {Math.round(LEASE_SHARE[12] * 100)}% of the sticker over twelve
-          months, or {Math.round(LEASE_SHARE[24] * 100)}% over twenty-four. Once the credit has
-          wiped out every payment there is nothing left to discount, and the rest comes back as
-          Apple credit rather than as a cheaper phone:
+          {money0(carrierDeal.earned)} received · {money0(carrierDeal.forfeited)} in credits lost
         </p>
-        <ul class="surplus">
-          {#each tradeInSurplus as t (t.term)}
-            <li>
-              <strong>{t.term} months</strong> &mdash; collects {money0(t.leaseTotal)}, so
-              {money(t.payment)}/mo and <strong>{money(t.refund)}</strong> back as Apple credit. The
-              buyout at the end is {money0(t.buyoutAtTerm)}.
-            </li>
-          {/each}
-        </ul>
-        <p>
-          Paying cash or financing absorbs the whole thing against the price instead. If your
-          trade-in is this big, that difference is the entire decision, and it is not a number
-          anyone quotes you.
-        </p>
-      {/if}
-    </div>
-  </Step>
-
-  <div id="step-3"></div>
-  <Step
-    n={3}
-    title="If you leased, twelve months or twenty-four?"
-    lede="This is not the buy-or-lease question — it is which lease goes in the third column. The tiles show the payment, the total, and the number Apple leaves off the marketing page: what it costs to keep the phone when the term ends."
-    locked={step < 3}
-    answer={term ? `${term} months` : undefined}
-  >
-    <Tiles options={termOptions} bind:value={term} name="term" min="230px" />
-
-    <div class="aside">
-      <h3>The buyout is probably in the money</h3>
-      <p>
-        Finish a 24-month lease and the purchase option fee is 30% of what the phone cost new.
-        Finish a 12-month lease and it&rsquo;s 50%. Now go look at what a two-year-old Pro Max
-        actually sells for. It is comfortably more than 30% of its original price.
-      </p>
-      <p>
-        Which means the &ldquo;return it and walk away&rdquo; ending &mdash; the one the program is
-        named after &mdash; is usually the financially worse choice. Handing back a phone worth
-        {money0(resaleAtTerm)} to avoid a {money0(residual)} bill is a {money0(
-          Math.max(0, resaleAtTerm - residual)
-        )} decision, made in your favor by doing the opposite. Apple is not hiding this. It is just not
-        advertising it.
-      </p>
-    </div>
+      </div>
+    {/if}
   </Step>
 
   <div id="step-4"></div>
   <Step
     n={4}
     title="AppleCare?"
-    lede="The one line that lands in all four columns identically, because it does not care how you paid. On a lease it is doing a different job than usual: it stands between you and a damage fee on a phone you have to give back."
     locked={step < 4}
     answer={appleCare ? careLabel[appleCare] : undefined}
   >
@@ -524,218 +495,107 @@
       {#if appleCare === 'annual'}
         <Field label="Yearly price" bind:value={appleCareAnnual} step={10} />
       {/if}
-      {#if appleCare === 'none'}
-        <Field
-          label="Damage fee if it's dinged"
-          bind:value={damageFee}
-          step={25}
-          hint="Apple hasn't published a schedule. This is your guess."
-        />
-        <Field
-          label="Odds you'd owe it"
-          bind:value={damageOdds}
-          unit="%"
-          step={5}
-          hint="Charged as an expected value at return."
-        />
-      {/if}
-    </div>
-
-    <div class="aside">
-      <h3>Cracked glass stops being a decision</h3>
-      <p>
-        On a phone you own, a scuffed back is a thing you shrug at for two years. On a leased phone
-        it is an invoice at return, graded by someone who is not you, against a standard
-        (&ldquo;good working condition&rdquo;) that Apple has not defined in dollars.
-      </p>
-      <p>
-        AppleCare+ with Theft and Loss also covers the other failure mode. Without it, a stolen
-        phone does not end your lease &mdash; you keep paying until you settle the early termination
-        fee or the purchase option fee. You have 60 days after enrolling to add coverage.
-      </p>
-      <p>
-        AppleCare One is the one worth checking twice. It is a flat $19.99 a month covering up to
-        three devices, and the FAQ says you can add a leased device to a subscription you already
-        have. If you are already paying it, covering this phone is free, and the honest number to
-        put in the box above is zero.
-      </p>
+      <Field
+        label="Screen repair without AppleCare"
+        bind:value={screenRepairCost}
+        step={25}
+        hint="Estimate before tax; enter the repair quote for your device."
+      />
+      <Field
+        label="Screen repair with AppleCare"
+        bind:value={appleCareRepairCost}
+        step={1}
+        hint="Estimated service fee before tax; check your coverage."
+      />
     </div>
   </Step>
 
   <div id="step-5"></div>
-  <Step
-    n={5}
-    title="The stuff nobody quotes you"
-    lede="These move the answer more than the monthly payment does, and most of them land on day one, in the columns you were not watching."
-    locked={step < 5}
-  >
-    <div class="fields">
-      <Field label="Sales tax" bind:value={taxRate} unit="%" step={0.25} />
-      <Field
-        label="Carrier activation"
-        bind:value={activationFee}
-        step={5}
-        hint="One-time, at signup."
-      />
-      <Field label="Case and glass" bind:value={caseCost} step={10} />
-      <Field
-        label="Card rewards at Apple"
-        bind:value={appleCardBack}
-        unit="%"
-        step={0.5}
-        hint="Apple Card pays 3%."
-      />
-      <Field
-        label="Card rewards at Klarna"
-        bind:value={klarnaCardBack}
-        unit="%"
-        step={0.5}
-        hint="Apple Card pays 3% here too."
-      />
-      <Field
-        label="Card rewards on the carrier bill"
-        bind:value={carrierCardBack}
-        unit="%"
-        step={0.5}
-      />
-      <Field
-        label="Discount rate"
-        bind:value={discountRate}
-        unit="%"
-        step={0.5}
-        hint="What your unspent cash earns."
-      />
-      <Field
-        label="Carrier promo credits"
-        bind:value={carrierCredits}
-        step={50}
-        hint="Total, dribbled out over 36 months."
-      />
-      <Field
-        label="Resale at month {term ?? 24}"
-        bind:value={resaleAtTerm}
-        step={25}
-        hint="What you could sell it for."
-      />
-      <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
-    </div>
-
-    <div class="aside">
-      <h3>Klarna is picky about cards, but not the one that matters</h3>
-      <p>
-        Klarna does not accept AMEX or UnionPay, and does not accept cards <em>issued</em> by Chase or
-        Capital One. Apple Pay and PayPal are out entirely. Check your card before you count on it.
-      </p>
-      <p>
-        Apple Card works, though, and pays its usual 3% Daily Cash on lease payments &mdash; about
-        {money0(1199 * 1.085 * 0.03)} across a full term on a $1,199 phone, the same 3% you would have
-        earned buying it outright. This is the detail that decides the whole comparison. Card rewards
-        were the one thing that could have made leasing structurally worse than financing, and they turn
-        out to be a wash across every column below. What is left is timing, and nothing else.
-      </p>
-      <h3>Why the discount rate matters here</h3>
-      <p>
-        Two paths can cost the identical number of nominal dollars and still not be the same deal.
-        Money you keep for two years is money that earns something. The discount rate converts every
-        future payment back into today&rsquo;s dollars so the comparison is honest about timing,
-        which &mdash; on a program where the totals are engineered to land on the same number
-        &mdash; is the entire ballgame. Tap the label in the corner of the panel below to switch the
-        columns between nominal dollars and today&rsquo;s.
-      </p>
-    </div>
-  </Step>
+  {#if step >= 5}
+    <details class="fine-tuning">
+      <summary>Nitpicky stuff if you want to account for every penny</summary>
+      <h3>Rates</h3>
+      <div class="fields">
+        <Field label="Sales tax" bind:value={taxRate} unit="%" step={0.25} />
+        <Field
+          label="Card rewards at Apple"
+          bind:value={appleCardBack}
+          unit="%"
+          step={0.5}
+          hint="Apple Card pays 3%."
+        />
+        <Field
+          label="Card rewards at Klarna"
+          bind:value={klarnaCardBack}
+          unit="%"
+          step={0.5}
+          hint="Apple Card pays 3% here too."
+        />
+        <Field
+          label="Card rewards on the carrier bill"
+          bind:value={carrierCardBack}
+          unit="%"
+          step={0.5}
+        />
+      </div>
+      <h3>Expenses</h3>
+      <p>These costs repeat each time you get a new phone.</p>
+      <div class="fields">
+        <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
+        <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
+      </div>
+      <h3>Estimates</h3>
+      <div class="fields">
+        <Field
+          label="Discount rate"
+          bind:value={discountRate}
+          unit="%"
+          step={0.5}
+          hint="What your unspent cash earns."
+        />
+        <Field
+          label="Trade-in at month {upgradeEvery ?? 24}"
+          bind:value={resaleAtTerm}
+          step={25}
+          hint="Estimated trade-in for each replacement. Future phone prices stay the same."
+        />
+        <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
+      </div>
+    </details>
+  {/if}
 
   {#if step >= 5 && term}
     <section class="ledger-section">
       <div class="head">
         <div class="eyebrow">// forty-eight months, four columns</div>
         <h2>Scroll, and watch them fill up</h2>
-        <p class="lede">
-          Four ways to pay for the phone you picked. The panel latches to the top of the screen and
-          keeps a running total for each one; below it, every month lists what arrived and who got
-          billed, and each column&rsquo;s slice climbs into its bar. Nothing here is a projection of
-          your behavior &mdash; it is the same phone, the same four years, priced four ways.
-        </p>
-        <p class="lede">
-          The bands inside each bar are what the money was <em>for</em>. A column made mostly of
-          rent ends four years with nothing in your hand; a column made mostly of
-          <em>toward owning it</em> ends with a phone you can sell. That distinction is invisible in a
-          monthly payment and it is the only one that survives to the bottom of the page.
-        </p>
       </div>
 
-      <Ledger {scenarios} beats={story} limit={ledgerLimit} questions={{ [term]: decisionCard }} />
+      <Ledger
+        bind:activeMonth
+        {scenarios}
+        beats={story}
+        limit={ledgerLimit}
+        questions={screenChoice !== null
+          ? { [term]: decisionCard, [SCREEN_CRACK_MONTH]: screenCard }
+          : { [term]: decisionCard }}
+      />
     </section>
+
+    {#snippet screenCard()}
+      <section class="screen-card" aria-labelledby="screen-inline-title">
+        {@render screenPrompt('screen-inline')}
+      </section>
+    {/snippet}
 
     {#snippet decisionCard()}
       <div class="decide">
         <div class="decide-head">
           <span class="eyebrow">// this one we do have to ask</span>
           <h3>The lease is up. Now what?</h3>
-          <p>
-            Four doors, and Apple opens one of them for you if you ignore all four. The rest of the
-            page is waiting on this: the next {HORIZON - (term ?? 24)} months, the lease column above,
-            and the comparison at the bottom all depend on which one you take.
-          </p>
         </div>
 
         <Tiles options={endOptions} bind:value={endChoice} name="end" min="165px" />
-
-        <div class="decide-detail">
-          {#if endChoice === 'return'}
-            <p>
-              <strong>Hand it back.</strong> You have paid {money0(
-                gross * (term ?? 24) - (hasTradeIn === 'yes' ? tradeIn : 0)
-              )} in cash plus whatever you traded in, you owe nothing more, and you were only ever taxed
-              on the {Math.round((term ?? 24) === 12 ? 50 : 70)}% you actually paid. The lease
-              column stops growing here, which looks like winning until you notice the other three
-              still have a phone in them.
-            </p>
-          {:else if endChoice === 'upgrade'}
-            <p>
-              <strong>Upgrade.</strong> Return this one, sign a fresh lease on a new one, and do it
-              again every {term} months. No trade-in is allowed on an upgrade, so the new payment is the
-              full undiscounted rate &mdash;
-              {money(gross)} rather than the {money(netPayment)} you had been paying. Apple&rsquo;s own
-              terms warn that &ldquo;your new monthly payments may be greater than your prior monthly
-              payments,&rdquo; and this is why.
-            </p>
-            <p>
-              Watch the lease column from here. It is the only one of the four with no ceiling: rent
-              accumulates for all {HORIZON} months and the band that buys equity never appears. Four years
-              in you will have paid more than any other column and own nothing. That is the actual trade
-              &mdash; a new phone every couple of years, forever, for payments that never stop.
-            </p>
-          {:else if endChoice === 'buyout'}
-            <p>
-              <strong>Buy it.</strong> One payment of {money0(residual)} plus tax and it is yours. It
-              lands in the column as a single block of <em>toward owning it</em> sitting on top of
-              two years of rent, and your all-in total comes to exactly the sticker price &mdash;
-              you financed a phone at 0% for {term} months and then settled up. If the phone is worth
-              more than {money0(residual)} used, and it very likely is, this beats handing it back.
-            </p>
-          {:else}
-            <p>
-              <strong>Do nothing.</strong> This is not the walk-away option. It is the buy-it option with
-              a six-month delay, and it ends with the phone belonging to you.
-            </p>
-            <p>
-              The lease converts to month-to-month and payments continue at {money(gross)} &mdash; the
-              un-credited rate, so possibly more than you had been paying &mdash; for six more months.
-              At the end of those six, Klarna charges the entire remaining
-              {money0(extensionResidual)} to your card in one go and the phone is yours outright. You
-              land in exactly the same place as buying it, for the same total, {EXTENSION_MONTHS} months
-              later, having decided nothing.
-            </p>
-          {/if}
-        </div>
-
-        <p class="decide-foot">
-          Whichever you pick, you have six months to pick it. Apple says it will tell you when
-          you&rsquo;re eligible. And the early exit that is <em>not</em> on this list &mdash;
-          bailing out before month {term} &mdash; costs every remaining payment through the end of the
-          term, not a prorated share of it.
-        </p>
       </div>
     {/snippet}
 
@@ -744,198 +604,201 @@
         <div class="head">
           <div class="eyebrow">// the same four columns, totalled</div>
           <h2>What the scroll adds up to</h2>
-          <p class="lede">
-            Same numbers, same {HORIZON} months, collapsed into one screen. The lease column uses the
-            ending you picked above.
-          </p>
-          <p class="lede">
-            Watch the <strong>total paid</strong> row in particular. Pay cash, Apple Card financing
-            and the lease will often land on the identical number, because Apple built them to.
-            Every row below it is a consequence of <em>when</em> that identical number gets paid.
-          </p>
         </div>
 
         <Compare {scenarios} highlight={`upgrade-${term}`} />
-
-        <div class="notes">
-          <div class="note-card">
-            <h3>Pay cash</h3>
-            <p>
-              One tall block on day one and then a flat line for four years. The most expensive
-              option in today&rsquo;s dollars and the cheapest in every other sense: no credit
-              check, no carrier requirement, no return inspection, no Klarna.
-            </p>
-          </div>
-          <div class="note-card">
-            <h3>Apple Card, 24 months at 0%</h3>
-            <p>
-              The honest baseline. Financing the tax-inclusive total over 24 months at zero
-              interest, with the 3% Daily Cash paid up front: the same total as cash, spread over
-              two years, no lease, no carrier requirement, no inspection. Watch it stop growing at
-              month 24 while the lease is still going.
-            </p>
-          </div>
-          <div class="note-card">
-            <h3>Apple Upgrade, {term} months</h3>
-            <p>
-              The lowest monthly payment and the lowest day-one cost, in exchange for a device you
-              do not own, a carrier you must attach, and a decision waiting for you at the end. It
-              earns the same 3% and can total the same number as paying cash &mdash; it just pays
-              later, which is the entirety of its advantage. The option to walk away is worth real
-              money only if the phone depreciates faster than Apple assumed.
-            </p>
-          </div>
-          <div class="note-card">
-            <h3>Carrier financing, 36 months</h3>
-            <p>
-              Usually the lowest sticker of all, because the promo credits are enormous. They are
-              also the leash: the credits arrive monthly across three years and evaporate if you
-              leave, and you pay the entire sales tax bill on day one &mdash; which is the orange
-              block sitting under this column at month zero. Put a real promo in the credits field
-              above and this column will finish shortest, at the price of thirty-six months of
-              loyalty.
-            </p>
-          </div>
-        </div>
       </section>
 
-      <section class="catches">
-        <div class="head">
-          <div class="eyebrow">// read this part</div>
-          <h2>The catches, in plain language</h2>
-        </div>
-
-        <ol>
-          <li>
-            <h3>Leaving early costs the whole schedule</h3>
-            <p>
-              The early termination fee is the total of every unpaid monthly payment through the end
-              of the initial term, plus taxes and fees. Not a prorated buyout &mdash; the rest of
-              the contract. The only free exit is the 14-day window after you receive the device.
-            </p>
-          </li>
-          <li>
-            <h3>You must attach a carrier</h3>
-            <p>
-              AT&amp;T, T-Mobile, or Verizon, and no prepaid plans. The phone itself stays unlocked
-              and you can switch later, but you cannot complete the lease without picking one at
-              checkout. iPad, Mac, and Watch leases have no such requirement.
-            </p>
-          </li>
-          <li>
-            <h3>Klarna is picky about cards</h3>
-            <p>
-              No AMEX, no UnionPay, and no cards issued by Chase or Capital One. No Apple Pay, no
-              PayPal. Debit works, and so does Apple Card, which still pays its 3% on lease
-              payments. But if the card you were counting on for rewards is on that list, check
-              before you assume.
-            </p>
-          </li>
-          <li>
-            <h3>Losing the phone does not end the lease</h3>
-            <p>
-              Without AppleCare+ with Theft and Loss, a stolen device leaves you paying the early
-              termination fee or the purchase option fee on a phone you do not have. Payments
-              continue until you settle one of them.
-            </p>
-          </li>
-          <li>
-            <h3>The damage fee is undisclosed</h3>
-            <p>
-              &ldquo;Good working condition&rdquo; is the standard and Apple has not published what
-              failing it costs. That is an open-ended liability on every lease without AppleCare,
-              and it lands every single time you hand a device back.
-            </p>
-          </li>
-          <li>
-            <h3>You cannot buy the payment down</h3>
-            <p>
-              No down payments. The trade-in is the only lever, it only applies to the initial term,
-              and you cannot use another one when you upgrade.
-            </p>
-          </li>
-          <li>
-            <h3>Inaction has a default, and it is a purchase</h3>
-            <p>
-              Six months past the term with no decision and Klarna charges your card the purchase
-              option fee. This happens to be the mathematically fine outcome, which makes it easy to
-              miss that it happens without your say-so.
-            </p>
-          </li>
-          <li>
-            <h3>It is a lease, not a loan</h3>
-            <p>
-              Applying is a soft credit pull, but the resulting account is a lease with Klarna, and
-              you do not own the device at any point before the purchase option fee is paid. Not
-              available on refurbished devices, or through education, business, government, or
-              employee purchase programs.
-            </p>
-          </li>
-        </ol>
-      </section>
-
-      <section class="assumptions">
-        <div class="head">
-          <div class="eyebrow">// show your work</div>
-          <h2>Assumptions</h2>
-        </div>
-        <ul>
-          <li>
-            Lease payments are derived as 50% (12-month) or 70% (24-month) of the sticker price,
-            divided by the term and rounded to the nearest x.99. This reproduces all four of
-            Apple&rsquo;s published iPhone examples exactly. If your actual quote differs, the shape
-            of the answer will not.
-          </li>
-          <li>
-            The purchase option fee is treated as list price minus every dollar of credit applied to
-            the device, including unused trade-in credit. Apple&rsquo;s wording &mdash; &ldquo;list
-            price minus any lease payments you&rsquo;ve made minus any remaining discounts or
-            trade-in credit&rdquo; &mdash; read strictly would charge you for the trade-in twice and
-            break Apple&rsquo;s own promise that you never pay more than full price. This is the
-            reading that keeps that promise true.
-          </li>
-          <li>
-            Sales tax is applied to each lease payment and to the buyout, which is how leases are
-            normally taxed. Buying outright taxes the whole thing on day one; carrier financing does
-            the same. Your state may differ, and a few tax the trade-in credit too.
-          </li>
-          <li>
-            Trade-in credit is modeled as a credit against the order total on the purchase paths,
-            and as a reduction to the monthly payment on the lease, per the FAQ.
-          </li>
-          <li>
-            Card rewards are netted against the charge that earned them, in the month it was earned,
-            which is why a column&rsquo;s coloured bands still add up to exactly what that column
-            cost. Present values discount monthly at your annual rate divided by twelve.
-          </li>
-          <li>
-            The four bands are ours, not Apple&rsquo;s. <em>Toward owning it</em> is any dollar that
-            ends with the phone in your name &mdash; the cash purchase, an installment, a buyout.
-            <em>Rent</em> is a lease payment. The split is the argument this page is making, so it is
-            worth disagreeing with if you think a lease payment buys you something.
-          </li>
-          <li>
-            Resale values are guesses seeded from the list price, and are the softest number on the
-            page. They only affect the &ldquo;net cost&rdquo; and &ldquo;per month&rdquo; rows
-            &mdash; everything above those is contractual.
-          </li>
-          <li>
-            The upgrade path assumes a replacement device at the same price on the same lease terms,
-            with no trade-in, because Apple does not allow one &mdash; and it assumes you keep doing
-            that for the full {HORIZON} months.
-          </li>
-        </ul>
-        <p class="disclaimer">
-          Not affiliated with Apple or Klarna. Every number here is derived from Apple&rsquo;s
-          published Apple Upgrade FAQ and footnotes; nothing is an offer, and your actual quote is
-          the one that counts. Check it against this and see if it lines up.
+      <details class="assumptions">
+        <summary>Assumptions and lease terms</summary>
+        <p>
+          Estimates, not a quote. Tax treatment varies by state; repair and resale values are
+          editable.
         </p>
-      </section>
+        <p>
+          Lease payments use 50% of the sticker for 12 months or 70% for 24, rounded to x.99.
+          Payments and trade-in credit reduce the buyout. Upgrades repeat at the same device price,
+          without another trade-in.
+        </p>
+        <p>
+          Totals subtract card rewards. “Today’s dollars” applies your discount rate; net cost also
+          subtracts the phone’s remaining value.
+        </p>
+        <p>
+          A lease requires an eligible carrier and payment card. Early exit or a lost phone does not
+          cancel the remaining balance. Returns require good working condition; the repair estimate
+          is not a quoted return fee.
+        </p>
+        <p>
+          Cash and Apple Card replace the phone on your chosen schedule. Old Apple Card installments
+          continue after trade-in; tax is paid upfront. The lease follows your end-of-term choice,
+          so a 24-month renewal upgrades sooner than a three-year preference.
+        </p>
+        <p>
+          The carrier offer replaces the regular trade-in value and repeats on each eligible
+          replacement as an estimate. This models a 36-month deal with payoff and lost credits on
+          early upgrade, without paid early-upgrade add-ons. Future offers are not guaranteed.
+        </p>
+        <p>
+          Assumes upfront tax is paid in full without interest. Card rewards remain spread across
+          the modeled payments; Apple Card actually awards Daily Cash upfront.
+        </p>
+        <p>
+          <a href="https://support.apple.com/en-us/104950">Apple Card terms</a> ·
+          <a href="https://www.verizon.com/support/device-payment-faqs/"
+            >Carrier payoff and credits</a
+          >
+        </p>
+        <p>
+          Doing nothing means monthly payments continue, followed by an automatic buyout six months
+          after the term ends.
+        </p>
+      </details>
     {/if}
   {/if}
 </article>
 
+<dialog
+  class="screen-card"
+  bind:this={screenDialog}
+  aria-labelledby="screen-title"
+  aria-describedby="screen-description"
+  oncancel={(event) => {
+    event.preventDefault();
+    chooseScreen('dismiss');
+  }}
+>
+  {@render screenPrompt('screen')}
+</dialog>
+
+{#snippet screenPrompt(id: string)}
+  <div class="eyebrow">// month 09</div>
+  <h2 id="{id}-title">Oh no! You cracked your screen!</h2>
+  <p id="{id}-description">
+    Estimated repair: {money(repairPrice)} including tax,
+    {appleCare === 'none' ? 'without AppleCare' : 'with AppleCare'}. Leave it cracked, and pay for
+    the repair if you return or upgrade the leased phone.
+  </p>
+  <div class="screen-actions">
+    <button
+      type="button"
+      aria-pressed={screenChoice === 'repair'}
+      onclick={() => chooseScreen('repair')}>Pay {money(repairPrice)} to fix it</button
+    >
+    <button
+      type="button"
+      aria-pressed={screenChoice === 'defer'}
+      onclick={() => chooseScreen('defer')}>Deal with it</button
+    >
+    <button
+      type="button"
+      aria-pressed={screenChoice === 'dismiss'}
+      onclick={() => chooseScreen('dismiss')}>No I didn’t</button
+    >
+  </div>
+{/snippet}
+
 <style>
+  .page-control {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 21;
+    min-height: 48px;
+    min-width: 132px;
+    padding: 12px 18px;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px #0003;
+  }
+  .page-control:hover {
+    background: var(--surface2, var(--bg));
+  }
+  .page-control:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  .offer-bar {
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--border);
+    margin-top: 12px;
+  }
+  .offer-bar span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+  .offer-bar.forfeited {
+    --lost-credit: light-dark(#665d16, #d8c86b);
+    background: repeating-linear-gradient(
+      135deg,
+      var(--lost-credit) 0 4px,
+      color-mix(in oklch, var(--lost-credit) 65%, var(--surface)) 4px 6px
+    );
+  }
+  .aside p {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 8px 0 0;
+  }
+
+  .screen-card {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--text);
+    padding: 26px;
+  }
+  dialog {
+    margin: auto;
+    width: min(480px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    box-shadow: 0 24px 80px #0006;
+  }
+  dialog::backdrop {
+    background: #0008;
+  }
+  .screen-card h2 {
+    margin: 12px 0;
+    font-size: 26px;
+    line-height: 1.15;
+  }
+  .screen-card p {
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .screen-actions {
+    display: grid;
+    gap: 10px;
+    margin-top: 22px;
+  }
+  .screen-actions button {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .screen-actions button[aria-pressed='true'],
+  dialog .screen-actions button:first-child {
+    background: var(--accent);
+    color: var(--bg);
+  }
+  .screen-actions button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
   article {
     padding-bottom: 96px;
   }
@@ -967,34 +830,6 @@
   .lede:last-child {
     margin-bottom: 0;
   }
-  .lede em {
-    font-style: italic;
-  }
-
-  .thesis {
-    margin-top: 34px;
-    max-width: 64ch;
-    border-left: 3px solid var(--accent);
-    border-radius: 0 12px 12px 0;
-    background: color-mix(in oklch, var(--accent) 8%, var(--surface));
-    padding: 22px 26px;
-  }
-  .thesis p {
-    margin: 0 0 12px;
-    font-size: 15.5px;
-    line-height: 1.7;
-    text-wrap: pretty;
-  }
-  .thesis p:last-child {
-    margin-bottom: 0;
-  }
-  .thesis em {
-    color: var(--accent);
-    font-style: normal;
-  }
-  .thesis strong {
-    font-weight: 580;
-  }
 
   /* Step internals */
   .fields {
@@ -1002,6 +837,36 @@
     grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 16px;
     padding-top: 18px;
+  }
+  .fine-tuning {
+    border-top: 1px solid var(--border);
+    padding: 18px 0;
+  }
+  .fine-tuning summary {
+    padding: 14px 0;
+    min-height: 48px;
+    cursor: pointer;
+    font-weight: 520;
+    color: var(--text);
+  }
+  .fine-tuning summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  .fine-tuning h3 {
+    margin: 18px 0 12px;
+    font-size: 17px;
+    font-weight: 520;
+    color: var(--text);
+  }
+  .fine-tuning .fields {
+    padding: 4px 0 20px;
+  }
+  .fine-tuning p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    font-size: 13px;
   }
   .fields.one {
     max-width: 260px;
@@ -1020,46 +885,6 @@
     font-size: 15px;
     letter-spacing: -0.01em;
   }
-  .aside h3 ~ h3 {
-    margin-top: 18px;
-  }
-  .aside p {
-    margin: 0 0 11px;
-    font-size: 14.5px;
-    line-height: 1.7;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-  .aside p:last-child {
-    margin-bottom: 0;
-  }
-  .aside strong {
-    color: var(--text);
-    font-weight: 560;
-  }
-  .aside em {
-    font-style: italic;
-  }
-  .surplus {
-    margin: 0 0 11px;
-    max-width: 62ch;
-    padding-left: 18px;
-  }
-  .surplus li {
-    margin-bottom: 6px;
-    font-size: 14.5px;
-    line-height: 1.7;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-  .surplus li::marker {
-    color: var(--accent);
-  }
-  .surplus strong {
-    color: var(--text);
-    font-weight: 560;
-  }
-
   /* Section headers shared by the lower half of the page */
   .head {
     padding: 72px 0 26px;
@@ -1098,140 +923,21 @@
     font-size: 22px;
     letter-spacing: -0.02em;
   }
-  .decide-head p {
-    margin: 0;
-    max-width: 58ch;
-    font-size: 14.5px;
-    line-height: 1.65;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-  .decide-detail {
+  .assumptions {
+    margin-top: 32px;
+    border-top: 1px solid var(--border);
     padding-top: 18px;
-  }
-  .decide-detail p {
-    margin: 0 0 11px;
-    max-width: 62ch;
-    font-size: 14.5px;
-    line-height: 1.7;
     color: var(--muted);
-    text-wrap: pretty;
+    font-size: 13px;
+    line-height: 1.65;
   }
-  .decide-detail p:last-child {
-    margin-bottom: 0;
-  }
-  .decide-detail strong {
+  .assumptions summary {
+    cursor: pointer;
     color: var(--text);
-    font-weight: 580;
   }
-  .decide-detail em {
-    font-style: italic;
-  }
-  .decide-foot {
-    margin: 18px 0 0;
-    border-top: 1px solid color-mix(in oklch, var(--accent) 30%, transparent);
-    padding-top: 14px;
-    max-width: 62ch;
-    font-size: 13px;
-    line-height: 1.65;
-    color: var(--faint);
-    text-wrap: pretty;
-  }
-
-  /* Comparison notes */
-  .notes {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 18px;
-    padding-top: 32px;
-  }
-  .note-card {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface);
-    padding: 18px;
-  }
-  .note-card h3 {
-    margin: 0 0 8px;
-    font-family: var(--font-body);
-    font-weight: 580;
-    font-size: 14.5px;
-    letter-spacing: -0.01em;
-  }
-  .note-card p {
-    margin: 0;
-    font-size: 13.5px;
-    line-height: 1.65;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-
-  /* Catches */
-  .catches ol {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 26px 34px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    counter-reset: catch;
-  }
-  .catches li {
-    counter-increment: catch;
-    border-top: 1px solid var(--border);
-    padding-top: 14px;
-  }
-  .catches li::before {
-    content: counter(catch, decimal-leading-zero);
-    font-family: var(--font-mono);
-    font-weight: 480;
-    font-size: 11px;
-    letter-spacing: 0.06em;
-    color: var(--accent);
-  }
-  .catches h3 {
-    margin: 6px 0 7px;
-    font-family: var(--font-body);
-    font-weight: 580;
-    font-size: 16px;
-    letter-spacing: -0.01em;
-  }
-  .catches p {
-    margin: 0;
-    font-size: 14px;
-    line-height: 1.68;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-
-  /* Assumptions */
-  .assumptions ul {
-    margin: 0;
+  .assumptions p {
     max-width: 68ch;
-    padding-left: 18px;
-  }
-  .assumptions li {
-    margin-bottom: 12px;
-    font-size: 14px;
-    line-height: 1.68;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-  .assumptions li::marker {
-    color: var(--faint);
-  }
-  .assumptions em {
-    font-style: italic;
-  }
-  .disclaimer {
-    margin: 26px 0 0;
-    max-width: 68ch;
-    border-top: 1px solid var(--border);
-    padding-top: 16px;
-    font-size: 13px;
-    line-height: 1.65;
-    color: var(--faint);
-    text-wrap: pretty;
+    margin: 12px 0 0;
   }
 
   @media (max-width: 640px) {

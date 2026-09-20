@@ -1,14 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
-  import {
-    CHARGE_NOTES,
-    money,
-    type Beat,
-    type Biller,
-    type Category,
-    type Scenario
-  } from '$lib/apple-upgrade/model';
+  import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
 
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */
@@ -23,13 +16,13 @@
      * months below it depend on the answer.
      */
     limit?: number;
+    /** -1 before the first month crosses the reading line. */
+    activeMonth?: number;
   }
 
-  let { scenarios, beats, questions = {}, limit }: Props = $props();
+  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('cash');
-  /** -1 is the empty state: nothing counted until the first month goes past. */
-  let activeMonth = $state(-1);
   let stuck = $state(false);
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
   let chartPx = $state(190);
@@ -68,40 +61,37 @@
    */
   interface Charge {
     label: string;
-    biller: Biller;
     category: Category;
-    note?: string;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
+    categories: Category[];
     /** Money coming back rather than going out: drawn below the line, outlined. */
     credit?: boolean;
   }
-
-  /** The month each label first shows up, so its explanation is shown once. */
-  const firstSeen = $derived.by(() => {
-    const seen: Record<string, number> = {};
-    for (let m = 0; m <= horizon; m++) {
-      for (const s of scenarios) {
-        for (const item of s.rows[m].items) {
-          seen[item.label] ??= m;
-        }
-      }
-    }
-    return seen;
-  });
 
   function chargesFor(month: number): Charge[] {
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
-        const charge = (byLabel[item.label] ??= {
-          label: item.label,
-          biller: item.biller,
+        if (item.category === 'tax') continue;
+        const label = [
+          'Installment',
+          'Device installment',
+          'Lease payment',
+          'New lease payment',
+          'Month-to-month payment'
+        ].includes(item.label)
+          ? 'Monthly payment'
+          : item.label;
+        const charge = (byLabel[label] ??= {
+          label,
           category: item.category,
-          note: firstSeen[item.label] === month ? CHARGE_NOTES[item.label] : undefined,
+          credit: item.amount < 0,
+          categories: scenarios.map(() => item.category),
           amounts: scenarios.map(() => 0)
         });
-        charge.amounts[column] += item.amount;
+        charge.amounts[column] += Math.abs(item.amount);
+        charge.categories[column] = item.category;
       }
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
@@ -115,12 +105,11 @@
       const back = scenarios.map((s) => s.summary.tradeInRefund);
       if (back.some((amount) => amount > 0.005)) {
         charges.push({
-          label: 'Apple credit back',
-          biller: 'apple',
+          label: 'Apple credit back for excess trade-in',
           category: 'phone',
           credit: true,
-          note: 'Trade-in value this path had no room for. A lease only ever collects half or seventy percent of the sticker, so it runs out of payments to discount long before a purchase does, and the difference comes back as store credit rather than as a cheaper phone.',
-          amounts: back
+          amounts: back,
+          categories: scenarios.map(() => 'phone')
         });
       }
     }
@@ -146,7 +135,11 @@
       const row = s.rows[month];
       const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
-      return { key: s.key, name: s.shortName, net };
+      const tax = row.items.reduce(
+        (sum, item) => sum + (item.category === 'tax' ? item.amount : 0),
+        0
+      );
+      return { key: s.key, name: s.shortName, net, tax };
     });
   }
 
@@ -173,16 +166,18 @@
 
   /**
    * What the phone itself costs if you just buy it — the cash column's own
-   * equity total, so tax, trade-in and card rewards are all already in it. It
+   * device total plus its separately displayed tax, net of trade-in and rewards. It
    * gives the empty top of the plot a meaning: a column that has climbed past
    * this line has spent more than the phone was ever worth buying.
    */
   const reference = $derived.by(() => {
     const outright = scenarios.find((s) => s.key === 'outright');
     if (!outright) return undefined;
-    const last = outright.rows[outright.rows.length - 1];
+    const last = outright.rows[0];
     const split = basis === 'npv' ? last.runningNpvByCategory : last.runningByCategory;
-    return split.phone > 0 ? { value: split.phone, label: 'the phone, in cash' } : undefined;
+    const tax = outright.rows[0].items.find((item) => item.label === 'Sales tax, up front');
+    const value = split.phone + (tax ? tax.amount - (tax.reward ?? 0) : 0);
+    return value > 0 ? { value, label: 'the phone, in cash' } : undefined;
   });
 
   // Measurement only: the site header is sticky and wraps to two lines on a
@@ -288,17 +283,12 @@
         {/if}
       </header>
 
-      {#if beat}
-        <p class="story">{beat.detail}</p>
-      {/if}
-
       {#if charges.length}
         <ul class="charges">
           {#each charges as charge (charge.label)}
             <li>
               <span class="head">
                 <span class="what">{charge.label}</span>
-                <span class="biller">{charge.biller}</span>
               </span>
 
               <!-- The attribution and the amount in one mark: a bar in every
@@ -306,7 +296,7 @@
                    biggest single bill of the month. -->
               <div class="bars" class:credit={charge.credit} data-cat={charge.category}>
                 {#each charge.amounts as amount, i (cells[i].key)}
-                  <span class="cell" class:zero={amount <= 0.005}>
+                  <span class="cell" class:zero={amount <= 0.005} data-cat={charge.categories[i]}>
                     <span class="track">
                       <i
                         class="bar"
@@ -320,10 +310,6 @@
                   </span>
                 {/each}
               </div>
-
-              {#if charge.note}
-                <span class="note">{charge.note}</span>
-              {/if}
             </li>
           {/each}
         </ul>
@@ -332,6 +318,9 @@
           {#each cells as cell (cell.key)}
             <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
               {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
+              {#if cell.tax > 0.005}
+                <small class="tax-total">incl. {money(cell.tax)} tax</small>
+              {/if}
             </span>
           {/each}
         </div>
@@ -342,6 +331,14 @@
       {#if idle}
         <p class="nothing">{idle}</p>
       {/if}
+      {#each scenarios as scenario (scenario.key)}
+        {#if scenario.rows[month].forfeitedCredits}
+          <p class="nothing">
+            {scenario.shortName}: {money(scenario.rows[month].forfeitedCredits!)} in trade-in credits
+            forfeited
+          </p>
+        {/if}
+      {/each}
     </section>
 
     {#if questions[month]}
@@ -437,15 +434,6 @@
     text-transform: uppercase;
   }
 
-  .story {
-    margin: 0;
-    max-width: 60ch;
-    font-size: 14.5px;
-    line-height: 1.65;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-
   /* What arrived, described once, then drawn across the columns that pay it */
   .charges {
     display: grid;
@@ -470,24 +458,6 @@
     font-size: 13.5px;
     font-weight: 500;
     letter-spacing: -0.005em;
-  }
-  .biller {
-    border-radius: 4px;
-    background: color-mix(in oklch, var(--border) 55%, transparent);
-    padding: 1px 5px;
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.04em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-  .note {
-    padding: 0 var(--gutter);
-    max-width: 58ch;
-    font-size: 12.5px;
-    line-height: 1.55;
-    color: var(--faint);
-    text-wrap: pretty;
   }
 
   /*
@@ -553,6 +523,13 @@
     text-align: center;
     color: var(--text);
     font-variant-numeric: tabular-nums;
+  }
+  .tax-total {
+    display: block;
+    margin-top: 3px;
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--cat-tax);
   }
   .sum.zero {
     color: var(--faint);
@@ -668,8 +645,10 @@
   .ledger {
     --cat-phone: light-dark(#1289e7, #1795fa);
     --cat-rent: light-dark(#882e9b, #a264b0);
-    --cat-care: light-dark(#2b9667, #4f9f77);
+    --cat-care: light-dark(#53616d, #b3c4d2);
+    --cat-tax: light-dark(#2b9667, #4f9f77);
     --cat-fees: light-dark(#9a3c00, #e86518);
+    --cat-repair: light-dark(#665d16, #d8c86b);
   }
   [data-cat='phone'] {
     --fill: var(--cat-phone);
@@ -679,6 +658,13 @@
   }
   [data-cat='care'] {
     --fill: var(--cat-care);
+  }
+  [data-cat='repair'] {
+    --fill: repeating-linear-gradient(
+      135deg,
+      var(--cat-repair) 0 4px,
+      color-mix(in oklch, var(--cat-repair) 65%, var(--surface)) 4px 6px
+    );
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);
@@ -694,9 +680,6 @@
     }
     header h3 {
       font-size: 16.5px;
-    }
-    .story {
-      font-size: 13.5px;
     }
     .what,
     .ledger {

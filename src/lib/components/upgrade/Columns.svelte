@@ -27,7 +27,7 @@
     stuck = false
   }: Props = $props();
 
-  const empty = { phone: 0, rent: 0, care: 0, fees: 0 };
+  const empty = { phone: 0, rent: 0, care: 0, fees: 0, repair: 0, tax: 0 };
 
   const bars = $derived(
     scenarios.map((s) => {
@@ -180,7 +180,7 @@
 
 <style>
   /*
-   * Four categorical fills, one per kind of dollar. Derived by snapping the
+   * The original four solid fills, one per kind of dollar. Derived by snapping the
    * site's teal/violet idiom to the nearest steps that clear the full
    * colour-vision gate, then validated as a set against the panel surface
    * (#f0ece5 light, #121824 dark) on the strict all-pairs list:
@@ -191,13 +191,16 @@
    * band is also named in its tooltip, and the ledger below prints every charge
    * beside a swatch of its own colour as it arrives — which is what teaches the
    * mapping, and why this panel carries no legend of its own. Re-run the
-   * validator before touching a value.
+   * validator before touching a value. Repairs add a fifth, hatched band so
+   * they remain distinct without relying on color alone.
    */
   .panel {
     --cat-phone: light-dark(#1289e7, #1795fa);
     --cat-rent: light-dark(#882e9b, #a264b0);
-    --cat-care: light-dark(#2b9667, #4f9f77);
+    --cat-care: light-dark(#53616d, #b3c4d2);
     --cat-fees: light-dark(#9a3c00, #e86518);
+    --cat-tax: light-dark(#2b9667, #4f9f77);
+    --cat-repair: light-dark(#665d16, #d8c86b);
     --cat-credit: light-dark(#1289e7, #1795fa);
     /* Bars stay bar-shaped on a wide screen instead of becoming slabs; the
        ledger uses the same token so a month's slice keeps the same width. */
@@ -409,6 +412,16 @@
   }
   [data-cat='care'] {
     --fill: var(--cat-care);
+  }
+  [data-cat='repair'] {
+    --fill: repeating-linear-gradient(
+      135deg,
+      var(--cat-repair) 0 4px,
+      color-mix(in oklch, var(--cat-repair) 65%, var(--surface)) 4px 6px
+    );
+  }
+  [data-cat='tax'] {
+    --fill: var(--cat-tax);
   }
   [data-cat='fees'] {
     --fill: var(--cat-fees);

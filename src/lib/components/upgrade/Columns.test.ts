@@ -13,8 +13,9 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
     appleCareAnnual: 149,
-    damageFee: 0,
-    damageOdds: 0,
+    screenChoice: null,
+    screenRepairCost: 250,
+    appleCareRepairCost: 29,
     taxRate: 8.5,
     activationFee: 35,
     caseCost: 59,
@@ -24,7 +25,7 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     discountRate: 4,
     resaleAtTerm: 500,
     resaleAtHorizon: 288,
-    carrierCredits: 0,
+    carrierOffer: null,
     carrierTerm: 36,
     ...overrides
   };

@@ -36,7 +36,7 @@
     activeMonth = $bindable(-1)
   }: Props = $props();
 
-  let basis = $state<'cash' | 'npv'>('cash');
+  let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
   let chartPx = $state(190);

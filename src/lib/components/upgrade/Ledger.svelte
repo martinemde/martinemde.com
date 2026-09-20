@@ -4,8 +4,7 @@
   import {
     ADJUSTMENTS_LABEL,
     PAID_OFF_IDEAS,
-    ledgerAmounts,
-    ledgerTotals
+    ledgerAmounts
   } from '$lib/apple-upgrade/presentation';
   import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
 
@@ -53,21 +52,6 @@
   const columns = $derived(scenarios.length);
   const lastMonth = $derived(Math.min(limit ?? horizon, horizon));
   const months = $derived(Array.from({ length: lastMonth + 1 }, (_, i) => i));
-
-  /**
-   * One scale for the whole scroll: the tallest column at the horizon, plus a
-   * little headroom so the winner does not butt into its own total.
-   */
-  const ceiling = $derived(
-    Math.max(
-      ...scenarios.flatMap((s) =>
-        ledgerTotals(s.rows, basis).map((totals) =>
-          Object.values(totals).reduce((sum, value) => sum + Math.max(0, value), 0)
-        )
-      ),
-      1
-    ) * 1.06
-  );
 
   /**
    * A charge, described once and then drawn across the columns that get handed
@@ -274,7 +258,6 @@
       {scenarios}
       {upgradeSummary}
       month={activeMonth}
-      {ceiling}
       {reference}
       bind:basis
       height={chartPx}

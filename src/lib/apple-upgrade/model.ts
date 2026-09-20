@@ -119,6 +119,9 @@ export interface Inputs {
   upgradeEvery?: UpgradeInterval;
   /** Explicit shared replacement months. An empty list means keep the original phone. */
   upgradeMonths?: number[];
+  /** Explicit regular trade-in estimates for phones aged one, two and three years.
+   * Independent of private resale estimates. No quote means no assumed credit. */
+  upgradeTradeIns?: readonly number[];
   upgradeTradeIn?: number;
   /** Carrier installment term. Effectively always 36 now. */
   carrierTerm: number;
@@ -954,7 +957,8 @@ function replacementValue(
   age = input.upgradeEvery ?? HORIZON,
   originalPhone = false
 ): number {
-  const value = Math.min(input.listPrice, input.upgradeTradeIn ?? resaleAtAge(input, age));
+  const quoted = input.upgradeTradeIns?.[Math.max(0, Math.ceil(age / 12) - 1)];
+  const value = Math.min(input.listPrice, Math.max(0, input.upgradeTradeIn ?? quoted ?? 0));
   return Math.max(0, value - tradeInDamage(input, originalPhone));
 }
 

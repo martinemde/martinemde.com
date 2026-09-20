@@ -44,6 +44,7 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     discountRate: 4,
     resaleAtTerm: 500,
     resaleAtHorizon: 380,
+    upgradeTradeIns: [744, 540, 396],
     carrierOffer: null,
     carrierTerm: 36,
     ...overrides
@@ -787,7 +788,13 @@ describe('upgrade preferences and carrier offers', () => {
 
   it('keeps old Apple Card payments running and discounts only the new phone', () => {
     const scenario = appleCardFinancing(
-      inputs({ listPrice: 1200, upgradeEvery: 12, upgradeTradeIn: 600, taxRate: 10 })
+      inputs({
+        listPrice: 1200,
+        upgradeEvery: 12,
+        upgradeTradeIn: 600,
+        upgradeTradeIns: undefined,
+        taxRate: 10
+      })
     );
     expect(scenario.rows[0].outflow).toBe(120);
     expect(scenario.rows[1].outflow).toBe(50);
@@ -851,7 +858,14 @@ describe('upgrade preferences and carrier offers', () => {
 
   it('pays cash again, using the replacement trade-in but not forgiving any debt', () => {
     const scenario = outright(
-      inputs({ listPrice: 1200, tradeIn: 400, upgradeEvery: 12, upgradeTradeIn: 600, taxRate: 10 })
+      inputs({
+        listPrice: 1200,
+        tradeIn: 400,
+        upgradeEvery: 12,
+        upgradeTradeIn: 600,
+        upgradeTradeIns: undefined,
+        taxRate: 10
+      })
     );
     expect([0, 12, 24, 36].map((m) => scenario.rows[m].outflow)).toEqual([920, 720, 720, 720]);
     expect(scenario.rows[48].outflow).toBe(0);
@@ -1156,6 +1170,7 @@ describe('annual upgrades through early lease buyout', () => {
     const base = inputs({
       listPrice: 1200,
       resaleAtHorizon: (value * 0.24) / 0.62,
+      upgradeTradeIns: [value, 400, 300],
       upgradeMonths: [12, 24, 36],
       discountRate: 0
     });
@@ -1211,5 +1226,22 @@ describe('annual upgrades through early lease buyout', () => {
         }
       }
     }
+  });
+});
+
+describe('quoted trade-in credits are separate from private resale', () => {
+  it('does not change any payment when private resale changes', () => {
+    for (const upgradeMonths of [[12, 24, 36], [24], [36]]) {
+      const base = inputs({ upgradeMonths, upgradeTradeIns: [550, 400, 250] });
+      const low = allScenarios({ ...base, resaleAtHorizon: 0 });
+      const high = allScenarios({ ...base, resaleAtHorizon: 1000 });
+      low.forEach((scenario, index) => {
+        expect(scenario.rows.map((r) => r.outflow)).toEqual(high[index].rows.map((r) => r.outflow));
+      });
+    }
+  });
+  it('assumes no replacement credit without a quote', () => {
+    const base = inputs({ upgradeMonths: [12], upgradeTradeIns: undefined, resaleAtHorizon: 1000 });
+    expect(outright(base).rows[12].outflow).toBe(1199);
   });
 });

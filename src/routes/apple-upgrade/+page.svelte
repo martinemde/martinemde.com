@@ -22,15 +22,24 @@
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
 
+  // Apple’s US maximum trade-in quotes, checked 2026-09-20:
+  // https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values
+  // Age proxies: 17/16/15 of the same tier; Air uses regular 16/15 for older ages.
+  // These estimate future offers, not private-sale proceeds or guaranteed quotes.
   const DEVICES = [
-    { key: 'iphone-17', label: 'iPhone 17', price: 799 },
-    { key: 'iphone-air', label: 'iPhone Air', price: 999 },
-    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099 },
-    { key: 'iphone-17-pro-max', label: 'iPhone 17 Pro Max', price: 1199 },
-    { key: 'custom', label: 'Something else', price: 0 }
+    { key: 'iphone-17', label: 'iPhone 17', price: 799, tradeIns: [585, 430, 305] },
+    { key: 'iphone-air', label: 'iPhone Air', price: 999, tradeIns: [585, 430, 305] },
+    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099, tradeIns: [785, 510, 370] },
+    {
+      key: 'iphone-17-pro-max',
+      label: 'iPhone 17 Pro Max',
+      price: 1199,
+      tradeIns: [885, 610, 455]
+    },
+    { key: 'custom', label: 'Something else', price: 0, tradeIns: [0, 0, 0] }
   ];
 
-  /** Everything the page remembers between visits. Resale values are excluded
+  /** Everything the page remembers between visits. Trade-in and resale estimates are excluded
    * on purpose — they re-derive from whichever device you land on. */
   interface Saved {
     deviceKey: string | null;
@@ -157,6 +166,7 @@
   let carrierCardBack = $state(initial.carrierCardBack);
   let discountRate = $state(initial.discountRate);
   let carrierOffer = $state(initial.carrierOffer);
+  let upgradeTradeIns = $state<number[]>([0, 0, 0]);
   let resaleAtHorizon = $state(Math.round(initial.listPrice * 0.24));
 
   let scrollY = $state(0);
@@ -198,7 +208,12 @@
     pageTitle.focus({ preventScroll: true });
   }
 
-  // Changing the device resets the resale anchor for age-based trade-in estimates.
+  // Changing the device resets independent trade-in and private resale estimates.
+  $effect(() => {
+    upgradeTradeIns = [
+      ...(DEVICES.find((device) => device.key === deviceKey)?.tradeIns ?? [0, 0, 0])
+    ];
+  });
   $effect(() => {
     const price = listPrice;
     resaleAtHorizon = Math.round(price * 0.24);
@@ -280,6 +295,7 @@
     discountRate,
     resaleAtTerm: listPrice * usedFraction(24),
     resaleAtHorizon,
+    upgradeTradeIns,
     carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
     upgradeMonths: annualChoices.flatMap((choice, index) =>
       choice === 'upgrade' ? [(index + 1) * 12] : []
@@ -481,6 +497,23 @@
         <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
         <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
       </div>
+      <h3>Future Apple trade-in estimates</h3>
+      <p>
+        Based on <a href="https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values"
+          >Apple’s current maximum trade-in values</a
+        > for similar phones aged one, two and three years, checked September 20, 2026. Future offers
+        may differ. Air uses regular iPhones for its two- and three-year estimates. Enter your own estimates
+        for a custom phone. These are trade-in credits, not money from selling privately.
+      </p>
+      <div class="fields">
+        {#each [1, 2, 3] as age, index}
+          <Field
+            label={`Apple trade-in after ${age} ${age === 1 ? 'year' : 'years'}`}
+            bind:value={upgradeTradeIns[index]}
+            step={25}
+          />
+        {/each}
+      </div>
       <h3>Estimates</h3>
       <div class="fields">
         <Field
@@ -490,7 +523,12 @@
           step={0.5}
           hint="What your unspent cash earns."
         />
-        <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
+        <Field
+          label="Resale at month {HORIZON}"
+          bind:value={resaleAtHorizon}
+          step={25}
+          hint="Private-sale estimate for the final phone’s value. Does not set upgrade trade-in credits."
+        />
       </div>
     </details>
   {/if}

@@ -490,7 +490,8 @@
     position: sticky;
     top: var(--sticky-top, 57px);
     z-index: 4;
-    margin-bottom: 12px;
+    /* Let the empty accumulator settle before month zero reaches the reading line. */
+    margin-bottom: clamp(140px, 25svh, 240px);
     background: var(--bg);
     padding: 4px 0;
   }
@@ -791,10 +792,6 @@
   }
 
   @media (max-width: 560px) {
-    .panel-wrap {
-      margin-bottom: 8px;
-      padding: 4px 0;
-    }
     .month {
       gap: 5px;
     }

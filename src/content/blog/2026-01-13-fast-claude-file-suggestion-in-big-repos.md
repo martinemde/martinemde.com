@@ -234,4 +234,3 @@ Please let me know if you find a better way around it.
 [gusto]: https://gusto.com 'Gusto - #1 Rated HR Platform - (also where I work)'
 [file-suggestion]: https://code.claude.com/docs/en/settings#file-suggestion-settings 'Anthropic Help: Claude Code File Suggestion settings'
 [latest]: https://raw.githubusercontent.com/martinemde/dotfiles/main/home/dot_claude/executable_file-suggestion.sh 'Link to current version'
-

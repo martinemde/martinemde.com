@@ -83,6 +83,41 @@ describe('Apple Upgrade page', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('keeps the screen choices at month nine and recalculates when you change them', async () => {
+    const user = userEvent.setup();
+    const { unmount, container } = render(Page);
+    await walkThrough(user);
+    await chooseEnding(user, 'Hand it back');
+    expect(screen.queryByRole('region', { name: 'Oh no! You cracked your screen!' })).toBeNull();
+    await scrollToMonth(9);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'No I didn’t' })
+    );
+
+    const choices = within(screen.getByRole('region', { name: 'Oh no! You cracked your screen!' }));
+    expect(choices.getByRole('button', { name: 'No I didn’t' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    await user.click(choices.getByRole('button', { name: 'Pay $271.25 to fix it' }));
+    expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeTruthy();
+    await user.click(choices.getByRole('button', { name: 'Deal with it' }));
+    expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
+    expect(container.querySelector('[data-month="24"] [data-cat="repair"]')).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    unmount();
+    const restored = render(Page);
+    const savedChoices = within(
+      screen.getByRole('region', { name: 'Oh no! You cracked your screen!' })
+    );
+    expect(
+      savedChoices.getByRole('button', { name: 'Deal with it' }).getAttribute('aria-pressed')
+    ).toBe('true');
+    await user.click(savedChoices.getByRole('button', { name: 'No I didn’t' }));
+    expect(restored.container.querySelector('[data-cat="repair"]')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it.each(['No AppleCare', 'AppleCare+ monthly'])(
     'adds the repair now to all columns with %s',
     async (coverage) => {

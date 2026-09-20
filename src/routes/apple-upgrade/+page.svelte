@@ -147,7 +147,7 @@
 
   function chooseScreen(choice: ScreenChoice) {
     screenChoice = choice;
-    screenDialog.close();
+    if (screenDialog.open) screenDialog.close();
   }
   let taxRate = $state(initial.taxRate);
   let activationFee = $state(initial.activationFee);
@@ -521,9 +521,17 @@
         {scenarios}
         beats={story}
         limit={ledgerLimit}
-        questions={{ [term]: decisionCard }}
+        questions={screenChoice !== null
+          ? { [term]: decisionCard, [SCREEN_CRACK_MONTH]: screenCard }
+          : { [term]: decisionCard }}
       />
     </section>
+
+    {#snippet screenCard()}
+      <section class="screen-card" aria-labelledby="screen-inline-title">
+        {@render screenPrompt('screen-inline')}
+      </section>
+    {/snippet}
 
     {#snippet decisionCard()}
       <div class="decide">
@@ -596,6 +604,7 @@
 </article>
 
 <dialog
+  class="screen-card"
   bind:this={screenDialog}
   aria-labelledby="screen-title"
   aria-describedby="screen-description"
@@ -604,21 +613,35 @@
     chooseScreen('dismiss');
   }}
 >
+  {@render screenPrompt('screen')}
+</dialog>
+
+{#snippet screenPrompt(id: string)}
   <div class="eyebrow">// month 09</div>
-  <h2 id="screen-title">Oh no! You cracked your screen!</h2>
-  <p id="screen-description">
+  <h2 id="{id}-title">Oh no! You cracked your screen!</h2>
+  <p id="{id}-description">
     Estimated repair: {money(repairPrice)} including tax,
     {appleCare === 'none' ? 'without AppleCare' : 'with AppleCare'}. Leave it cracked, and pay for
     the repair if you return or upgrade the leased phone.
   </p>
   <div class="screen-actions">
-    <button type="button" onclick={() => chooseScreen('repair')}
-      >Pay {money(repairPrice)} to fix it</button
+    <button
+      type="button"
+      aria-pressed={screenChoice === 'repair'}
+      onclick={() => chooseScreen('repair')}>Pay {money(repairPrice)} to fix it</button
     >
-    <button type="button" onclick={() => chooseScreen('defer')}>Deal with it</button>
-    <button type="button" onclick={() => chooseScreen('dismiss')}>No I didn’t</button>
+    <button
+      type="button"
+      aria-pressed={screenChoice === 'defer'}
+      onclick={() => chooseScreen('defer')}>Deal with it</button
+    >
+    <button
+      type="button"
+      aria-pressed={screenChoice === 'dismiss'}
+      onclick={() => chooseScreen('dismiss')}>No I didn’t</button
+    >
   </div>
-</dialog>
+{/snippet}
 
 <style>
   .offer-bar {
@@ -639,27 +662,29 @@
     margin: 8px 0 0;
   }
 
-  dialog {
-    margin: auto;
-    width: min(480px, calc(100vw - 32px));
-    max-height: calc(100dvh - 32px);
-    overflow: auto;
+  .screen-card {
     border: 1px solid var(--border);
     border-radius: 16px;
     background: var(--surface);
     color: var(--text);
     padding: 26px;
+  }
+  dialog {
+    margin: auto;
+    width: min(480px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
     box-shadow: 0 24px 80px #0006;
   }
   dialog::backdrop {
     background: #0008;
   }
-  dialog h2 {
+  .screen-card h2 {
     margin: 12px 0;
     font-size: 26px;
     line-height: 1.15;
   }
-  dialog p {
+  .screen-card p {
     color: var(--muted);
     line-height: 1.65;
   }
@@ -676,7 +701,8 @@
     background: var(--bg);
     color: var(--text);
   }
-  .screen-actions button:first-child {
+  .screen-actions button[aria-pressed='true'],
+  dialog .screen-actions button:first-child {
     background: var(--accent);
     color: var(--bg);
   }

@@ -8,6 +8,9 @@ bun.lockb
 # Build Output
 .cloudflare/
 
+# Blog posts
+src/content/blog/
+
 # Miscellaneous
 /static/
 

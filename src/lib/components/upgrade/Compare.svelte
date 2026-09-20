@@ -47,7 +47,16 @@
     {
       label: `What you hold at month ${HORIZON}`,
       hint: 'Resale value, less anything still owed on it',
-      value: (s) => (s.summary.equityAtHorizon > 0 ? money0(s.summary.equityAtHorizon) : 'nothing')
+      value: (s) =>
+        s.summary.equityAtHorizon !== 0 ? money0(s.summary.equityAtHorizon) : 'nothing'
+    },
+    {
+      label: 'Installments still owed',
+      value: (s) => money0(s.summary.remainingBalance)
+    },
+    {
+      label: 'Carrier credits forfeited',
+      value: (s) => (s.key === 'carrier' ? money0(s.summary.carrierCreditsLost ?? 0) : '—')
     },
     {
       label: 'Months with a phone',

@@ -25,7 +25,7 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     discountRate: 4,
     resaleAtTerm: 500,
     resaleAtHorizon: 288,
-    carrierCredits: 0,
+    carrierOffer: null,
     carrierTerm: 36,
     ...overrides
   };

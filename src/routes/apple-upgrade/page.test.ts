@@ -50,7 +50,7 @@ describe('Apple Upgrade page', () => {
   async function walkThrough(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByText('iPhone 17 Pro Max'));
     await user.click(screen.getByText('No trade-in'));
-    await user.click(screen.getByText('24 months'));
+    await user.click(screen.getByText('Every 2 years'));
     await user.click(screen.getByText('No AppleCare'));
   }
 
@@ -117,15 +117,15 @@ describe('Apple Upgrade page', () => {
     expect(container.querySelector('[data-month="9"] [data-cat="repair"]')).toBeNull();
     await chooseEnding(user, 'Hand it back');
     const repair = () => container.querySelector('[data-month="24"] [data-cat="repair"]');
-    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(1);
+    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(4);
     expect(repair()!.querySelector('.cell:not(.zero) .bar')?.getAttribute('title')).toBe(
-      'Lease: $29.00'
+      'Cash: $29.00'
     );
     expect(repair()!.textContent).toContain('$29.00');
     await user.click(screen.getByText('No AppleCare'));
     expect(repair()!.textContent).toContain('$250.00');
     await chooseEnding(user, 'Do nothing');
-    expect(repair()).toBeNull();
+    expect(repair()!.querySelectorAll('.cell:not(.zero) .bar')).toHaveLength(3);
   });
 
   it('treats Escape as no cracked screen', async () => {
@@ -139,6 +139,37 @@ describe('Apple Upgrade page', () => {
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).screenChoice).toBe(
       'dismiss'
     );
+  });
+
+  it('shows earned and lost carrier credits for each upgrade preference and restores the choice', async () => {
+    const user = userEvent.setup();
+    const { unmount, container } = render(Page);
+    await user.click(screen.getByText('iPhone 17 Pro Max'));
+    await user.click(screen.getByText('Yes, I have one'));
+    expect(screen.queryByText('Every year')).toBeNull();
+    await user.click(screen.getByText('Yes, a bigger offer'));
+    const offer = screen.getByLabelText(/Carrier’s total trade-in offer/);
+    await user.clear(offer);
+    await user.type(offer, '900');
+    await user.click(screen.getByText('Every year'));
+    expect(screen.getByRole('img', { name: '$300 received; $600 forfeited' })).toBeTruthy();
+    await user.click(screen.getByText('No AppleCare'));
+    await chooseEnding(user, 'Hand it back');
+    expect(
+      within(container.querySelector('[data-month="12"]') as HTMLElement).getByText(
+        'Carrier: $600.00 in trade-in credits forfeited'
+      )
+    ).toBeTruthy();
+    expect(container.querySelector('[data-month="13"]')?.textContent).toContain(
+      'Installment on traded-in phone'
+    );
+    await user.click(screen.getByText('Every 2 years'));
+    expect(screen.getByRole('img', { name: '$600 received; $300 forfeited' })).toBeTruthy();
+    await user.click(screen.getByText('Every 3 years'));
+    expect(screen.getByRole('img', { name: '$900 received; $0 forfeited' })).toBeTruthy();
+    unmount();
+    render(Page);
+    expect(screen.getByRole('img', { name: '$900 received; $0 forfeited' })).toBeTruthy();
   });
 
   it('starts with only the first question open', () => {
@@ -158,13 +189,13 @@ describe('Apple Upgrade page', () => {
 
     await user.click(screen.getByText('iPhone 17 Pro Max'));
     expect(screen.getByText('No trade-in')).toBeTruthy();
-    expect(screen.queryByText('12 months')).toBeNull();
+    expect(screen.queryByText('Every year')).toBeNull();
 
     await user.click(screen.getByText('No trade-in'));
-    expect(screen.getByText('12 months')).toBeTruthy();
+    expect(screen.getByText('Every year')).toBeTruthy();
     expect(screen.queryByText('No AppleCare')).toBeNull();
 
-    await user.click(screen.getByText('24 months'));
+    await user.click(screen.getByText('Every 2 years'));
     expect(screen.getByText('No AppleCare')).toBeTruthy();
   });
 
@@ -175,9 +206,8 @@ describe('Apple Upgrade page', () => {
     await user.click(screen.getByText('iPhone 17 Pro Max'));
     await user.click(screen.getByText('No trade-in'));
 
-    // Apple's own numbers for a $1,199 Pro Max.
-    expect(screen.getByText('$49.99/mo')).toBeTruthy();
-    expect(screen.getByText('$34.99/mo')).toBeTruthy();
+    expect(screen.getByText('Compare a 12-month lease')).toBeTruthy();
+    expect(screen.getAllByText('Compare a 24-month lease')).toHaveLength(2);
   });
 
   it('builds the ledger once every setup question is answered', async () => {
@@ -240,10 +270,10 @@ describe('Apple Upgrade page', () => {
     )!;
     expect(
       [...row.querySelectorAll('.cell')].map((cell) => cell.classList.contains('zero'))
-    ).toEqual([false, true, true, false]);
+    ).toEqual([false, false, true, false]);
     expect(
       [...row.querySelectorAll('.cell:not(.zero) .amt')].map((amount) => amount.textContent)
-    ).toEqual(['$101.92', '$101.92']);
+    ).toEqual(['$101.92', '$101.92', '$101.92']);
     expect(row.querySelector('[data-cat="tax"]')).toBeTruthy();
     expect(row.querySelector('.biller')?.textContent).toBe('apple / carrier');
     // Splitting tax out of the phone band must not lower the cash reference line.
@@ -289,7 +319,7 @@ describe('Apple Upgrade page', () => {
     await walkThrough(user);
     await user.click(screen.getByText('AppleCare+ monthly'));
     const rows = [...container.querySelectorAll('[data-month="1"] .charges li')];
-    for (const label of ['Installment', 'Lease payment', 'AppleCare+']) {
+    for (const label of ['Lease payment', 'AppleCare+']) {
       const index = rows.findIndex((row) => row.querySelector('.what')?.textContent === label);
       const tax = rows[index + 1];
       expect(tax.querySelector('.what')?.textContent).toBe(`Tax on ${label}`);
@@ -377,7 +407,8 @@ describe('Apple Upgrade page', () => {
     await user.type(trade, '800');
     // By the radio, not by its text: the surplus warning this test is about
     // names the terms too.
-    await user.click(container.querySelector('input[name="term"][value="12"]')!);
+    await user.click(screen.getByText('No, use regular trade-in'));
+    await user.click(container.querySelector('input[name="upgrade-every"][value="12"]')!);
     await user.click(screen.getByText('No AppleCare'));
 
     const dayOne = container.querySelector('[data-month="0"]')!;

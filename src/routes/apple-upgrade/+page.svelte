@@ -12,6 +12,10 @@
     screenRepairPrice,
     type ScreenChoice,
     leasePayment,
+    usedFraction,
+    leaseTermForUpgrade,
+    carrierTradeInDeal,
+    type UpgradeInterval,
     leaseTerms,
     money,
     money0,
@@ -38,7 +42,8 @@
     listPrice: number;
     hasTradeIn: 'no' | 'yes' | null;
     tradeIn: number;
-    term: Term | null;
+    upgradeEvery: UpgradeInterval | null;
+    hasCarrierOffer: 'no' | 'yes' | null;
     appleCare: AppleCarePlan | null;
     endChoice: EndChoice | null;
     appleCareMonthly: number;
@@ -54,7 +59,7 @@
     klarnaCardBack: number;
     carrierCardBack: number;
     discountRate: number;
-    carrierCredits: number;
+    carrierOffer: number;
   }
 
   const DEFAULTS: Saved = {
@@ -62,7 +67,8 @@
     listPrice: 1199,
     hasTradeIn: null,
     tradeIn: 375,
-    term: null,
+    upgradeEvery: null,
+    hasCarrierOffer: null,
     appleCare: null,
     endChoice: null,
     appleCareMonthly: 13.49,
@@ -78,7 +84,7 @@
     klarnaCardBack: 3,
     carrierCardBack: 2,
     discountRate: 4,
-    carrierCredits: 0
+    carrierOffer: 1000
   };
 
   // Restore at init, like the loan calculator, so the page comes back the way
@@ -87,7 +93,19 @@
     if (typeof window === 'undefined') return DEFAULTS;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Saved>) } : DEFAULTS;
+      if (!raw) return DEFAULTS;
+      const saved = JSON.parse(raw) as Partial<Saved> & { term?: Term; carrierCredits?: number };
+      return {
+        ...DEFAULTS,
+        ...saved,
+        upgradeEvery: saved.upgradeEvery ?? saved.term ?? null,
+        hasCarrierOffer: saved.hasCarrierOffer ?? ((saved.carrierCredits ?? 0) > 0 ? 'yes' : null),
+        carrierOffer:
+          saved.carrierOffer ??
+          ((saved.carrierCredits ?? 0) > 0
+            ? saved.carrierCredits! + (saved.hasTradeIn === 'yes' ? (saved.tradeIn ?? 0) : 0)
+            : DEFAULTS.carrierOffer)
+      };
     } catch {
       return DEFAULTS; // A corrupt blob just means you get the defaults.
     }
@@ -99,7 +117,9 @@
   let listPrice = $state(initial.listPrice);
   let hasTradeIn = $state(initial.hasTradeIn);
   let tradeIn = $state(initial.tradeIn);
-  let term = $state(initial.term);
+  let upgradeEvery = $state(initial.upgradeEvery);
+  let hasCarrierOffer = $state(initial.hasCarrierOffer);
+  const term = $derived(upgradeEvery === null ? null : leaseTermForUpgrade(upgradeEvery));
   let appleCare = $state(initial.appleCare);
   let endChoice = $state(initial.endChoice);
 
@@ -135,7 +155,7 @@
   let klarnaCardBack = $state(initial.klarnaCardBack);
   let carrierCardBack = $state(initial.carrierCardBack);
   let discountRate = $state(initial.discountRate);
-  let carrierCredits = $state(initial.carrierCredits);
+  let carrierOffer = $state(initial.carrierOffer);
   let resaleAtTerm = $state(Math.round(initial.listPrice * 0.45));
   let resaleAtHorizon = $state(Math.round(initial.listPrice * 0.24));
 
@@ -143,8 +163,8 @@
   // re-derive; they're guesses either way, so tune them after you pick.
   $effect(() => {
     const price = listPrice;
-    const months = term ?? 24;
-    resaleAtTerm = Math.round(price * (months === 12 ? 0.62 : 0.45));
+    const months = upgradeEvery ?? 24;
+    resaleAtTerm = Math.round(price * usedFraction(months));
     resaleAtHorizon = Math.round(price * 0.24);
   });
 
@@ -154,7 +174,8 @@
       listPrice,
       hasTradeIn,
       tradeIn,
-      term,
+      upgradeEvery,
+      hasCarrierOffer,
       appleCare,
       endChoice,
       appleCareMonthly,
@@ -170,22 +191,17 @@
       klarnaCardBack,
       carrierCardBack,
       discountRate,
-      carrierCredits
+      carrierOffer
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   });
 
   // ---- Step gating --------------------------------------------------------
+  const tradeInAnswered = $derived(
+    hasTradeIn === 'no' || (hasTradeIn === 'yes' && hasCarrierOffer !== null)
+  );
   const step = $derived(
-    appleCare !== null
-      ? 5
-      : term !== null
-        ? 4
-        : hasTradeIn !== null
-          ? 3
-          : deviceKey !== null
-            ? 2
-            : 1
+    !deviceKey ? 1 : !tradeInAnswered ? 2 : upgradeEvery === null ? 3 : appleCare === null ? 4 : 5
   );
 
   // -1 until the first effect run, so restoring a finished form doesn't fling
@@ -237,12 +253,15 @@
     discountRate,
     resaleAtTerm,
     resaleAtHorizon,
-    carrierCredits,
+    carrierOffer: hasTradeIn === 'yes' && hasCarrierOffer === 'yes' ? carrierOffer : null,
+    upgradeEvery: upgradeEvery ?? undefined,
+    upgradeTradeIn: resaleAtTerm,
     carrierTerm: 36
   });
 
   const repairPrice = $derived(screenRepairPrice(inputs));
   const scenarios = $derived(allScenarios(inputs));
+  const carrierDeal = $derived(carrierTradeInDeal(inputs));
   const story = $derived(beats(inputs));
 
   /** How far down the ledger the reader is allowed before answering. */
@@ -259,17 +278,11 @@
       .filter((t) => t.refund > 0.005)
   );
 
-  const termOptions = $derived(
-    ([12, 24] as Term[]).map((t) => {
-      const terms = leaseTerms(listPrice, t, hasTradeIn === 'yes' ? tradeIn : 0);
-      return {
-        value: t,
-        label: `${t} months`,
-        sub: `${money(terms.payment)}/mo`,
-        note: `${money0(terms.payment * t)} in payments, then ${money0(terms.buyoutAtTerm)} to keep it`
-      };
-    })
-  );
+  const upgradeOptions = ([12, 24, 36] as UpgradeInterval[]).map((months) => ({
+    value: months,
+    label: months === 12 ? 'Every year' : `Every ${months / 12} years`,
+    note: `Compare a ${leaseTermForUpgrade(months)}-month lease`
+  }));
 
   const careOptions = $derived([
     { value: 'none' as const, label: 'No AppleCare', sub: '$0', note: 'You own the damage risk' },
@@ -384,6 +397,27 @@
           hint="Apple's quoted value for your old device."
         />
       </div>
+      <div class="aside">
+        <h3>Did your carrier offer a bigger trade-in?</h3>
+        <Tiles
+          options={[
+            { value: 'no', label: 'No, use regular trade-in' },
+            { value: 'yes', label: 'Yes, a bigger offer' }
+          ]}
+          bind:value={hasCarrierOffer}
+          name="carrier-offer"
+        />
+        {#if hasCarrierOffer === 'yes'}
+          <div class="fields one">
+            <Field
+              label="Carrier’s total trade-in offer"
+              bind:value={carrierOffer}
+              step={50}
+              hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
+            />
+          </div>
+        {/if}
+      </div>
     {/if}
 
     {#if tradeInSurplus.length}
@@ -402,8 +436,32 @@
   </Step>
 
   <div id="step-3"></div>
-  <Step n={3} title="Lease length?" locked={step < 3} answer={term ? `${term} months` : undefined}>
-    <Tiles options={termOptions} bind:value={term} name="term" min="230px" />
+  <Step
+    n={3}
+    title="How often do you want a new phone?"
+    locked={step < 3}
+    answer={upgradeEvery
+      ? `Every ${upgradeEvery / 12} ${upgradeEvery === 12 ? 'year' : 'years'}`
+      : undefined}
+  >
+    <Tiles options={upgradeOptions} bind:value={upgradeEvery} name="upgrade-every" min="180px" />
+    {#if upgradeEvery && hasTradeIn === 'yes' && hasCarrierOffer === 'yes'}
+      <div class="aside">
+        <h3>Your carrier trade-in at month {upgradeEvery}</h3>
+        <div
+          class="offer-bar"
+          role="img"
+          aria-label={`${money0(carrierDeal.earned)} received; ${money0(carrierDeal.forfeited)} forfeited`}
+        >
+          <span
+            style:width={`${carrierDeal.offered > 0 ? (carrierDeal.earned / carrierDeal.offered) * 100 : 0}%`}
+          ></span>
+        </div>
+        <p>
+          {money0(carrierDeal.earned)} received · {money0(carrierDeal.forfeited)} in credits lost
+        </p>
+      </div>
+    {/if}
   </Step>
 
   <div id="step-4"></div>
@@ -484,16 +542,10 @@
         hint="What your unspent cash earns."
       />
       <Field
-        label="Carrier promo credits"
-        bind:value={carrierCredits}
-        step={50}
-        hint="Total, dribbled out over 36 months."
-      />
-      <Field
-        label="Resale at month {term ?? 24}"
+        label="Trade-in at month {upgradeEvery ?? 24}"
         bind:value={resaleAtTerm}
         step={25}
-        hint="What you could sell it for."
+        hint="Estimated trade-in for each replacement. Future phone prices stay the same."
       />
       <Field label="Resale at month {HORIZON}" bind:value={resaleAtHorizon} step={25} />
     </div>
@@ -557,6 +609,26 @@
           is not a quoted return fee.
         </p>
         <p>
+          Cash and Apple Card replace the phone on your chosen schedule. Old Apple Card installments
+          continue after trade-in; tax is paid upfront. The lease follows your end-of-term choice,
+          so a 24-month renewal upgrades sooner than a three-year preference.
+        </p>
+        <p>
+          The carrier offer replaces the regular trade-in value and repeats on each eligible
+          replacement as an estimate. This models a 36-month deal with payoff and lost credits on
+          early upgrade, without paid early-upgrade add-ons. Future offers are not guaranteed.
+        </p>
+        <p>
+          Assumes upfront tax is paid in full without interest. Card rewards remain spread across
+          the modeled payments; Apple Card actually awards Daily Cash upfront.
+        </p>
+        <p>
+          <a href="https://support.apple.com/en-us/104950">Apple Card terms</a> ·
+          <a href="https://www.verizon.com/support/device-payment-faqs/"
+            >Carrier payoff and credits</a
+          >
+        </p>
+        <p>
           Doing nothing means monthly payments continue, followed by an automatic buyout six months
           after the term ends.
         </p>
@@ -591,6 +663,24 @@
 </dialog>
 
 <style>
+  .offer-bar {
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--border);
+    margin-top: 12px;
+  }
+  .offer-bar span {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+  }
+  .aside p {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 8px 0 0;
+  }
+
   dialog {
     margin: auto;
     width: min(480px, calc(100vw - 32px));

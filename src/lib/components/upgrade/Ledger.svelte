@@ -85,10 +85,11 @@
           billers: [],
           category: item.category,
           taxFor: item.taxFor,
+          credit: item.amount < 0,
           amounts: scenarios.map(() => 0)
         });
         if (!charge.billers.includes(item.biller)) charge.billers.push(item.biller);
-        charge.amounts[column] += item.amount;
+        charge.amounts[column] += Math.abs(item.amount);
       }
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
@@ -169,7 +170,7 @@
   const reference = $derived.by(() => {
     const outright = scenarios.find((s) => s.key === 'outright');
     if (!outright) return undefined;
-    const last = outright.rows[outright.rows.length - 1];
+    const last = outright.rows[0];
     const split = basis === 'npv' ? last.runningNpvByCategory : last.runningByCategory;
     const tax = outright.rows[0].items.find((item) => item.label === 'Sales tax, up front');
     const value = split.phone + (tax ? tax.amount - (tax.reward ?? 0) : 0);
@@ -325,6 +326,14 @@
       {#if idle}
         <p class="nothing">{idle}</p>
       {/if}
+      {#each scenarios as scenario (scenario.key)}
+        {#if scenario.rows[month].forfeitedCredits}
+          <p class="nothing">
+            {scenario.shortName}: {money(scenario.rows[month].forfeitedCredits!)} in trade-in credits
+            forfeited
+          </p>
+        {/if}
+      {/each}
     </section>
 
     {#if questions[month]}

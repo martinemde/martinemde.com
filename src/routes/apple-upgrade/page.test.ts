@@ -226,9 +226,14 @@ describe('Apple Upgrade page', () => {
     const month = container.querySelector('[data-month="24"]')!;
     const explanation = month.querySelector('.lease-return');
     expect(explanation?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Lease 24: returning this phone clears a $420.16 buyout (including tax), but gives you no trade-in credit. Its estimated Apple trade-in value is $610.00 — $189.84 more than the buyout. That value is given up when you return it; it is not an extra bill.'
+      'Lease 24: Buying out the lease in full, then trading in the phone, may be worth $190 more than returning it at lease end.'
     );
-    expect(explanation?.closest('.breakdown')).toBeNull();
+    const details = explanation!.closest<HTMLElement>('.breakdown')!;
+    expect(details.inert).toBe(true);
+    expect(details.getAttribute('aria-hidden')).toBe('true');
+    await user.click(screen.getByRole('button', { name: 'Month 24: show breakdown' }));
+    expect(details.inert).toBe(false);
+    expect(details.getAttribute('aria-hidden')).toBe('false');
     await chooseYear(user, 2);
     expect(container.querySelector('.lease-return')).toBeNull();
   });

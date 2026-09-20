@@ -595,11 +595,6 @@
       <Ledger
         bind:activeMonth
         {scenarios}
-        upgradeSummary={inputs.upgradeMonths!.length > 0
-          ? `upgrades in ${inputs.upgradeMonths!.length === 1 ? 'year' : 'years'} ${inputs.upgradeMonths!.map((month) => month / 12).join(', ')}`
-          : unansweredYear < 0
-            ? 'keeping the original phone'
-            : 'deciding each year'}
         beats={story}
         limit={ledgerLimit}
         questions={screenChoice !== null

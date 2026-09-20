@@ -11,7 +11,6 @@
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */
     scenarios: Scenario[];
-    upgradeSummary?: string;
     /** Months worth stopping on, keyed by month. */
     beats: Map<number, Beat>;
     /** Questions that only make sense once you have got there, keyed by month. */
@@ -26,14 +25,7 @@
     activeMonth?: number;
   }
 
-  let {
-    scenarios,
-    upgradeSummary,
-    beats,
-    questions = {},
-    limit,
-    activeMonth = $bindable(-1)
-  }: Props = $props();
+  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
@@ -254,15 +246,7 @@
   <div class="sentinel" bind:this={sentinel} aria-hidden="true"></div>
 
   <div class="panel-wrap" bind:this={panelWrap}>
-    <Columns
-      {scenarios}
-      {upgradeSummary}
-      month={activeMonth}
-      {reference}
-      bind:basis
-      height={chartPx}
-      {stuck}
-    />
+    <Columns {scenarios} month={activeMonth} {reference} bind:basis height={chartPx} {stuck} />
   </div>
 
   {#each months as month (month)}

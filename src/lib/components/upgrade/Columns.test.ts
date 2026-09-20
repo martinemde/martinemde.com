@@ -42,6 +42,11 @@ function pct(style: string | null): number {
 }
 
 describe('Columns', () => {
+  it('names the current month clearly in the heading', () => {
+    const { container } = mount(14);
+    expect(container.querySelector('h3')?.textContent).toBe('Total spent by month 14');
+  });
+
   it.each(['cash', 'npv'] as const)(
     'uses the same grouped amounts as the ledger in %s',
     (basis) => {

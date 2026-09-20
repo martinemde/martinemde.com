@@ -5,9 +5,10 @@
     scenarios: Scenario[];
     /** Key of the path the reader has been configuring, so it reads as "theirs". */
     highlight?: string;
+    privateSale?: boolean;
   }
 
-  let { scenarios, highlight }: Props = $props();
+  let { scenarios, highlight, privateSale = false }: Props = $props();
 
   type Row = {
     label: string;
@@ -18,7 +19,7 @@
     lead?: boolean;
   };
 
-  const rows: Row[] = [
+  const rows: Row[] = $derived([
     {
       label: 'Due today',
       value: (s) => money0(s.summary.today),
@@ -46,7 +47,9 @@
     },
     {
       label: `What you hold at month ${HORIZON}`,
-      hint: 'Resale value, less anything still owed on it',
+      hint: privateSale
+        ? 'Estimated private-sale proceeds, less anything still owed'
+        : 'Apple trade-in value, less anything still owed',
       value: (s) =>
         s.summary.equityAtHorizon !== 0 ? money0(s.summary.equityAtHorizon) : 'nothing'
     },
@@ -64,7 +67,9 @@
     },
     {
       label: 'Net cost',
-      hint: 'Today’s dollars, minus what you can sell it for',
+      hint: privateSale
+        ? 'Today’s dollars, minus the final phone’s estimated private-sale value'
+        : 'Today’s dollars, minus the final phone’s net Apple trade-in value',
       value: (s) => money0(s.summary.netCost),
       rank: (s) => s.summary.netCost,
       lead: true
@@ -75,7 +80,7 @@
       value: (s) => money0(s.summary.perMonth),
       rank: (s) => s.summary.perMonth
     }
-  ];
+  ]);
 
   function winner(row: Row): number {
     if (!row.rank) return -1;

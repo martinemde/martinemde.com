@@ -119,9 +119,12 @@ export interface Inputs {
   upgradeEvery?: UpgradeInterval;
   /** Explicit shared replacement months. An empty list means keep the original phone. */
   upgradeMonths?: number[];
-  /** Explicit regular trade-in estimates for phones aged one, two and three years.
+  /** Explicit regular trade-in estimates for phones aged one through four years.
    * Independent of private resale estimates. No quote means no assumed credit. */
   upgradeTradeIns?: readonly number[];
+  /** Opt in to selling owned phones privately. Net proceeds after fees/shipping,
+   * by age in years. Replaces trade-in credit; never sells a returned lease. */
+  privateSaleValues?: readonly number[];
   upgradeTradeIn?: number;
   /** Carrier installment term. Effectively always 36 now. */
   carrierTerm: number;
@@ -604,7 +607,9 @@ function attributeDeferredDamage(input: Inputs, build: (input: Inputs) => Scenar
         };
         if (Math.abs(remainder.amount) > 0.005) items.push(remainder);
         items.push({
-          label: 'Screen damage at trade-in',
+          label: input.privateSaleValues
+            ? 'Screen damage at private sale'
+            : 'Screen damage at trade-in',
           amount: damage,
           reward,
           biller: item.biller,
@@ -852,7 +857,14 @@ function scheduledLease(input: Inputs): Scenario {
           : replacementValue(input, previousAge, index === 1);
     const end = starts[index + 1] ?? HORIZON + 1;
     const returns = end <= HORIZON && end - start >= term && end - start < term + EXTENSION_MONTHS;
-    return { start, end, returns, ...leaseTerms(listPrice, term, tradeIn) };
+    return {
+      start,
+      end,
+      returns,
+      sale:
+        index > 0 && !returningPrevious ? privateSaleItems(input, previousAge, index === 1) : [],
+      ...leaseTerms(listPrice, term, tradeIn)
+    };
   });
   const paidThrough = (cycle: (typeof cycles)[number], age: number) =>
     cycle.payment * Math.min(Math.max(0, age), term) +
@@ -872,7 +884,7 @@ function scheduledLease(input: Inputs): Scenario {
       const age = month - cycle.start;
       if (age < 0 || month > cycle.end) continue;
       if (age === 0) {
-        out.push(...purchaseExtras(input));
+        out.push(...purchaseExtras(input), ...cycle.sale);
         if (cycle.start > 0 && cycle.refund > 0)
           out.push({
             label: 'Apple credit back for excess trade-in',
@@ -918,7 +930,7 @@ function scheduledLease(input: Inputs): Scenario {
   const rows = assemble(input, items, state);
   const latest = cycles[cycles.length - 1];
   const age = HORIZON - latest.start;
-  const resale = resaleAtAge(input, age);
+  const resale = closingValue(input, age, starts.length === 1);
   const equity =
     age >= term + EXTENSION_MONTHS
       ? resale
@@ -957,9 +969,33 @@ function replacementValue(
   age = input.upgradeEvery ?? HORIZON,
   originalPhone = false
 ): number {
+  if (input.privateSaleValues) return 0;
   const quoted = input.upgradeTradeIns?.[Math.max(0, Math.ceil(age / 12) - 1)];
   const value = Math.min(input.listPrice, Math.max(0, input.upgradeTradeIn ?? quoted ?? 0));
   return Math.max(0, value - tradeInDamage(input, originalPhone));
+}
+
+/** Closing value is still held, not a cash receipt at month 48. */
+function closingValue(input: Inputs, age: number, originalPhone: boolean): number {
+  const values = input.privateSaleValues ?? input.upgradeTradeIns;
+  const quote = values?.[Math.max(0, Math.ceil(age / 12) - 1)] ?? 0;
+  return Math.max(0, quote - tradeInDamage(input, originalPhone));
+}
+
+function privateSaleItems(input: Inputs, age: number, originalPhone: boolean): LineItem[] {
+  if (!input.privateSaleValues) return [];
+  const amount = closingValue(input, age, originalPhone);
+  return amount > 0
+    ? [
+        {
+          label: 'Private sale proceeds',
+          amount: -amount,
+          reward: 0,
+          biller: 'apple',
+          category: 'phone'
+        }
+      ]
+    : [];
 }
 
 function purchaseExtras(input: Inputs): LineItem[] {
@@ -1012,7 +1048,12 @@ function buildOutright(input: Inputs): Scenario {
             )
       );
       out.push({
-        label: month === 0 ? 'Device' : 'New phone after trade-in',
+        label:
+          month === 0
+            ? 'Device'
+            : input.privateSaleValues
+              ? 'New phone'
+              : 'New phone after trade-in',
         amount: terms.device,
         biller: 'apple',
         category: 'phone'
@@ -1026,6 +1067,9 @@ function buildOutright(input: Inputs): Scenario {
           taxFor: 'Device'
         });
       out.push(...purchaseExtras(input));
+      const index = purchases.indexOf(month);
+      if (index > 0)
+        out.push(...privateSaleItems(input, month - purchases[index - 1], index === 1));
     }
     out.push(...appleCareItems(input, month), ...screenRepairItems(input, month));
     return out;
@@ -1041,7 +1085,7 @@ function buildOutright(input: Inputs): Scenario {
     summary: summarize(
       input,
       rows,
-      resaleAtAge(input, age),
+      closingValue(input, age, purchases.length === 1),
       purchaseTerms(input, input.tradeIn).refund
     )
   };
@@ -1055,6 +1099,7 @@ function buildAppleCardFinancing(input: Inputs): Scenario {
   const months = purchaseMonths(input);
   const purchases = months.map((month, index) => ({
     month,
+    sale: index > 0 ? privateSaleItems(input, month - months[index - 1], index === 1) : [],
     ...purchaseTerms(
       input,
       month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1], index === 1)
@@ -1072,12 +1117,16 @@ function buildAppleCardFinancing(input: Inputs): Scenario {
             category: 'tax',
             taxFor: 'Device'
           });
-        out.push(...purchaseExtras(input));
+        out.push(...purchaseExtras(input), ...purchase.sale);
       }
       if (month > purchase.month && month <= purchase.month + 24) {
         const traded = purchases.some((next) => next.month > purchase.month && next.month < month);
         out.push({
-          label: traded ? 'Installment on traded-in phone' : 'Installment',
+          label: traded
+            ? input.privateSaleValues
+              ? 'Installment on privately sold phone'
+              : 'Installment on traded-in phone'
+            : 'Installment',
           amount: purchase.device / 24,
           biller: 'apple',
           category: 'phone'
@@ -1099,7 +1148,13 @@ function buildAppleCardFinancing(input: Inputs): Scenario {
     shortName: 'Finance',
     blurb: 'Old installments continue after a trade-in.',
     rows,
-    summary: summarize(input, rows, resaleAtAge(input, age) - debt, purchases[0].refund, debt)
+    summary: summarize(
+      input,
+      rows,
+      closingValue(input, age, purchases.length === 1) - debt,
+      purchases[0].refund,
+      debt
+    )
   };
 }
 
@@ -1134,8 +1189,9 @@ function buildCarrierFinancing(input: Inputs): Scenario {
   const months = purchaseMonths(input);
   const purchases = months.map((month, index) => ({
     month,
+    sale: index > 0 ? privateSaleItems(input, month - months[index - 1], index === 1) : [],
     ...carrierTradeInDeal(
-      input,
+      index > 0 && input.privateSaleValues ? { ...input, carrierOffer: null } : input,
       month === 0 ? input.tradeIn : replacementValue(input, month - months[index - 1], index === 1),
       (months[index + 1] ?? HORIZON + n) - month,
       tradeInDamage(input, index === 1)
@@ -1152,7 +1208,7 @@ function buildCarrierFinancing(input: Inputs): Scenario {
           biller: 'carrier',
           category: 'tax'
         });
-        out.push(...purchaseExtras(input));
+        out.push(...purchaseExtras(input), ...purchase.sale);
       }
       const age = month - purchase.month;
       if (age > 0 && age <= n && month <= end) {
@@ -1201,7 +1257,7 @@ function buildCarrierFinancing(input: Inputs): Scenario {
       ...summarize(
         input,
         rows,
-        resaleAtAge(input, age) - debt,
+        closingValue(input, age, purchases.length === 1) - debt,
         input.carrierOffer === null ? Math.max(0, input.tradeIn - input.listPrice) : 0,
         debt
       ),

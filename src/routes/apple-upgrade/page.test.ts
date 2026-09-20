@@ -279,29 +279,33 @@ describe('Apple Upgrade page', () => {
     expect(replacement().querySelector('.amt')?.textContent).toBe('$589.00');
   });
 
-  it('uses Apple trade-in estimates independently of private resale', async () => {
+  it('defaults to fixed Apple values and shows private sales as a separate action', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
     await chooseYear(user, 1, true);
-    const replacement = () =>
-      within(container.querySelector('[data-month="12"]') as HTMLElement)
-        .getByText('New phone after trade-in')
-        .closest('li')!
-        .querySelector('.amt')!.textContent;
-    expect(replacement()).toBe('$314.00'); // $1,199 less Apple’s $885 estimate.
+    const month = () => within(container.querySelector('[data-month="12"]') as HTMLElement);
+    const amount = (label: string) =>
+      month().getByText(label).closest('li')!.querySelector('.amt')!.textContent;
+    expect(amount('New phone after trade-in')).toBe('$314.00');
     await user.click(screen.getByText('Nitpicky stuff if you want to account for every penny'));
-    await fireEvent.input(screen.getByRole('spinbutton', { name: /^Resale at month 48/ }), {
-      target: { value: '1000' }
+    expect(screen.queryByRole('spinbutton', { name: /^Apple trade-in after/ })).toBeNull();
+    const choice = screen.getByRole('checkbox', {
+      name: 'I’ll sell owned phones privately instead'
     });
-    expect(replacement()).toBe('$314.00');
-    await fireEvent.input(
-      screen.getByRole('spinbutton', { name: /^Apple trade-in after 1 year/ }),
-      {
-        target: { value: '500' }
-      }
+    await user.click(choice);
+    await fireEvent.input(screen.getByRole('spinbutton', { name: /^Private sale after 1 year/ }), {
+      target: { value: '900' }
+    });
+    expect(month().queryByText('New phone after trade-in')).toBeNull();
+    expect(amount('New phone')).toBe('$1,199.00');
+    expect(amount('Private sale proceeds')).toBe('−$900.00');
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).privateSaleValues[0]).toBe(
+      900
     );
-    expect(replacement()).toBe('$699.00');
+    await user.click(choice);
+    expect(month().queryByText('Private sale proceeds')).toBeNull();
+    expect(amount('New phone after trade-in')).toBe('$314.00');
   });
 
   it('reconciles all five visible columns in both dollar modes across mixed decisions', async () => {

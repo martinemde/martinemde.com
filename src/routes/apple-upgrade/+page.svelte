@@ -13,7 +13,6 @@
     screenRepairPrice,
     type ScreenChoice,
     leasePayment,
-    usedFraction,
     money,
     money0,
     type AppleCarePlan,
@@ -24,28 +23,29 @@
 
   // Apple’s US maximum trade-in quotes, checked 2026-09-20:
   // https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values
-  // Age proxies: 17/16/15 of the same tier; Air uses regular 16/15 for older ages.
+  // Age proxies: 17/16/15/14 of the same tier; Air uses regular 16/15/14 for older ages.
   // These estimate future offers, not private-sale proceeds or guaranteed quotes.
   const DEVICES = [
-    { key: 'iphone-17', label: 'iPhone 17', price: 799, tradeIns: [585, 430, 305] },
-    { key: 'iphone-air', label: 'iPhone Air', price: 999, tradeIns: [585, 430, 305] },
-    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099, tradeIns: [785, 510, 370] },
+    { key: 'iphone-17', label: 'iPhone 17', price: 799, tradeIns: [585, 430, 305, 195] },
+    { key: 'iphone-air', label: 'iPhone Air', price: 999, tradeIns: [585, 430, 305, 195] },
+    { key: 'iphone-17-pro', label: 'iPhone 17 Pro', price: 1099, tradeIns: [785, 510, 370, 285] },
     {
       key: 'iphone-17-pro-max',
       label: 'iPhone 17 Pro Max',
       price: 1199,
-      tradeIns: [885, 610, 455]
+      tradeIns: [885, 610, 455, 360]
     },
-    { key: 'custom', label: 'Something else', price: 0, tradeIns: [0, 0, 0] }
+    { key: 'custom', label: 'Something else', price: 0, tradeIns: [0, 0, 0, 0] }
   ];
 
-  /** Everything the page remembers between visits. Trade-in and resale estimates are excluded
-   * on purpose — they re-derive from whichever device you land on. */
+  /** Everything the page remembers between visits. Apple trade-in values
+   * re-derive from the selected device; private-sale estimates are saved. */
   interface Saved {
     deviceKey: string | null;
     listPrice: number;
     hasTradeIn: 'no' | 'yes' | null;
     tradeIn: number;
+    privateSaleValues: number[] | null;
     annualChoices: ('upgrade' | 'keep' | null)[];
     appleCare: AppleCarePlan | null;
     appleCareMonthly: number;
@@ -69,6 +69,7 @@
     listPrice: 1199,
     hasTradeIn: null,
     tradeIn: 375,
+    privateSaleValues: null,
     annualChoices: [null, null, null],
     appleCare: null,
     appleCareMonthly: 13.49,
@@ -166,8 +167,11 @@
   let carrierCardBack = $state(initial.carrierCardBack);
   let discountRate = $state(initial.discountRate);
   let carrierOffer = $state(initial.carrierOffer);
-  let upgradeTradeIns = $state<number[]>([0, 0, 0]);
-  let resaleAtHorizon = $state(Math.round(initial.listPrice * 0.24));
+  let upgradeTradeIns = $derived([
+    ...(DEVICES.find((device) => device.key === deviceKey)?.tradeIns ?? [0, 0, 0, 0])
+  ]);
+  let privateSaleValues = $state(initial.privateSaleValues);
+  let previousDevice = initial.deviceKey;
 
   let scrollY = $state(0);
   let pageTitle: HTMLHeadingElement;
@@ -203,21 +207,10 @@
     carrierCardBack = DEFAULTS.carrierCardBack;
     discountRate = DEFAULTS.discountRate;
     carrierOffer = DEFAULTS.carrierOffer;
-    resaleAtHorizon = Math.round(DEFAULTS.listPrice * 0.24);
+    privateSaleValues = null;
     await tick();
     pageTitle.focus({ preventScroll: true });
   }
-
-  // Changing the device resets independent trade-in and private resale estimates.
-  $effect(() => {
-    upgradeTradeIns = [
-      ...(DEVICES.find((device) => device.key === deviceKey)?.tradeIns ?? [0, 0, 0])
-    ];
-  });
-  $effect(() => {
-    const price = listPrice;
-    resaleAtHorizon = Math.round(price * 0.24);
-  });
 
   $effect(() => {
     const saved: Saved = {
@@ -225,6 +218,7 @@
       listPrice,
       hasTradeIn,
       tradeIn,
+      privateSaleValues,
       annualChoices,
       appleCare,
       appleCareMonthly,
@@ -266,6 +260,8 @@
   });
 
   function pickDevice(key: string | null) {
+    if (key !== previousDevice) privateSaleValues = null;
+    previousDevice = key;
     const device = DEVICES.find((d) => d.key === key);
     if (device && device.price > 0) listPrice = device.price;
   }
@@ -293,8 +289,9 @@
     klarnaCardBack,
     carrierCardBack,
     discountRate,
-    resaleAtTerm: listPrice * usedFraction(24),
-    resaleAtHorizon,
+    resaleAtTerm: upgradeTradeIns[1],
+    resaleAtHorizon: upgradeTradeIns[3],
+    privateSaleValues: privateSaleValues ?? undefined,
     upgradeTradeIns,
     carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
     upgradeMonths: annualChoices.flatMap((choice, index) =>
@@ -497,23 +494,56 @@
         <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
         <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
       </div>
-      <h3>Future Apple trade-in estimates</h3>
+      <h3>Apple trade-in values</h3>
       <p>
-        Based on <a href="https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values"
-          >Apple’s current maximum trade-in values</a
-        > for similar phones aged one, two and three years, checked September 20, 2026. Future offers
-        may differ. Air uses regular iPhones for its two- and three-year estimates. Enter your own estimates
-        for a custom phone. These are trade-in credits, not money from selling privately.
+        We use <a href="https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values"
+          >Apple’s fixed trade-in values</a
+        > for similar phones aged one through four years, checked September 20, 2026. Future offers may
+        differ. Older Air estimates use regular iPhones. These values also set what your final phone is
+        worth in the comparison.
       </p>
       <div class="fields">
-        {#each [1, 2, 3] as age, index}
-          <Field
-            label={`Apple trade-in after ${age} ${age === 1 ? 'year' : 'years'}`}
-            bind:value={upgradeTradeIns[index]}
-            step={25}
-          />
+        {#each [1, 2, 3, 4] as age, index (age)}
+          {#if deviceKey === 'custom'}
+            <Field
+              label={`Apple trade-in after ${age} ${age === 1 ? 'year' : 'years'}`}
+              bind:value={upgradeTradeIns[index]}
+              step={25}
+            />
+          {:else}
+            <p>
+              {age}
+              {age === 1 ? 'year' : 'years'} old: <strong>{money0(upgradeTradeIns[index])}</strong>
+            </p>
+          {/if}
         {/each}
       </div>
+      <label class="private-sale-choice">
+        <input
+          type="checkbox"
+          checked={privateSaleValues !== null}
+          onchange={(event) =>
+            (privateSaleValues = event.currentTarget.checked ? [...upgradeTradeIns] : null)}
+        />
+        I’ll sell owned phones privately instead
+      </label>
+      {#if privateSaleValues !== null}
+        <p>
+          Enter what you expect to receive after selling fees and shipping. At each upgrade, private
+          sale proceeds appear on their own line instead of a trade-in credit. Eligible leases are
+          still returned; a phone bought out early can be sold. Selling privately means no new
+          carrier trade-in promotion.
+        </p>
+        <div class="fields">
+          {#each [1, 2, 3, 4] as age, index (age)}
+            <Field
+              label={`Private sale after ${age} ${age === 1 ? 'year' : 'years'}`}
+              bind:value={privateSaleValues[index]}
+              step={25}
+            />
+          {/each}
+        </div>
+      {/if}
       <h3>Estimates</h3>
       <div class="fields">
         <Field
@@ -522,12 +552,6 @@
           unit="%"
           step={0.5}
           hint="What your unspent cash earns."
-        />
-        <Field
-          label="Resale at month {HORIZON}"
-          bind:value={resaleAtHorizon}
-          step={25}
-          hint="Private-sale estimate for the final phone’s value. Does not set upgrade trade-in credits."
         />
       </div>
     </details>
@@ -600,20 +624,20 @@
           <h2>What the scroll adds up to</h2>
         </div>
 
-        <Compare {scenarios} />
+        <Compare {scenarios} privateSale={privateSaleValues !== null} />
       </section>
 
       <details class="assumptions">
         <summary>Assumptions and lease terms</summary>
         <p>
-          Estimates, not a quote. Tax treatment varies by state; repair and resale values are
-          editable.
+          Estimates, not a quote. Tax treatment varies by state. Private-sale proceeds are your own
+          estimates after fees and shipping.
         </p>
         <p>
           Lease payments use 50% of the sticker for 12 months or 70% for 24, rounded to x.99.
           Payments and trade-in credit reduce the buyout. Future phones keep the same price.
-          Returning a leased phone settles the lease without a trade-in credit; owned phones receive
-          estimated trade-in value based on their age.
+          Returning a leased phone settles the lease without a trade-in credit; owned phones use
+          Apple’s age-based trade-in values unless you choose a private sale.
         </p>
         <p>
           Totals subtract card rewards. “Today’s dollars” applies your discount rate; net cost also
@@ -627,8 +651,8 @@
         <p>
           Every path replaces the phone only in years when you choose to upgrade. Old Apple Card
           installments continue after trade-in; tax is paid upfront. Early lease upgrades pay the
-          remaining buyout, then trade the owned phone toward a new lease. Keeping a phone leaves it
-          on its existing payment schedule.
+          remaining buyout before trading or privately selling the owned phone. Keeping a phone
+          leaves it on its existing payment schedule.
         </p>
         <p>
           The carrier offer replaces the regular trade-in value and repeats on each eligible

@@ -99,7 +99,7 @@
   <div class="top">
     <span class="eyebrow"
       >// month {month < 0 ? '--' : String(month).padStart(2, '0')} of {scenarios[0].rows.length -
-        1}{#if upgradeSummary}{' '}{upgradeSummary}{/if}</span
+        1}{upgradeSummary ? ` ${upgradeSummary}` : ''}</span
     >
     <button
       class="basis"

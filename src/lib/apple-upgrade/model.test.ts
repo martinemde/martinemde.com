@@ -44,7 +44,7 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     discountRate: 4,
     resaleAtTerm: 500,
     resaleAtHorizon: 380,
-    upgradeTradeIns: [744, 540, 396],
+    upgradeTradeIns: [744, 540, 396, 288],
     carrierOffer: null,
     carrierTerm: 36,
     ...overrides
@@ -1243,5 +1243,88 @@ describe('quoted trade-in credits are separate from private resale', () => {
   it('assumes no replacement credit without a quote', () => {
     const base = inputs({ upgradeMonths: [12], upgradeTradeIns: undefined, resaleAtHorizon: 1000 });
     expect(outright(base).rows[12].outflow).toBe(1199);
+  });
+});
+
+describe('private sale is a separate action', () => {
+  const base = (overrides: Partial<Inputs> = {}) =>
+    inputs({
+      listPrice: 1200,
+      upgradeMonths: [12, 24, 36],
+      upgradeTradeIns: [600, 400, 300, 200],
+      privateSaleValues: [700, 500, 350, 250],
+      ...overrides
+    });
+  it('collects sale proceeds separately and finances the whole new phone', () => {
+    const cash = outright(base());
+    expect(cash.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.amount).toBe(-700);
+    expect(cash.rows[12].outflow).toBe(500);
+    const card = appleCardFinancing(base());
+    expect(card.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.reward).toBe(0);
+    expect(card.rows[13].outflow).toBe(100);
+    expect(card.summary.remainingBalance).toBe(600);
+  });
+  it('does not sell a returned lease, and pays off an early lease before selling', () => {
+    const short = appleUpgrade(base({ term: 12 }));
+    expect(short.rows.some((r) => r.items.some((i) => i.label === 'Private sale proceeds'))).toBe(
+      false
+    );
+    const long = appleUpgrade(base({ term: 24 }));
+    expect(
+      long.rows[12].items.find((i) => i.label === 'Buy out phone before upgrading')?.amount
+    ).toBeCloseTo(780.12);
+    expect(long.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.amount).toBe(-700);
+    expect(long.rows[13].outflow).toBeCloseTo(34.99);
+  });
+  it('does not also earn carrier trade-in credits for a privately sold phone', () => {
+    const carrier = carrierFinancing(base({ carrierOffer: 1000 }));
+    expect(carrier.rows[1].items.some((i) => i.label === 'Carrier trade-in credit')).toBe(true);
+    expect(carrier.rows[13].items.some((i) => i.label === 'Carrier trade-in credit')).toBe(false);
+    expect(carrier.rows[12].items.find((i) => i.label === 'Private sale proceeds')?.amount).toBe(
+      -700
+    );
+  });
+  it('caps deferred damage at sale proceeds and keeps taxes, rewards and NPV reconciled', () => {
+    for (const cost of [250, 2000]) {
+      for (const scenario of allScenarios(
+        base({
+          screenChoice: 'defer',
+          screenRepairCost: cost,
+          taxRate: 8.5,
+          appleCardBack: 3,
+          klarnaCardBack: 3,
+          carrierCardBack: 2
+        })
+      )) {
+        for (const row of scenario.rows) {
+          expect(row.items.reduce((sum, i) => sum + i.amount - (i.reward ?? 0), 0)).toBeCloseTo(
+            row.net,
+            7
+          );
+          expect(Object.values(row.runningByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+            row.runningCash,
+            7
+          );
+          expect(Object.values(row.runningNpvByCategory).reduce((a, b) => a + b, 0)).toBeCloseTo(
+            row.runningNpv,
+            7
+          );
+        }
+        if (scenario.key !== 'upgrade-12') {
+          const disposition = scenario.rows[12].items.filter((i) =>
+            ['Private sale proceeds', 'Screen damage at private sale'].includes(i.label)
+          );
+          expect(disposition.reduce((sum, i) => sum + i.amount, 0)).toBeCloseTo(
+            -Math.max(0, 700 - cost)
+          );
+        }
+      }
+    }
+  });
+  it('uses Apple quotes for closing value by default, private estimates only when selected', () => {
+    const trade = outright(base({ privateSaleValues: undefined, upgradeMonths: [] }));
+    const sold = outright(base({ upgradeMonths: [] }));
+    expect(trade.summary.equityAtHorizon).toBe(200);
+    expect(sold.summary.equityAtHorizon).toBe(250);
   });
 });

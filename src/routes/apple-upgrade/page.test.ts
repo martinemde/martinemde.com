@@ -84,7 +84,7 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText(payment)).toBeTruthy();
     await user.click(screen.getByText('No trade-in'));
     await user.click(screen.getByText('No AppleCare'));
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).listPrice).toBe(price);
     expect(screen.queryByText('iPhone 17 Pro')).toBeNull();
     expect(screen.queryByText('iPhone 17 Pro Max')).toBeNull();
@@ -113,7 +113,7 @@ describe('Apple Upgrade page', () => {
       expect(screen.queryByText('No trade-in')).toBeNull();
       expect(container.querySelector('[data-month]')).toBeNull();
       await walkThrough(user);
-      expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+      expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
       expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!)).toMatchObject({
         deviceKey: 'iphone-18-pro',
         annualChoices: [null, null, null],
@@ -142,7 +142,7 @@ describe('Apple Upgrade page', () => {
       })
     );
     const { container } = render(Page);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(37);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(36);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!)).toMatchObject({
       listPrice: price,
       annualChoices: ['keep', 'upgrade', null]
@@ -211,16 +211,53 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText('$34.99/mo on a 24-month lease')).toBeTruthy();
   });
 
+  it('toggles the full month breakdown from the card, totals, and keyboard', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    const month = screen.getByRole('button', { name: 'Month 0: show breakdown' });
+    const details = month.querySelector<HTMLElement>('.breakdown')!;
+    const totals = [...month.querySelectorAll<HTMLElement>('.sum')];
+    expect(month.querySelector('header')).toBeTruthy();
+    expect(details.querySelector('header')).toBeNull();
+    expect(details.inert).toBe(true);
+    expect(details.getAttribute('aria-hidden')).toBe('true');
+    expect(month.querySelectorAll('.stack-column')).toHaveLength(5);
+    expect(month.querySelectorAll('.segment').length).toBeGreaterThan(5);
+    expect(totals.every((total) => !total.hidden && total.textContent?.trim())).toBe(true);
+    await user.click(month.querySelector('.segment')!);
+    expect(month.getAttribute('aria-expanded')).toBe('true');
+    expect(details.inert).toBe(false);
+    expect([...month.querySelectorAll<HTMLElement>('.amt')].every((amount) => !amount.hidden)).toBe(
+      true
+    );
+    expect(container.querySelector('[data-month="1"]')?.getAttribute('aria-expanded')).toBe(
+      'false'
+    );
+    await user.click(totals[0]);
+    expect(details.inert).toBe(true);
+    month.focus();
+    await user.keyboard('{Enter}');
+    expect(details.inert).toBe(false);
+    await user.keyboard(' ');
+    expect(details.inert).toBe(true);
+  });
+
   it('gates each year and only shows final totals after all three annual decisions', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
     expect(container.querySelectorAll('.chart .name')).toHaveLength(5);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
     expect(screen.queryByText('What the scroll adds up to')).toBeNull();
     for (const year of [1, 2, 3]) {
+      const precedingMonth = container.querySelector(`[data-month="${year * 12 - 1}"]`)!;
+      expect(precedingMonth.nextElementSibling?.querySelector(`#year-${year}-title`)).toBeTruthy();
+      expect(container.querySelector(`[data-month="${year * 12}"]`)).toBeNull();
       await chooseYear(user, year);
-      expect(container.querySelectorAll('[data-month]')).toHaveLength((year + 1) * 12 + 1);
+      expect(container.querySelectorAll('[data-month]')).toHaveLength(
+        year === 3 ? HORIZON + 1 : (year + 1) * 12
+      );
     }
     expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
     expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
@@ -294,8 +331,8 @@ describe('Apple Upgrade page', () => {
     await chooseYear(user, 2);
     view.unmount();
     view = render(Page);
-    expect(view.container.querySelector('[data-month="36"]')).toBeTruthy();
-    expect(view.container.querySelector('[data-month="37"]')).toBeNull();
+    expect(view.container.querySelector('[data-month="35"]')).toBeTruthy();
+    expect(view.container.querySelector('[data-month="36"]')).toBeNull();
     view.unmount();
     const saved = JSON.parse(localStorage.getItem('apple-upgrade-calculator')!);
     delete saved.annualChoices;
@@ -304,7 +341,7 @@ describe('Apple Upgrade page', () => {
       JSON.stringify({ ...saved, upgradeEvery: 12, endChoice: 'nothing' })
     );
     view = render(Page);
-    expect(view.container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(view.container.querySelectorAll('[data-month]')).toHaveLength(12);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
       null,
       null,
@@ -366,7 +403,10 @@ describe('Apple Upgrade page', () => {
       await scrollToMonth(9);
       await user.click(
         within(await screen.findByRole('dialog')).getByRole('button', {
-          name: coverage === 'No AppleCare' ? 'Pay $271.25 to fix it' : 'Pay $31.47 to fix it'
+          name:
+            coverage === 'No AppleCare'
+              ? 'Pay $271.25 to fix it without AppleCare'
+              : 'Pay $31.47 to fix it with AppleCare'
         })
       );
       expect(

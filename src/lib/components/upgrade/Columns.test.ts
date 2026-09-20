@@ -33,14 +33,8 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
 
 function mount(month: number, basis: 'cash' | 'npv' = 'cash') {
   const scenarios = allScenarios(inputs());
-  const ceiling = Math.max(
-    ...scenarios.map((s) => {
-      const last = s.rows[s.rows.length - 1];
-      return basis === 'npv' ? last.runningNpv : last.runningCash;
-    })
-  );
-  const { container } = render(Columns, { scenarios, month, ceiling, basis, height: 240 });
-  return { container, scenarios, ceiling };
+  const { container } = render(Columns, { scenarios, month, basis, height: 240 });
+  return { container, scenarios };
 }
 
 function pct(style: string | null): number {
@@ -48,6 +42,11 @@ function pct(style: string | null): number {
 }
 
 describe('Columns', () => {
+  it('names the current month clearly in the heading', () => {
+    const { container } = mount(14);
+    expect(container.querySelector('h3')?.textContent).toBe('Total spent by month 14');
+  });
+
   it.each(['cash', 'npv'] as const)(
     'uses the same grouped amounts as the ledger in %s',
     (basis) => {
@@ -89,7 +88,6 @@ describe('Columns', () => {
     const { container } = render(Columns, {
       scenarios,
       month: 24,
-      ceiling: 1500,
       basis: 'npv',
       height: 240
     });
@@ -127,15 +125,29 @@ describe('Columns', () => {
     }
   });
 
-  it('scales each bar against the shared ceiling', () => {
-    const month = 24;
-    const { container, scenarios, ceiling } = mount(month);
-    const stacks = [...container.querySelectorAll('.stack')].map((s) =>
-      Number(s.getAttribute('style')?.match(/height:\s*([\d.]+)%/)?.[1] ?? NaN)
-    );
-    scenarios.forEach((s, i) => {
-      expect(stacks[i]).toBeCloseTo((s.rows[month].runningCash / ceiling) * 100, 4);
-    });
+  it.each(['cash', 'npv'] as const)('rescales to the tallest current bar in %s', async (basis) => {
+    const scenarios = allScenarios(inputs());
+    const { container, rerender } = render(Columns, { scenarios, month: 0, basis, height: 240 });
+    for (const month of [0, 1, 12, 24, HORIZON, 1]) {
+      await rerender({ scenarios, month, basis, height: 240 });
+      const totals = scenarios.map((scenario) => {
+        const row = scenario.rows[month];
+        const split = basis === 'cash' ? row.runningByCategory : row.runningNpvByCategory;
+        // The ledger groups taxes, fees, rewards and discounts into one band.
+        const extras = split.tax + split.fees;
+        return CATEGORIES.filter((category) => category !== 'tax' && category !== 'fees').reduce(
+          (sum, category) => sum + Math.max(0, split[category]),
+          Math.max(0, extras)
+        );
+      });
+      const heights = [...container.querySelectorAll<HTMLElement>('.up .stack')].map((stack) =>
+        parseFloat(stack.style.height)
+      );
+      expect(Math.max(...heights)).toBe(100);
+      heights.forEach((height, index) => {
+        expect(height).toBeCloseTo((totals[index] / Math.max(...totals)) * 100, 4);
+      });
+    }
   });
 
   it('holds the band order steady no matter which bands are present', () => {
@@ -190,11 +202,9 @@ describe('Columns', () => {
 
     it('hangs the credit below the axis and nets it out of the headline', () => {
       const scenarios = allScenarios(inputs({ listPrice: 999, term: 12, tradeIn: 800 }));
-      const ceiling = Math.max(...scenarios.map((s) => s.rows[s.rows.length - 1].runningCash));
       const { container } = render(Columns, {
         scenarios,
         month: HORIZON,
-        ceiling,
         basis: 'cash' as const,
         height: 240
       });

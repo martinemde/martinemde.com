@@ -332,7 +332,7 @@
 
   /** How far down the ledger the reader is allowed before answering. */
   const unansweredYear = $derived(annualChoices.findIndex((choice) => choice === null));
-  const ledgerLimit = $derived(unansweredYear < 0 ? HORIZON : (unansweredYear + 1) * 12);
+  const ledgerLimit = $derived(unansweredYear < 0 ? HORIZON : (unansweredYear + 1) * 12 - 1);
 
   function chooseYear(index: number, choice: 'upgrade' | 'keep') {
     if (annualChoices[index] === choice) return;
@@ -471,18 +471,6 @@
       {#if appleCare === 'annual'}
         <Field label="Yearly price" bind:value={appleCareAnnual} step={10} />
       {/if}
-      <Field
-        label="Screen repair without AppleCare"
-        bind:value={screenRepairCost}
-        step={25}
-        hint="Estimate before tax; enter the repair quote for your device."
-      />
-      <Field
-        label="Screen repair with AppleCare"
-        bind:value={appleCareRepairCost}
-        step={1}
-        hint="Estimated service fee before tax; check your coverage."
-      />
     </div>
   </Step>
 
@@ -519,6 +507,21 @@
       <div class="fields">
         <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
         <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
+      </div>
+      <h3>Screen repair costs</h3>
+      <div class="fields">
+        <Field
+          label="Screen repair without AppleCare"
+          bind:value={screenRepairCost}
+          step={25}
+          hint="Estimate before tax; enter the repair quote for your device."
+        />
+        <Field
+          label="Screen repair with AppleCare"
+          bind:value={appleCareRepairCost}
+          step={1}
+          hint="Estimated service fee before tax; check your coverage."
+        />
       </div>
       <h3>Apple trade-in estimates</h3>
       <p>
@@ -595,16 +598,11 @@
       <Ledger
         bind:activeMonth
         {scenarios}
-        upgradeSummary={inputs.upgradeMonths!.length > 0
-          ? `upgrades in ${inputs.upgradeMonths!.length === 1 ? 'year' : 'years'} ${inputs.upgradeMonths!.map((month) => month / 12).join(', ')}`
-          : unansweredYear < 0
-            ? 'keeping the original phone'
-            : 'deciding each year'}
         beats={story}
         limit={ledgerLimit}
         questions={screenChoice !== null
-          ? { 12: yearOne, 24: yearTwo, 36: yearThree, [SCREEN_CRACK_MONTH]: screenCard }
-          : { 12: yearOne, 24: yearTwo, 36: yearThree }}
+          ? { 11: yearOne, 23: yearTwo, 35: yearThree, [SCREEN_CRACK_MONTH]: screenCard }
+          : { 11: yearOne, 23: yearTwo, 35: yearThree }}
       />
     </section>
 
@@ -735,17 +733,19 @@
   <div class="eyebrow">// month 09</div>
   <h2 id="{id}-title">Oh no! You cracked your screen!</h2>
   <p id="{id}-description">
-    Estimated repair: {money(repairPrice)} including tax,
-    {appleCare === 'none' ? 'without AppleCare' : 'with AppleCare'}. Leave it cracked, and pay for
-    the repair if you return the leased phone. Trade in an unrepaired phone instead, and its
-    estimated credit drops by {money(Math.max(0, screenRepairCost))}, down to $0. This uses the full
-    glass repair estimate, including for carrier offers, rather than the AppleCare service fee.
+    One of the big risks with a leased phone is breaking it. You have to return it in good condition
+    or buy it outright. What would you do if you broke your screen a few months before the new
+    iphone? If you want to trade it in, you will be forced to repair it and it's much more expensive
+    without AppleCare. Fine for people with liquid cash, maybe not for everyone.
   </p>
   <div class="screen-actions">
     <button
       type="button"
       aria-pressed={screenChoice === 'repair'}
-      onclick={() => chooseScreen('repair')}>Pay {money(repairPrice)} to fix it</button
+      onclick={() => chooseScreen('repair')}
+      >Pay {money(repairPrice)} to fix it {appleCare === 'none'
+        ? 'without AppleCare'
+        : 'with AppleCare'}</button
     >
     <button
       type="button"

@@ -760,6 +760,17 @@ describe('the treadmill', () => {
 });
 
 describe('beats', () => {
+  it('suggests upgrading at month 35 only when there were no earlier upgrades', () => {
+    for (const upgradeMonths of [[], [36]]) {
+      expect(beats(inputs({ upgradeMonths })).get(35)?.title).toBe(
+        'Carrier financing maxed. Consider upgrading.'
+      );
+    }
+    for (const upgradeMonths of [[12], [24], [12, 24, 36]]) {
+      expect(beats(inputs({ upgradeMonths })).has(35)).toBe(false);
+    }
+  });
+
   it('stops on the month the lease term runs out and on the last month', () => {
     const story = beats(inputs({ term: 24 }));
     expect(story.has(24)).toBe(true);
@@ -1144,14 +1155,51 @@ describe('unrepaired glass reduces trade-in value', () => {
     expect(broken.rows[13].outflow).toBe(intact.rows[13].outflow);
   });
 
-  it('uses full damage value even with coverage, and does not penalize a repaired phone', () => {
-    const base = damaged({ appleCare: 'monthly', appleCareRepairCost: 29 });
-    const broken = outright(base);
-    const fixed = outright({ ...base, screenChoice: 'repair' });
-    const intact = outright({ ...base, screenChoice: 'dismiss' });
-    expect(broken.rows[12].outflow - intact.rows[12].outflow).toBeCloseTo(250);
-    expect(fixed.rows[12].outflow).toBe(intact.rows[12].outflow);
-  });
+  it.each(['monthly', 'annual', 'one'] as const)(
+    'uses %s AppleCare once before trading, selling or returning the original phone',
+    (appleCare) => {
+      for (const upgradeMonths of [[12, 24, 36], [24, 36], [36], []]) {
+        for (const privateSaleValues of [undefined, [900, 700, 500, 300]]) {
+          const base = damaged({
+            appleCare,
+            upgradeMonths,
+            privateSaleValues,
+            carrierOffer: 1000,
+            taxRate: 8.5,
+            appleCardBack: 3
+          });
+          const intact = allScenarios({ ...base, screenChoice: 'dismiss' });
+          allScenarios(base).forEach((scenario, index) => {
+            const repairs = scenario.rows.flatMap((row) =>
+              row.items
+                .filter((item) => item.category === 'repair')
+                .map((item) => ({ month: row.month, amount: item.amount }))
+            );
+            expect(repairs).toEqual([{ month: upgradeMonths[0] ?? HORIZON, amount: 29 }]);
+            expect(scenario.summary.cash - intact[index].summary.cash).toBeCloseTo(
+              29 * 1.085 * 0.97
+            );
+            expect(scenario.summary.remainingBalance).toBeCloseTo(
+              intact[index].summary.remainingBalance
+            );
+            expect(scenario.summary.equityAtHorizon).toBeCloseTo(
+              intact[index].summary.equityAtHorizon
+            );
+            expect(
+              scenario.rows
+                .flatMap((row) => row.items)
+                .some((item) => item.label.startsWith('Screen damage'))
+            ).toBe(false);
+          });
+          const fixed = outright({ ...base, screenChoice: 'repair' });
+          expect(
+            fixed.rows.flatMap((row) => row.items.filter((item) => item.category === 'repair'))
+          ).toHaveLength(1);
+          expect(fixed.rows[9].items.some((item) => item.category === 'repair')).toBe(true);
+        }
+      }
+    }
+  );
 
   it('floors ordinary and promotional trade-ins at zero', () => {
     const base = damaged({ screenRepairCost: 2000, carrierOffer: 1000 });

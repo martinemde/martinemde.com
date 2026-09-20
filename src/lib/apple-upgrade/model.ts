@@ -306,10 +306,23 @@ function screenRepairItems(input: Inputs, month: number, leased = false): LineIt
     input.screenChoice === 'defer' &&
     month === input.term + 1 &&
     (input.endChoice === 'return' || input.endChoice === 'upgrade');
-  if (!now && !atReturn) return [];
+  // Use coverage before handing over the original phone. If it is kept for
+  // the whole comparison, restore it before counting its intact closing value.
+  const coveredRepairMonth = leased
+    ? input.endChoice === 'return' || input.endChoice === 'upgrade'
+      ? input.term + 1
+      : HORIZON
+    : (purchaseMonths(input)[1] ?? HORIZON);
+  const beforeHandoff =
+    input.screenChoice === 'defer' && input.appleCare !== 'none' && month === coveredRepairMonth;
+  if (!now && !atReturn && !beforeHandoff) return [];
   return [
     {
-      label: atReturn ? 'Screen repair before return' : 'Screen repair',
+      label: atReturn
+        ? 'Screen repair before return'
+        : beforeHandoff
+          ? 'Screen repair with AppleCare'
+          : 'Screen repair',
       amount: screenRepairPrice(input),
       includedTax:
         (Math.max(
@@ -909,7 +922,8 @@ function scheduledLease(input: Inputs): Scenario {
         cycle.start === 0 &&
         month === cycle.end &&
         cycle.returns &&
-        input.screenChoice === 'defer'
+        input.screenChoice === 'defer' &&
+        input.appleCare === 'none'
       ) {
         out.push(
           ...screenRepairItems({ ...input, screenChoice: 'repair' }, SCREEN_CRACK_MONTH).map(
@@ -959,9 +973,11 @@ function purchaseMonths(input: Inputs): number[] {
   return Array.from({ length: Math.ceil(HORIZON / interval) }, (_, i) => i * interval);
 }
 
-/** Damage is a value deduction, not a repair purchase or an AppleCare service fee. */
+/** Uncovered damage reduces value; covered phones are repaired before handoff. */
 function tradeInDamage(input: Inputs, originalPhone: boolean): number {
-  return originalPhone && input.screenChoice === 'defer' ? Math.max(0, input.screenRepairCost) : 0;
+  return originalPhone && input.screenChoice === 'defer' && input.appleCare === 'none'
+    ? Math.max(0, input.screenRepairCost)
+    : 0;
 }
 
 function replacementValue(
@@ -1296,9 +1312,16 @@ export function beats(input: Inputs): Map<number, Beat> {
   if (input.upgradeMonths !== undefined) {
     const map = new Map<number, Beat>([
       [0, { title: 'You walk out of the store' }],
-      [1, { title: 'Thirty days later, everything starts billing' }],
+      [1, { title: 'Thirty days later, billing starts' }],
+      [2, { title: "We'll add each monthly bill..." }],
+      [3, { title: '...to the total at the top' }],
+      [4, { title: 'so you can see...' }],
+      [5, { title: 'how the payments stack up' }],
+      [7, { title: 'Tap any month for a breakdown' }],
       [48, { title: 'Four years in' }]
     ]);
+    if (!input.upgradeMonths.some((month) => month < 35))
+      map.set(35, { title: 'Carrier financing maxed. Consider upgrading.' });
     for (const month of [12, 24, 36])
       map.set(month, {
         title: input.upgradeMonths.includes(month)
@@ -1308,7 +1331,7 @@ export function beats(input: Inputs): Map<number, Beat> {
     for (const term of [12, 24] as const) {
       for (const row of appleUpgrade({ ...input, term }).rows) {
         if (row.items.some((item) => item.label.startsWith('Automatic buyout')))
-          map.set(row.month, { title: `The ${term}-month lease becomes yours` });
+          map.set(row.month, { title: `Pay off the ${term} month lease, now you own it` });
         if (
           row.items.some((item) => item.label === 'Month-to-month payment') &&
           row.month % 12 === 1
@@ -1330,8 +1353,13 @@ export function beats(input: Inputs): Map<number, Beat> {
   });
 
   set(1, {
-    title: 'Thirty days later, everything starts billing'
+    title: 'Thirty days later, billing starts'
   });
+  set(2, { title: "We'll add each monthly bill..." });
+  set(3, { title: '...to the total at the top' });
+  set(4, { title: 'so you can see...' });
+  set(5, { title: 'how the payments stack up' });
+  set(7, { title: 'Tap any month for a breakdown' });
 
   if (input.appleCare === 'annual') {
     set(12, {

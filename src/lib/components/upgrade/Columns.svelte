@@ -6,11 +6,8 @@
 
   interface Props {
     scenarios: Scenario[];
-    upgradeSummary?: string;
     /** Which month the reader has scrolled to. Columns show totals through it. */
     month: number;
-    /** Tallest column at the horizon, so bars are on one scale all the way down. */
-    ceiling: number;
     /** Nominal dollars, or the same stream discounted back to today. */
     basis: 'cash' | 'npv';
     /** Plot height in pixels. The ledger owns it so the two stay in step. */
@@ -21,16 +18,7 @@
     stuck?: boolean;
   }
 
-  let {
-    scenarios,
-    upgradeSummary,
-    month,
-    ceiling,
-    basis = $bindable(),
-    height,
-    reference,
-    stuck = false
-  }: Props = $props();
+  let { scenarios, month, basis = $bindable(), height, reference, stuck = false }: Props = $props();
 
   const empty = { phone: 0, rent: 0, care: 0, fees: 0, repair: 0, tax: 0 };
 
@@ -64,11 +52,12 @@
         refund,
         net: total - refund,
         bands,
-        credits,
-        pct: ceiling > 0 ? Math.min(100, (positive / ceiling) * 100) : 0
+        credits
       };
     })
   );
+
+  const ceiling = $derived(Math.max(0, ...bars.map((bar) => bar.total)));
 
   // Nothing is cheapest before anything has been spent.
   const leader = $derived(
@@ -91,16 +80,17 @@
   }
 
   const refPct = $derived(
-    reference && ceiling > 0 ? Math.min(92, (reference.value / ceiling) * 100) : null
+    reference && ceiling > 0 && reference.value <= ceiling
+      ? (reference.value / ceiling) * 100
+      : null
   );
 </script>
 
 <div class="panel" class:stuck>
   <div class="top">
-    <span class="eyebrow"
-      >// month {month < 0 ? '--' : String(month).padStart(2, '0')} of {scenarios[0].rows.length -
-        1}{upgradeSummary ? ` ${upgradeSummary}` : ''}</span
-    >
+    <h3 class="chart-title">
+      {month < 0 ? 'Total spent so far' : `Total spent by month ${month}`}
+    </h3>
     <button
       class="basis"
       type="button"
@@ -138,7 +128,7 @@
     {#each bars as bar, i (bar.key)}
       <div class="track" style="grid-column: {i + 1}">
         <div class="up" style="flex: {ceiling} 0 0">
-          <div class="stack" style="height: {bar.pct}%">
+          <div class="stack" style="height: {ceiling > 0 ? (bar.total / ceiling) * 100 : 0}%">
             {#each bar.bands as band (band.category)}
               <div
                 class="band"
@@ -246,6 +236,14 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
+  }
+  .chart-title {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text);
   }
   /* The whole thesis of the page is timing, so switching basis stays one tap
      away rather than living in a settings block further up. */

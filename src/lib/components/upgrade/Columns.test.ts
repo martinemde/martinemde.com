@@ -50,7 +50,7 @@ describe('Columns', () => {
   it('draws one bar per way of paying', () => {
     const { container, scenarios } = mount(24);
     expect(container.querySelectorAll('.track')).toHaveLength(scenarios.length);
-    expect([...container.querySelectorAll('.name')].map((n) => n.textContent)).toEqual(
+    expect([...container.querySelectorAll('.name')].map((n) => n.textContent?.trim())).toEqual(
       scenarios.map((s) => s.shortName)
     );
   });
@@ -118,9 +118,59 @@ describe('Columns', () => {
     expect(container.querySelector('.legend')).toBeNull();
   });
 
+  /**
+   * A trade-in bigger than a path can absorb comes back as store credit. It is
+   * money in, so it hangs below the axis in outline — without it the columns
+   * never net out and the lease looks dearer than buying, which is backwards.
+   */
+  describe('a trade-in the path cannot absorb', () => {
+    it('draws no below-axis region when every path used the whole trade-in', () => {
+      const { container } = mount(24);
+      expect(container.querySelector('.down')).toBeNull();
+      expect(container.querySelector('.credit')).toBeNull();
+    });
+
+    it('hangs the credit below the axis and nets it out of the headline', () => {
+      const scenarios = allScenarios(inputs({ listPrice: 999, term: 12, tradeIn: 800 }));
+      const ceiling = Math.max(...scenarios.map((s) => s.rows[s.rows.length - 1].runningCash));
+      const { container } = render(Columns, {
+        scenarios,
+        month: HORIZON,
+        ceiling,
+        basis: 'cash' as const,
+        height: 240
+      });
+
+      const lease = scenarios.findIndex((s) => s.key.startsWith('upgrade'));
+      expect(scenarios[lease].summary.tradeInRefund).toBeGreaterThan(0);
+
+      // Only the paths that could not use it all get a bar below the line.
+      const credits = [...container.querySelectorAll('.track')].map(
+        (t) => t.querySelector('.credit') !== null
+      );
+      expect(credits[lease]).toBe(true);
+
+      // And the number on top is what the column really cost, net of it.
+      const totals = [...container.querySelectorAll('.total')].map((t) => t.textContent);
+      const s = scenarios[lease].summary;
+      expect(totals[lease]).toBe(money0(s.cash - s.tradeInRefund));
+    });
+
+    it('keeps the lease no dearer than paying cash once the credit is counted', () => {
+      const scenarios = allScenarios(
+        inputs({ listPrice: 999, term: 12, tradeIn: 800, endChoice: 'nothing' })
+      );
+      const net = (key: string) => {
+        const s = scenarios.find((x) => x.key.startsWith(key))!.summary;
+        return s.cash - s.tradeInRefund;
+      };
+      expect(net('upgrade')).toBeLessThanOrEqual(net('outright') + 0.01);
+    });
+  });
+
   it('marks the cheapest column so far without recolouring it', () => {
     const { container } = mount(1);
     // Month one: the lease has asked for the least of anyone.
-    expect(container.querySelector('.name.low')?.textContent).toBe('Lease');
+    expect(container.querySelector('.name.low')?.textContent?.trim()).toBe('Lease');
   });
 });

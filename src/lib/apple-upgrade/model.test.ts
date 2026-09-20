@@ -139,17 +139,16 @@ describe('trade-in credit', () => {
       }
     });
 
-    it('runs the six-month extension at the full rate, then the remainder', () => {
+    it('runs the extension at the full rate, then settles the remainder', () => {
       const scenario = appleUpgrade(
         inputs({ listPrice: 999, term: 12, tradeIn: 500, endChoice: 'nothing' })
       );
       const gross = leasePayment(999, 12);
       for (let m = 1; m <= 12; m++) expect(scenario.rows[m].outflow).toBe(0);
       for (let m = 13; m <= 17; m++) expect(scenario.rows[m].outflow).toBeCloseTo(gross, 2);
-      // Month 18 carries the sixth extension payment and then the balloon,
-      // which is whatever those six payments did not cover.
-      const balloon = 999 - 499.5 - 6 * gross;
-      expect(scenario.rows[18].outflow).toBeCloseTo(gross + balloon, 2);
+      // The month the window closes is one line, not a payment and a balloon.
+      expect(scenario.rows[18].items).toHaveLength(1);
+      expect(scenario.rows[18].outflow).toBeCloseTo(999 - 499.5 - 5 * gross, 2);
       expect(scenario.summary.cash).toBeCloseTo(999 - 499.5, 2);
     });
 
@@ -158,6 +157,30 @@ describe('trade-in credit', () => {
       expect(outright(input).summary.tradeInRefund).toBeCloseTo(501, 2);
       expect(carrierFinancing(input).summary.tradeInRefund).toBeCloseTo(501, 2);
       expect(outright(input).rows[0].outflow).toBe(0);
+    });
+
+    /**
+     * Apple's promise, read with a trade-in in it: you never pay more than the
+     * price of the phone after trade-in. Which means a lease you see through to
+     * owning the phone can never cost more than just buying it — the credit the
+     * lease could not use comes back, and what is left is taxed only on what
+     * you actually paid.
+     */
+    it('never costs more than buying outright when you keep the phone', () => {
+      for (const listPrice of [799, 999, 1199]) {
+        for (const term of [12, 24] as const) {
+          for (const tradeIn of [0, 200, 500, 800, 1500]) {
+            for (const endChoice of ['buyout', 'nothing'] as const) {
+              const input = inputs({ listPrice, term, tradeIn, endChoice, taxRate: 8.5 });
+              const lease = appleUpgrade(input).summary;
+              const cash = outright(input).summary;
+              expect(lease.cash - lease.tradeInRefund).toBeLessThanOrEqual(
+                cash.cash - cash.tradeInRefund + 0.01
+              );
+            }
+          }
+        }
+      }
     });
 
     it('lets a purchase absorb more of a trade-in than a lease can', () => {
@@ -243,6 +266,18 @@ describe('timing', () => {
     const balloon = 24 + EXTENSION_MONTHS;
     expect(scenario.rows[balloon].outflow).toBeGreaterThan(scenario.rows[balloon - 1].outflow);
     expect(scenario.rows[balloon + 1].outflow).toBe(0);
+  });
+
+  it('bills the last month of the extension once, as the remainder', () => {
+    const scenario = appleUpgrade(inputs({ endChoice: 'nothing' }));
+    const close = 24 + EXTENSION_MONTHS;
+    // Every month of the window but the last is a payment; the last settles.
+    for (let m = 25; m < close; m++) {
+      expect(scenario.rows[m].items.map((i) => i.label)).toEqual(['Month-to-month payment']);
+    }
+    expect(scenario.rows[close].items.map((i) => i.label)).toEqual([
+      'Automatic buyout — it\u2019s yours'
+    ]);
   });
 });
 

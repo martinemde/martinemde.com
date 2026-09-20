@@ -236,9 +236,19 @@ describe('Apple Upgrade page', () => {
     await user.click(container.querySelector('input[name="term"][value="12"]')!);
     await user.click(screen.getByText('No AppleCare'));
 
-    const dayOne = container.querySelector('[data-month="0"]')!.textContent!;
-    expect(dayOne).toMatch(/comes back as Apple credit/);
-    expect(dayOne).toMatch(/\$300\.50/);
+    const dayOne = container.querySelector('[data-month="0"]')!;
+    expect(dayOne.textContent).toMatch(/Apple credit back/);
+    expect(dayOne.textContent).toMatch(/\$300\.50/);
+
+    // Drawn below the line, outlined, only in the column that could not use it.
+    const row = [...dayOne.querySelectorAll('.charges li')].find(
+      (li) => li.querySelector('.what')?.textContent === 'Apple credit back'
+    )!;
+    expect(row.querySelector('.bars.credit')).toBeTruthy();
+    const drawn = [...row.querySelectorAll('.bar')].map(
+      (b) => Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0) > 0
+    );
+    expect(drawn).toEqual([false, false, true, false]);
 
     // And the same finding where someone entering a trade-in would meet it.
     expect(screen.getByText(/bigger than the lease can use/i)).toBeTruthy();

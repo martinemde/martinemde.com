@@ -194,7 +194,12 @@ export interface Scenario {
  */
 export const HORIZON = 48;
 
-/** Klarna keeps charging you month-to-month for six months past the term. */
+/**
+ * How long Klarna leaves the decision open past the end of the term. You keep
+ * paying month-to-month through that window; the month it closes, the rest of
+ * the balance is charged instead of another payment, so the last month of the
+ * extension is one line — pay the remainder — not a payment and a balloon.
+ */
 export const EXTENSION_MONTHS = 6;
 
 /**
@@ -535,11 +540,16 @@ export function appleUpgrade(input: Inputs): Scenario {
   // credit only ever covered the initial term.
   const extensionEnd = term + EXTENSION_MONTHS;
 
-  /** Cash the lease has collected by the end of `month`, before tax. */
+  /**
+   * Cash the lease has collected by the end of `month`, before tax. The
+   * extension bills a payment for every month of the window but the last,
+   * which settles the balance instead.
+   */
+  const extensionPayments = EXTENSION_MONTHS - 1;
   const cashThrough = (month: number): number => {
     const paid = payment * Math.max(0, Math.min(month, term));
     if (endChoice !== 'nothing' || month <= term) return paid;
-    return paid + gross * Math.min(month - term, EXTENSION_MONTHS);
+    return paid + gross * Math.min(month - term, extensionPayments);
   };
 
   /** Which lease you're on (0-indexed) and how far into it, for the upgrade path. */
@@ -585,7 +595,7 @@ export function appleUpgrade(input: Inputs): Scenario {
     }
 
     if (month > term) {
-      if (endChoice === 'nothing' && month <= extensionEnd) {
+      if (endChoice === 'nothing' && month < extensionEnd) {
         out.push(leaseCharge('Month-to-month payment', gross * tax));
       }
       if (endChoice === 'upgrade') {

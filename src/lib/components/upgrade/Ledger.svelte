@@ -73,6 +73,8 @@
     note?: string;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
+    /** Money coming back rather than going out: drawn below the line, outlined. */
+    credit?: boolean;
   }
 
   /** The month each label first shows up, so its explanation is shown once. */
@@ -103,7 +105,27 @@
       }
     });
     // Biggest bill first: on the months that matter, the headline is the balloon.
-    return Object.values(byLabel).sort((a, b) => Math.max(...b.amounts) - Math.max(...a.amounts));
+    const charges = Object.values(byLabel).sort(
+      (a, b) => Math.max(...b.amounts) - Math.max(...a.amounts)
+    );
+
+    // Store credit for trade-in value a path had no room for. It arrives at
+    // pickup and it is money in, so it hangs below the line in outline.
+    if (month === 0) {
+      const back = scenarios.map((s) => s.summary.tradeInRefund);
+      if (back.some((amount) => amount > 0.005)) {
+        charges.push({
+          label: 'Apple credit back',
+          biller: 'apple',
+          category: 'phone',
+          credit: true,
+          note: 'Trade-in value this path had no room for. A lease only ever collects half or seventy percent of the sticker, so it runs out of payments to discount long before a purchase does, and the difference comes back as store credit rather than as a cheaper phone.',
+          amounts: back
+        });
+      }
+    }
+
+    return charges;
   }
 
   /**
@@ -114,11 +136,16 @@
    * what the printed number is for; the bars answer "who pays this, and how
    * does it compare to the rest of this month".
    */
-  /** What each column actually owes this month, once card rewards are netted. */
+  /**
+   * What each column actually costs this month, once card rewards are netted —
+   * and, on day one, once the store credit a path could not use is netted too,
+   * so the month lines up with what the panel above it is drawing.
+   */
   function cellsFor(month: number) {
     return scenarios.map((s) => {
       const row = s.rows[month];
-      const net = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
+      const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
+      const net = month === 0 ? out - s.summary.tradeInRefund : out;
       return { key: s.key, name: s.shortName, net };
     });
   }
@@ -141,17 +168,6 @@
     }
     return undefined;
   }
-
-  /**
-   * Trade-in value a column could not absorb, handed back as Apple credit
-   * rather than as a cheaper phone. It is value received, not cash paid, so it
-   * gets a note on day one instead of a line in the schedule.
-   */
-  const refunds = $derived(
-    scenarios
-      .filter((s) => s.summary.tradeInRefund > 0.005)
-      .map((s) => ({ key: s.key, name: s.shortName, amount: s.summary.tradeInRefund }))
-  );
 
   const readLine = $derived(headerPx + (panelPx || chartPx + 96) + 20);
 
@@ -288,7 +304,7 @@
               <!-- The attribution and the amount in one mark: a bar in every
                    column that gets handed this charge, sized against the
                    biggest single bill of the month. -->
-              <div class="bars" data-cat={charge.category}>
+              <div class="bars" class:credit={charge.credit} data-cat={charge.category}>
                 {#each charge.amounts as amount, i (cells[i].key)}
                   <span class="cell" class:zero={amount <= 0.005}>
                     <span class="track">
@@ -314,24 +330,13 @@
 
         <div class="totals">
           {#each cells as cell (cell.key)}
-            <span class="sum" class:zero={cell.net <= 0.005}>
-              {cell.net > 0.005 ? money(cell.net) : '—'}
+            <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
+              {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
             </span>
           {/each}
         </div>
       {:else if !idle}
         <p class="nothing">Nothing due anywhere. The phone just gets a year older.</p>
-      {/if}
-
-      {#if month === 0 && refunds.length}
-        <p class="credit">
-          Your trade-in is worth more than {refunds.length === scenarios.length
-            ? 'any of these'
-            : 'some of these'} can use. The difference comes back as Apple credit, not as a cheaper phone:
-          {#each refunds as refund, i (refund.key)}{i > 0 ? ', ' : ''}<b
-              >{refund.name} {money(refund.amount)}</b
-            >{/each}.
-        </p>
       {/if}
 
       {#if idle}
@@ -553,6 +558,10 @@
     color: var(--faint);
     font-weight: 400;
   }
+  /* Day one can end with money in your pocket, if the trade-in was big enough. */
+  .sum.back {
+    color: var(--cat-phone);
+  }
 
   /* Landed: the month has been counted into the bars above. Its charges come
      up to full strength and a hairline runs off the top toward the panel. */
@@ -590,21 +599,25 @@
     text-wrap: pretty;
   }
 
-  .credit {
-    margin: 0;
-    max-width: 58ch;
-    border-left: 2px solid var(--cat-phone);
-    padding-left: 10px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--muted);
-    text-wrap: pretty;
+  /*
+   * A credit row is the same grid upside down: the baseline moves to the top
+   * of the track and the bar hangs below it, outlined rather than filled,
+   * because this is money coming back.
+   */
+  .bars.credit .track {
+    align-items: flex-start;
+    border-top: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
+    border-bottom: 0;
   }
-  .credit b {
-    font-family: var(--font-mono);
-    font-weight: 500;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
+  .bars.credit .bar {
+    border: 1.5px solid var(--fill);
+    border-top: 0;
+    border-radius: 0 0 3px 3px;
+    background: none;
+  }
+  /* Nothing to draw: a zero-height outline still shows its collapsed sides. */
+  .cell.zero .bar {
+    border: 0;
   }
 
   .nothing {

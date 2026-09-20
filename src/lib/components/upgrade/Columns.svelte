@@ -41,10 +41,17 @@
           ? row.runningNpvByCategory
           : row.runningByCategory;
       const total = !row ? 0 : basis === 'npv' ? row.runningNpv : row.runningCash;
+      // Trade-in value this column could not use, handed back as store credit
+      // on day one. It is money in, so it hangs below the axis — leave it out
+      // and the columns never net out, and a big trade-in makes the lease look
+      // dearer than buying outright, which is the opposite of what happens.
+      const credit = row ? s.summary.tradeInRefund : 0;
       return {
         key: s.key,
         name: s.shortName,
         total,
+        credit,
+        net: total - credit,
         // Bottom-up, fixed order: a band never changes place as values move.
         bands: CATEGORIES.map((c) => ({ category: c, amount: split[c] })).filter(
           (b) => b.amount > 0.005
@@ -56,10 +63,13 @@
 
   // Nothing is cheapest before anything has been spent.
   const leader = $derived(
-    bars.every((b) => b.total <= 0)
+    bars.every((b) => b.total <= 0 && b.credit <= 0)
       ? -1
-      : bars.reduce((best, b, i) => (b.total < bars[best].total ? i : best), 0)
+      : bars.reduce((best, b, i) => (b.net < bars[best].net ? i : best), 0)
   );
+
+  /** Deepest credit on screen. Zero unless a trade-in outran what a path can use. */
+  const creditCeiling = $derived(Math.max(0, ...bars.map((b) => b.credit)));
 
   /**
    * A band's share of its own bar. The bar is already sized against the
@@ -98,39 +108,66 @@
     role="img"
     aria-label={month < 0
       ? 'Nothing paid yet'
-      : `Paid to date through month ${month}: ${bars.map((b) => `${b.name} ${money0(b.total)}`).join(', ')}`}
+      : `Paid to date through month ${month}: ${bars
+          .map(
+            (b) =>
+              `${b.name} ${money0(b.net)}` +
+              (b.credit > 0 ? ` (${money0(b.total)} out, ${money0(b.credit)} back)` : '')
+          )
+          .join(', ')}`}
   >
     <!-- Every cell is placed explicitly: the reference line spans the whole
          plot row, and auto-placement would shove the bars out of it. -->
     {#each bars as bar, i (bar.key)}
       <span class="total" class:low={i === leader} style="grid-column: {i + 1}"
-        >{money0(bar.total)}</span
+        >{money0(bar.net)}</span
       >
     {/each}
 
     {#each bars as bar, i (bar.key)}
       <div class="track" style="grid-column: {i + 1}">
-        <div class="stack" style="height: {bar.pct}%">
-          {#each bar.bands as band (band.category)}
-            <div
-              class="band"
-              data-cat={band.category}
-              style="flex: 0 1 {bandPct(band.amount, bar.total)}%"
-              title="{CATEGORY_LABELS[band.category]}: {money0(band.amount)}"
-            ></div>
-          {/each}
+        <div class="up" style="flex: {ceiling} 0 0">
+          <div class="stack" style="height: {bar.pct}%">
+            {#each bar.bands as band (band.category)}
+              <div
+                class="band"
+                data-cat={band.category}
+                style="flex: 0 1 {bandPct(band.amount, bar.total)}%"
+                title="{CATEGORY_LABELS[band.category]}: {money0(band.amount)}"
+              ></div>
+            {/each}
+          </div>
         </div>
+        {#if creditCeiling > 0}
+          <div class="down" style="flex: {creditCeiling} 0 0">
+            {#if bar.credit > 0}
+              <i
+                class="credit"
+                style="height: {(bar.credit / creditCeiling) * 100}%"
+                title="Apple credit back: {money0(bar.credit)}"
+              ></i>
+            {/if}
+          </div>
+        {/if}
       </div>
     {/each}
 
     {#if refPct !== null}
       <div class="plot-marker" aria-hidden="true">
-        <span class="line" style="bottom: {refPct}%"></span>
+        <div class="up" style="flex: {ceiling} 0 0">
+          <span class="line" style="bottom: {refPct}%"></span>
+        </div>
+        {#if creditCeiling > 0}
+          <div class="down" style="flex: {creditCeiling} 0 0"></div>
+        {/if}
       </div>
     {/if}
 
     {#each bars as bar, i (bar.key)}
-      <span class="name" class:low={i === leader} style="grid-column: {i + 1}">{bar.name}</span>
+      <span class="name" class:low={i === leader} style="grid-column: {i + 1}">
+        {bar.name}
+        {#if bar.credit > 0}<b>{money0(bar.credit)} back</b>{/if}
+      </span>
     {/each}
   </div>
 
@@ -161,6 +198,7 @@
     --cat-rent: light-dark(#882e9b, #a264b0);
     --cat-care: light-dark(#2b9667, #4f9f77);
     --cat-fees: light-dark(#9a3c00, #e86518);
+    --cat-credit: light-dark(#1289e7, #1795fa);
     /* Bars stay bar-shaped on a wide screen instead of becoming slabs; the
        ledger uses the same token so a month's slice keeps the same width. */
     --bar-w: 104px;
@@ -243,15 +281,47 @@
     color: var(--accent);
   }
 
+  /*
+   * Two regions, split in the same ratio as the scales they carry, so a dollar
+   * is the same height above the axis as below it. `.down` only exists when a
+   * trade-in outran what some path could absorb.
+   */
+  .track,
+  .plot-marker {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
   .track {
     position: relative;
     z-index: 2;
     grid-row: 2;
+  }
+  .up {
     display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
+    align-items: flex-end;
     min-height: 0;
+  }
+  .track .up {
     border-bottom: 1px solid var(--border);
+  }
+  .plot-marker .up {
+    position: relative;
+  }
+  .down {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 0;
+  }
+  /* Outlined, not filled: this is money coming back, not money going out. */
+  .credit {
+    width: 100%;
+    max-width: var(--bar-w);
+    border: 1.5px solid var(--cat-credit);
+    border-top: 0;
+    border-radius: 0 0 4px 4px;
+    transition: height 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /*
@@ -260,7 +330,6 @@
    * normally is, with its label on a chip at the right-hand end.
    */
   .plot-marker {
-    position: relative;
     z-index: 3;
     grid-row: 2;
     grid-column: 1 / -1;
@@ -314,6 +383,8 @@
 
   .name {
     grid-row: 3;
+    display: block;
+    min-width: 0;
     font-family: var(--font-mono);
     font-weight: 460;
     font-size: 10.5px;
@@ -323,6 +394,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .name b {
+    display: block;
+    font-weight: 460;
+    font-size: 9px;
+    color: var(--cat-credit);
   }
   [data-cat='phone'] {
     --fill: var(--cat-phone);
@@ -359,6 +436,7 @@
     .panel,
     .stack,
     .band,
+    .credit,
     .basis {
       transition: none;
     }

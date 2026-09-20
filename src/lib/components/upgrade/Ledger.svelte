@@ -2,7 +2,6 @@
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
   import {
-    CHARGE_NOTES,
     money,
     type Beat,
     type Biller,
@@ -71,25 +70,11 @@
     billers: Biller[];
     category: Category;
     taxFor?: string;
-    note?: string;
     /** One entry per column, in column order. Zero where that column is spared. */
     amounts: number[];
     /** Money coming back rather than going out: drawn below the line, outlined. */
     credit?: boolean;
   }
-
-  /** The month each label first shows up, so its explanation is shown once. */
-  const firstSeen = $derived.by(() => {
-    const seen: Record<string, number> = {};
-    for (let m = 0; m <= horizon; m++) {
-      for (const s of scenarios) {
-        for (const item of s.rows[m].items) {
-          seen[item.label] ??= m;
-        }
-      }
-    }
-    return seen;
-  });
 
   function chargesFor(month: number): Charge[] {
     const byLabel: Record<string, Charge> = {};
@@ -100,7 +85,6 @@
           billers: [],
           category: item.category,
           taxFor: item.taxFor,
-          note: firstSeen[item.label] === month ? CHARGE_NOTES[item.label] : undefined,
           amounts: scenarios.map(() => 0)
         });
         if (!charge.billers.includes(item.biller)) charge.billers.push(item.biller);
@@ -122,7 +106,6 @@
           billers: ['apple'],
           category: 'phone',
           credit: true,
-          note: 'Trade-in value this path had no room for. A lease only ever collects half or seventy percent of the sticker, so it runs out of payments to discount long before a purchase does, and the difference comes back as store credit rather than as a cheaper phone.',
           amounts: back
         });
       }
@@ -296,10 +279,6 @@
         {/if}
       </header>
 
-      {#if beat}
-        <p class="story">{beat.detail}</p>
-      {/if}
-
       {#if charges.length}
         <ul class="charges">
           {#each charges as charge (charge.label)}
@@ -328,10 +307,6 @@
                   </span>
                 {/each}
               </div>
-
-              {#if charge.note}
-                <span class="note">{charge.note}</span>
-              {/if}
             </li>
           {/each}
         </ul>
@@ -445,15 +420,6 @@
     text-transform: uppercase;
   }
 
-  .story {
-    margin: 0;
-    max-width: 60ch;
-    font-size: 14.5px;
-    line-height: 1.65;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-
   /* What arrived, described once, then drawn across the columns that pay it */
   .charges {
     display: grid;
@@ -488,14 +454,6 @@
     letter-spacing: 0.04em;
     color: var(--muted);
     text-transform: uppercase;
-  }
-  .note {
-    padding: 0 var(--gutter);
-    max-width: 58ch;
-    font-size: 12.5px;
-    line-height: 1.55;
-    color: var(--faint);
-    text-wrap: pretty;
   }
 
   /*
@@ -722,9 +680,6 @@
     }
     header h3 {
       font-size: 16.5px;
-    }
-    .story {
-      font-size: 13.5px;
     }
     .what,
     .ledger {

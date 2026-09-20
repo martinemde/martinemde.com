@@ -269,42 +269,6 @@ export const PASTIMES = [
   'watch a pot until it boils, out of spite.'
 ];
 
-/**
- * Plain-language notes for each charge, keyed by the label the schedule uses.
- * The ledger shows one the first time a charge appears and then shuts up about
- * it, which is why these live here rather than on every LineItem.
- */
-export const CHARGE_NOTES: Record<string, string> = {
-  Device: 'The sticker price less trade-in credit, on day one. Sales tax is shown separately.',
-  Installment:
-    'The purchase split 24 ways at 0% APR. Tax is split alongside it. Apple bills both; nothing accrues.',
-  'Device installment':
-    'The carrier’s share of the phone, minus this month’s slice of promo credit. Leave early and the rest of the credit evaporates.',
-  'Lease payment':
-    'It comes off the purchase option fee, so whether it bought you anything depends on how the lease ends. The trade-in credit is folded into it until the initial term runs out.',
-  'Month-to-month payment':
-    'The lease rolled over. Same phone, full un-credited rate, and every payment still comes off the buyout.',
-  'New lease payment':
-    'A fresh lease on a new phone. No trade-in is allowed on an upgrade, so this is the full rate.',
-  'Purchase option fee': 'One payment and the phone stops being Klarna’s.',
-  'Automatic buyout — it’s yours':
-    'The whole remaining balance, in one charge, on whatever card Klarna has on file.',
-  'AppleCare+':
-    'Billed by Apple, cancellable, and on a leased phone it is what stands between you and the return inspection.',
-  'AppleCare One': 'Flat rate, up to three devices. Already subscribed? Adding this phone is free.',
-  'AppleCare+ (annual)':
-    'A year at a time, up front. Cheaper than monthly if you keep it the whole way.',
-  'Sales tax, up front':
-    'Cash purchases and carriers collect tax on the full retail price up front. On the cash path, any trade-in credit left after paying for the device covers tax too.',
-  'Carrier activation':
-    'One-time, at signup, and required — you cannot complete a lease without attaching a carrier.',
-  Case: 'Case and glass. Not financed, not optional in practice.',
-  'Screen repair':
-    'One cracked screen at month nine, repaired in all four paths. The estimate depends on your AppleCare choice.',
-  'Screen repair before return':
-    'You lived with the crack, but the leased phone needs a repair before its first return. AppleCare changes the estimate; it does not make the repair free.'
-};
-
 const CATEGORY_OF_ZERO: CategoryTotals = { phone: 0, rent: 0, care: 0, fees: 0, repair: 0, tax: 0 };
 
 function zeroTotals(): CategoryTotals {
@@ -974,80 +938,60 @@ export function allScenarios(input: Inputs): Scenario[] {
  */
 export interface Beat {
   title: string;
-  detail: string;
 }
 
 export function beats(input: Inputs): Map<number, Beat> {
   const { term, endChoice, carrierTerm } = input;
-  const { gross, payment, refund, leaseTotal } = leaseTerms(input.listPrice, term, input.tradeIn);
+  const { gross, payment } = leaseTerms(input.listPrice, term, input.tradeIn);
   const map = new Map<number, Beat>();
   const set = (month: number, beat: Beat) => {
     if (month >= 0 && month <= HORIZON && !map.has(month)) map.set(month, beat);
   };
 
   set(0, {
-    title: 'You walk out of the store',
-    detail: refund
-      ? `Two columns have already taken a large bite and two have taken almost nothing. And your trade-in is bigger than a ${term}-month lease has room for: it only ever collects ${money0(leaseTotal)}.`
-      : 'Two columns have already taken a large bite and two have taken almost nothing. Nothing about the phone differs between them — only the moment the money moves.'
+    title: 'You walk out of the store'
   });
 
   set(1, {
-    title: 'Thirty days later, everything starts billing',
-    detail:
-      'The lease, the Apple Card installment and the carrier instalment all begin about a month after pickup. The cash column is done paying for the phone and never pays for it again.'
+    title: 'Thirty days later, everything starts billing'
   });
 
   if (input.appleCare === 'annual') {
     set(12, {
-      title: 'AppleCare comes due again',
-      detail:
-        'The yearly plan lands in one charge, in every column at once. It is the only line here that does not care how you paid for the phone.'
+      title: 'AppleCare comes due again'
     });
   }
 
   if (input.tradeIn > 0 && endChoice !== 'return' && payment < gross) {
     set(term + 1, {
-      title: 'The trade-in credit is spent',
-      detail: `The credit only ever covered the initial term. The lease payment goes from ${money(payment)} to the full ${money(gross)}, and that is the number it stays at from here.`
+      title: 'The trade-in credit is spent'
     });
   }
 
   if (endChoice === 'nothing') {
     set(term + EXTENSION_MONTHS, {
-      title: 'Klarna settles it for you',
-      detail:
-        'Six months with no decision, so the remaining balance is charged to your card and the phone becomes yours. You have now paid exactly list price, and you decided nothing.'
+      title: 'Klarna settles it for you'
     });
   }
 
   set(24, {
-    title: 'Apple Card financing is paid off',
-    detail:
-      'Twenty-four installments, zero interest, and that column stops growing except for coverage. Compare its height to the cash column — same phone, same total, two years apart.'
+    title: 'Apple Card financing is paid off'
   });
 
   if (carrierTerm > 24 && carrierTerm < HORIZON) {
     set(carrierTerm, {
-      title: 'The carrier finally lets go',
-      detail: input.carrierCredits
-        ? 'The last promo credit posts and the installments end. Three years of staying put, which was the actual price of that sticker.'
-        : 'Thirty-six installments end. This was the cheapest monthly number on the page and the longest commitment behind it.'
+      title: 'The carrier finally lets go'
     });
   }
 
   if (endChoice === 'upgrade' && 2 * term <= HORIZON && 2 * term !== term) {
     set(2 * term, {
-      title: 'Another term up, another four doors',
-      detail:
-        'You hand back a second phone and sign a third lease. The rent column has no top to it — that is what the upgrade path is.'
+      title: 'Another term up, another four doors'
     });
   }
 
   set(HORIZON, {
-    title: 'Four years in',
-    detail:
-      'Look at the four totals, then at what each one leaves in your hand. The columns are not comparing the same thing until you subtract what you can still sell.'
+    title: 'Four years in'
   });
 
   return map;

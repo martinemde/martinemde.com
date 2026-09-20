@@ -21,13 +21,11 @@
   const rows: Row[] = [
     {
       label: 'Due today',
-      hint: 'Cash you produce at the counter',
       value: (s) => money0(s.summary.today),
       rank: (s) => s.summary.today
     },
     {
       label: 'Biggest single month',
-      hint: 'Where the balloon payments hide',
       value: (s) => money0(s.summary.biggestMonth)
     },
     {
@@ -93,7 +91,6 @@
         {#each scenarios as s (s.key)}
           <th class:mine={s.key === highlight}>
             <span class="name">{s.name}</span>
-            <span class="blurb">{s.blurb}</span>
           </th>
         {/each}
       </tr>
@@ -169,17 +166,6 @@
     font-weight: 580;
     font-size: 13.5px;
     letter-spacing: -0.01em;
-  }
-  .blurb {
-    display: block;
-    padding-top: 3px;
-    max-width: 21ch;
-    margin-left: auto;
-    font-weight: 400;
-    font-size: 11px;
-    line-height: 1.45;
-    color: var(--faint);
-    text-wrap: pretty;
   }
 
   tbody tr {

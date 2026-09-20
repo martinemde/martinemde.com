@@ -204,7 +204,7 @@ describe('Apple Upgrade page', () => {
     expect(container.querySelectorAll('[data-month]')).toHaveLength(25); // 0 through 24
     expect(container.querySelector('[data-month="25"]')).toBeNull();
     expect(screen.queryByText('What the scroll adds up to')).toBeNull();
-    expect(screen.queryByText('The catches, in plain language')).toBeNull();
+    expect(screen.queryByText('Assumptions and lease terms')).toBeNull();
   });
 
   it('opens the rest of the page once an ending is picked', async () => {
@@ -215,7 +215,7 @@ describe('Apple Upgrade page', () => {
 
     expect(container.querySelectorAll('[data-month]')).toHaveLength(HORIZON + 1);
     expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
-    expect(screen.getByText('The catches, in plain language')).toBeTruthy();
+    expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
   });
 
   it('names every charge once', async () => {

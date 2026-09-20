@@ -1,8 +1,15 @@
 <script lang="ts">
-  import { CATEGORIES, CATEGORY_LABELS, money0, type Scenario } from '$lib/apple-upgrade/model';
+  import {
+    CATEGORIES,
+    CATEGORY_LABELS,
+    money0,
+    type Scenario,
+    type UpgradeInterval
+  } from '$lib/apple-upgrade/model';
 
   interface Props {
     scenarios: Scenario[];
+    upgradeEvery?: UpgradeInterval | null;
     /** Which month the reader has scrolled to. Columns show totals through it. */
     month: number;
     /** Tallest column at the horizon, so bars are on one scale all the way down. */
@@ -19,6 +26,7 @@
 
   let {
     scenarios,
+    upgradeEvery,
     month,
     ceiling,
     basis = $bindable(),
@@ -90,7 +98,8 @@
   <div class="top">
     <span class="eyebrow"
       >// month {month < 0 ? '--' : String(month).padStart(2, '0')} of {scenarios[0].rows.length -
-        1}</span
+        1}{#if upgradeEvery}
+        upgrading {upgradeEvery === 12 ? 'yearly' : `every ${upgradeEvery / 12} years`}{/if}</span
     >
     <button
       class="basis"

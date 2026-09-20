@@ -1,11 +1,18 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
-  import { money, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
+  import {
+    money,
+    type Beat,
+    type Category,
+    type Scenario,
+    type UpgradeInterval
+  } from '$lib/apple-upgrade/model';
 
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */
     scenarios: Scenario[];
+    upgradeEvery?: UpgradeInterval | null;
     /** Months worth stopping on, keyed by month. */
     beats: Map<number, Beat>;
     /** Questions that only make sense once you have got there, keyed by month. */
@@ -20,7 +27,14 @@
     activeMonth?: number;
   }
 
-  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
+  let {
+    scenarios,
+    upgradeEvery,
+    beats,
+    questions = {},
+    limit,
+    activeMonth = $bindable(-1)
+  }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('cash');
   let stuck = $state(false);
@@ -249,6 +263,7 @@
   <div class="panel-wrap" bind:this={panelWrap}>
     <Columns
       {scenarios}
+      {upgradeEvery}
       month={activeMonth}
       {ceiling}
       {reference}

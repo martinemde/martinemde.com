@@ -574,6 +574,7 @@
       <Ledger
         bind:activeMonth
         {scenarios}
+        {upgradeEvery}
         beats={story}
         limit={ledgerLimit}
         questions={screenChoice !== null

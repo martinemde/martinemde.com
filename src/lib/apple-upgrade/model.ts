@@ -907,7 +907,7 @@ export function appleCardFinancing(input: Inputs): Scenario {
   return {
     key: 'applecard',
     name: 'Apple Card · 24 mo 0%',
-    shortName: 'Card',
+    shortName: 'Finance',
     blurb: 'Old installments continue after a trade-in.',
     rows,
     summary: summarize(input, rows, resaleAtAge(input, age) - debt, purchases[0].refund, debt)

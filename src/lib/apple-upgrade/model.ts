@@ -1317,6 +1317,7 @@ export function beats(input: Inputs): Map<number, Beat> {
       [3, { title: '...to the total at the top' }],
       [4, { title: 'so you can see...' }],
       [5, { title: 'how the payments stack up' }],
+      [7, { title: 'tap for a breakdown' }],
       [48, { title: 'Four years in' }]
     ]);
     for (const month of [12, 24, 36])
@@ -1356,6 +1357,7 @@ export function beats(input: Inputs): Map<number, Beat> {
   set(3, { title: '...to the total at the top' });
   set(4, { title: 'so you can see...' });
   set(5, { title: 'how the payments stack up' });
+  set(7, { title: 'tap for a breakdown' });
 
   if (input.appleCare === 'annual') {
     set(12, {

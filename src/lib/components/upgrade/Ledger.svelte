@@ -239,8 +239,8 @@
 
   /**
    * The month sitting just under the panel is the one being read. Straight
-   * scroll maths rather than an observer band: 49 blocks, no gaps between
-   * them, and it never flickers between two.
+   * scroll maths rather than an observer band: follow each card's top edge
+   * so the small gaps between months don't interrupt the running tally.
    */
   $effect(() => {
     const line = readLine;
@@ -412,20 +412,21 @@
   .month {
     display: grid;
     gap: 5px;
-    border-top: 1px solid color-mix(in oklch, var(--border) 45%, transparent);
-    padding: 8px 0 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: color-mix(in oklch, var(--surface) 65%, var(--bg));
+    margin-bottom: 8px;
+    padding: 8px 0;
   }
   .month.beat {
-    border-top-color: var(--border);
-    padding-top: 14px;
+    padding-top: 10px;
   }
   .month.quiet:not(.beat) {
     opacity: 0.6;
   }
-  /* The month being read. A tint only: an inset edge sat on top of the month
-     number, and anything with width would widen the page. */
+  /* Highlight the current card without changing its size. */
   .month.on {
-    border-radius: 6px;
+    border-color: color-mix(in oklch, var(--accent) 50%, var(--border));
     background: color-mix(in oklch, var(--accent) 7%, transparent);
   }
 
@@ -433,6 +434,7 @@
     display: flex;
     align-items: baseline;
     gap: 10px;
+    padding: 0 var(--gutter);
   }
   .mnum {
     flex: none;

@@ -332,7 +332,7 @@
 
   /** How far down the ledger the reader is allowed before answering. */
   const unansweredYear = $derived(annualChoices.findIndex((choice) => choice === null));
-  const ledgerLimit = $derived(unansweredYear < 0 ? HORIZON : (unansweredYear + 1) * 12);
+  const ledgerLimit = $derived(unansweredYear < 0 ? HORIZON : (unansweredYear + 1) * 12 - 1);
 
   function chooseYear(index: number, choice: 'upgrade' | 'keep') {
     if (annualChoices[index] === choice) return;
@@ -598,8 +598,8 @@
         beats={story}
         limit={ledgerLimit}
         questions={screenChoice !== null
-          ? { 12: yearOne, 24: yearTwo, 36: yearThree, [SCREEN_CRACK_MONTH]: screenCard }
-          : { 12: yearOne, 24: yearTwo, 36: yearThree }}
+          ? { 11: yearOne, 23: yearTwo, 35: yearThree, [SCREEN_CRACK_MONTH]: screenCard }
+          : { 11: yearOne, 23: yearTwo, 35: yearThree }}
       />
     </section>
 

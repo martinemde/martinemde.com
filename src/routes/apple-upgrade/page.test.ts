@@ -84,7 +84,7 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText(payment)).toBeTruthy();
     await user.click(screen.getByText('No trade-in'));
     await user.click(screen.getByText('No AppleCare'));
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).listPrice).toBe(price);
     expect(screen.queryByText('iPhone 17 Pro')).toBeNull();
     expect(screen.queryByText('iPhone 17 Pro Max')).toBeNull();
@@ -113,7 +113,7 @@ describe('Apple Upgrade page', () => {
       expect(screen.queryByText('No trade-in')).toBeNull();
       expect(container.querySelector('[data-month]')).toBeNull();
       await walkThrough(user);
-      expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+      expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
       expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!)).toMatchObject({
         deviceKey: 'iphone-18-pro',
         annualChoices: [null, null, null],
@@ -142,7 +142,7 @@ describe('Apple Upgrade page', () => {
       })
     );
     const { container } = render(Page);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(37);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(36);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!)).toMatchObject({
       listPrice: price,
       annualChoices: ['keep', 'upgrade', null]
@@ -248,11 +248,16 @@ describe('Apple Upgrade page', () => {
     const { container } = render(Page);
     await walkThrough(user);
     expect(container.querySelectorAll('.chart .name')).toHaveLength(5);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
     expect(screen.queryByText('What the scroll adds up to')).toBeNull();
     for (const year of [1, 2, 3]) {
+      const precedingMonth = container.querySelector(`[data-month="${year * 12 - 1}"]`)!;
+      expect(precedingMonth.nextElementSibling?.querySelector(`#year-${year}-title`)).toBeTruthy();
+      expect(container.querySelector(`[data-month="${year * 12}"]`)).toBeNull();
       await chooseYear(user, year);
-      expect(container.querySelectorAll('[data-month]')).toHaveLength((year + 1) * 12 + 1);
+      expect(container.querySelectorAll('[data-month]')).toHaveLength(
+        year === 3 ? HORIZON + 1 : (year + 1) * 12
+      );
     }
     expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
     expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
@@ -326,8 +331,8 @@ describe('Apple Upgrade page', () => {
     await chooseYear(user, 2);
     view.unmount();
     view = render(Page);
-    expect(view.container.querySelector('[data-month="36"]')).toBeTruthy();
-    expect(view.container.querySelector('[data-month="37"]')).toBeNull();
+    expect(view.container.querySelector('[data-month="35"]')).toBeTruthy();
+    expect(view.container.querySelector('[data-month="36"]')).toBeNull();
     view.unmount();
     const saved = JSON.parse(localStorage.getItem('apple-upgrade-calculator')!);
     delete saved.annualChoices;
@@ -336,7 +341,7 @@ describe('Apple Upgrade page', () => {
       JSON.stringify({ ...saved, upgradeEvery: 12, endChoice: 'nothing' })
     );
     view = render(Page);
-    expect(view.container.querySelectorAll('[data-month]')).toHaveLength(13);
+    expect(view.container.querySelectorAll('[data-month]')).toHaveLength(12);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
       null,
       null,

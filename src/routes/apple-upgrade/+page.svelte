@@ -471,18 +471,6 @@
       {#if appleCare === 'annual'}
         <Field label="Yearly price" bind:value={appleCareAnnual} step={10} />
       {/if}
-      <Field
-        label="Screen repair without AppleCare"
-        bind:value={screenRepairCost}
-        step={25}
-        hint="Estimate before tax; enter the repair quote for your device."
-      />
-      <Field
-        label="Screen repair with AppleCare"
-        bind:value={appleCareRepairCost}
-        step={1}
-        hint="Estimated service fee before tax; check your coverage."
-      />
     </div>
   </Step>
 
@@ -519,6 +507,21 @@
       <div class="fields">
         <Field label="Carrier activation fee" bind:value={activationFee} step={5} />
         <Field label="Case &amp; accessories" bind:value={caseCost} step={10} />
+      </div>
+      <h3>Screen repair costs</h3>
+      <div class="fields">
+        <Field
+          label="Screen repair without AppleCare"
+          bind:value={screenRepairCost}
+          step={25}
+          hint="Estimate before tax; enter the repair quote for your device."
+        />
+        <Field
+          label="Screen repair with AppleCare"
+          bind:value={appleCareRepairCost}
+          step={1}
+          hint="Estimated service fee before tax; check your coverage."
+        />
       </div>
       <h3>Apple trade-in estimates</h3>
       <p>

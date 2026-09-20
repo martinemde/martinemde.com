@@ -2,7 +2,6 @@
   import type { Snippet } from 'svelte';
   import Columns from './Columns.svelte';
   import {
-    CATEGORIES,
     CHARGE_NOTES,
     money,
     type Beat,
@@ -62,18 +61,18 @@
   );
 
   /**
-   * A charge, described once and then attributed to whichever columns pay it.
-   * Grouping by label is what lets a month read as "here is the bill, and here
-   * is who gets handed it" rather than as four unrelated ledgers.
+   * A charge, described once and then drawn across the columns that get handed
+   * it. The bar in each column is the attribution and the amount at the same
+   * time: four little rectangles means everybody pays it, one means only that
+   * column does, and the heights say how much.
    */
   interface Charge {
     label: string;
     biller: Biller;
     category: Category;
     note?: string;
-    paid: { key: string; name: string; amount: number }[];
-    /** Set when every paying column pays the same, which is the common case. */
-    uniform: number | null;
+    /** One entry per column, in column order. Zero where that column is spared. */
+    amounts: number[];
   }
 
   /** The month each label first shows up, so its explanation is shown once. */
@@ -91,65 +90,42 @@
 
   function chargesFor(month: number): Charge[] {
     const byLabel: Record<string, Charge> = {};
-    for (const s of scenarios) {
+    scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
         const charge = (byLabel[item.label] ??= {
           label: item.label,
           biller: item.biller,
           category: item.category,
           note: firstSeen[item.label] === month ? CHARGE_NOTES[item.label] : undefined,
-          paid: [],
-          uniform: null
+          amounts: scenarios.map(() => 0)
         });
-        charge.paid.push({ key: s.key, name: s.shortName, amount: item.amount });
+        charge.amounts[column] += item.amount;
       }
-    }
-    const charges = Object.values(byLabel);
-    for (const charge of charges) {
-      const first = charge.paid[0].amount;
-      charge.uniform = charge.paid.every((p) => Math.abs(p.amount - first) < 0.005) ? first : null;
-    }
+    });
     // Biggest bill first: on the months that matter, the headline is the balloon.
-    return charges.sort(
-      (a, b) => Math.max(...b.paid.map((p) => p.amount)) - Math.max(...a.paid.map((p) => p.amount))
-    );
+    return Object.values(byLabel).sort((a, b) => Math.max(...b.amounts) - Math.max(...a.amounts));
   }
 
-  /** The footer: what each column owes this month, and the slice it contributes. */
+  /**
+   * Bars are scaled within their own month — the biggest single charge that
+   * month fills the track, and every other bar in the month is drawn against
+   * it. Day one is forty times a monthly payment, so one scale across all 48
+   * months would render every ordinary month as a hairline. Absolute size is
+   * what the printed number is for; the bars answer "who pays this, and how
+   * does it compare to the rest of this month".
+   */
+  /** What each column actually owes this month, once card rewards are netted. */
   function cellsFor(month: number) {
     return scenarios.map((s) => {
       const row = s.rows[month];
       const net = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
-      // Everything in a month discounts by the same factor, so scaling the
-      // nominal slices by it discounts them exactly.
-      const scale = net > 0 && row.net > 0 ? net / row.net : 1;
-      return {
-        key: s.key,
-        name: s.shortName,
-        net,
-        // Same category order as the bar, so a slice lands on its own band.
-        slices: CATEGORIES.map((category) => ({
-          category,
-          amount:
-            row.items
-              .filter((i) => i.category === category)
-              .reduce((sum, i) => sum + (i.amount - (i.reward ?? 0)), 0) * scale
-        })).filter((slice) => slice.amount > 0.005)
-      };
+      return { key: s.key, name: s.shortName, net };
     });
   }
 
-  /**
-   * The footer slices are scaled within their own month — the tallest of the
-   * four fills the track. Day one is forty times a monthly payment, so one
-   * scale across all 48 months would render every ordinary month as a
-   * hairline. Absolute size is what the printed number is for; the slices
-   * answer "who got hit hardest this month", and the colours and the column
-   * they sit under say which band they are about to join.
-   */
-  const TRACK_PX = 34; // Keep in step with `.track`'s height below.
-  function piecePx(amount: number, peak: number): number {
-    if (peak <= 0) return 0;
+  const TRACK_PX = 26; // Keep in step with `.track`'s height below.
+  function barPx(amount: number, peak: number): number {
+    if (peak <= 0 || amount <= 0.005) return 0;
     return Math.max(2, (amount / peak) * TRACK_PX);
   }
 
@@ -276,7 +252,7 @@
     {@const charges = chargesFor(month)}
     {@const cells = cellsFor(month)}
     {@const idle = idleLine(month)}
-    {@const peak = Math.max(...cells.map((c) => c.net), 0)}
+    {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts))}
     <section
       bind:this={blockEls[month]}
       data-month={month}
@@ -296,24 +272,6 @@
         {/if}
       </header>
 
-      <!-- The aligned totals sit at the top of the month, level with the line
-           the panel reads from, so a slice lifts off exactly as its month is
-           counted rather than a screen-and-a-half later. -->
-      <div class="foot">
-        {#each cells as cell (cell.key)}
-          <div class="cell" class:zero={cell.net <= 0.005}>
-            <span class="track">
-              <span class="piece">
-                {#each cell.slices as slice (slice.category)}
-                  <i data-cat={slice.category} style="height: {piecePx(slice.amount, peak)}px"></i>
-                {/each}
-              </span>
-            </span>
-            <span class="amt">{cell.net > 0.005 ? money(cell.net) : '—'}</span>
-          </div>
-        {/each}
-      </div>
-
       {#if beat}
         <p class="story">{beat.detail}</p>
       {/if}
@@ -321,28 +279,46 @@
       {#if charges.length}
         <ul class="charges">
           {#each charges as charge (charge.label)}
-            <li data-cat={charge.category}>
+            <li>
               <span class="head">
-                <i class="swatch" aria-hidden="true"></i>
                 <span class="what">{charge.label}</span>
-                {#if charge.uniform !== null}
-                  <span class="amount">{money(charge.uniform)}</span>
-                {/if}
                 <span class="biller">{charge.biller}</span>
               </span>
-              <span class="paid">
-                {#each charge.paid as who (who.key)}
-                  <i class="tag"
-                    >{who.name}{#if charge.uniform === null}<b>{money(who.amount)}</b>{/if}</i
-                  >
+
+              <!-- The attribution and the amount in one mark: a bar in every
+                   column that gets handed this charge, sized against the
+                   biggest single bill of the month. -->
+              <div class="bars" data-cat={charge.category}>
+                {#each charge.amounts as amount, i (cells[i].key)}
+                  <span class="cell" class:zero={amount <= 0.005}>
+                    <span class="track">
+                      <i
+                        class="bar"
+                        style="height: {barPx(amount, peak)}px"
+                        title={amount > 0.005
+                          ? `${cells[i].name}: ${money(amount)}`
+                          : `${cells[i].name}: nothing`}
+                      ></i>
+                    </span>
+                    <span class="amt">{amount > 0.005 ? money(amount) : ''}</span>
+                  </span>
                 {/each}
-              </span>
+              </div>
+
               {#if charge.note}
                 <span class="note">{charge.note}</span>
               {/if}
             </li>
           {/each}
         </ul>
+
+        <div class="totals">
+          {#each cells as cell (cell.key)}
+            <span class="sum" class:zero={cell.net <= 0.005}>
+              {cell.net > 0.005 ? money(cell.net) : '—'}
+            </span>
+          {/each}
+        </div>
       {:else if !idle}
         <p class="nothing">Nothing due anywhere. The phone just gets a year older.</p>
       {/if}
@@ -465,44 +441,30 @@
     text-wrap: pretty;
   }
 
-  /* What arrived, described once, then attributed */
+  /* What arrived, described once, then drawn across the columns that pay it */
   .charges {
     display: grid;
-    gap: 7px;
+    gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
   }
   .charges li {
     display: grid;
-    gap: 3px;
+    gap: 4px;
   }
   .head {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 3px 8px;
+    padding: 0 var(--gutter);
   }
-  .swatch {
-    height: 9px;
-    width: 9px;
-    flex: none;
-    align-self: center;
-    border-radius: 2px;
-    background: var(--fill);
-  }
-  /* Not `.label` — that is a global form class that forces a full-width block. */
+  /* Not `.label` — a global form class owns that name. */
   .what {
     font-size: 13.5px;
     font-weight: 500;
     letter-spacing: -0.005em;
-  }
-  .amount {
-    font-family: var(--font-mono);
-    font-weight: 500;
-    font-size: 13.5px;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
   }
   .biller {
     border-radius: 4px;
@@ -514,38 +476,120 @@
     color: var(--muted);
     text-transform: uppercase;
   }
-  .paid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 6px;
-  }
-  /* Not `.chip` — Skeleton ships a component under that name. */
-  .tag {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 5px;
-    border: 1px solid color-mix(in oklch, var(--fill) 40%, transparent);
-    border-radius: 999px;
-    background: color-mix(in oklch, var(--fill) 10%, transparent);
-    padding: 1px 8px;
-    font-family: var(--font-mono);
-    font-style: normal;
-    font-size: 10px;
-    letter-spacing: 0.02em;
-    color: var(--muted);
-  }
-  .tag b {
-    font-weight: 500;
-    color: var(--text);
-    font-variant-numeric: tabular-nums;
-  }
   .note {
+    padding: 0 var(--gutter);
     max-width: 58ch;
     font-size: 12.5px;
     line-height: 1.55;
     color: var(--faint);
     text-wrap: pretty;
   }
+
+  /*
+   * One row of columns per charge, on the sticky panel's grid. Four bars means
+   * everybody is billed for it; one means only that column is. Height is the
+   * amount, against the biggest single charge of the month.
+   */
+  .bars,
+  .totals {
+    display: grid;
+    grid-template-columns: repeat(var(--columns, 4), minmax(0, 1fr));
+    gap: var(--col-gap);
+    padding: 0 var(--gutter);
+  }
+  .cell {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+  .track {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 100%;
+    height: 26px;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 65%, transparent);
+  }
+  .bar {
+    position: relative;
+    display: block;
+    width: 100%;
+    max-width: var(--bar-w);
+    border-radius: 3px 3px 0 0;
+    background: var(--fill);
+    opacity: 0.38;
+    transition: opacity 0.3s ease;
+  }
+  .amt {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 10.5px;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  /* No bar and no number: being spared a charge is shown by the empty column,
+     and the baseline keeps it aligned with the ones that were not. */
+  .cell.zero .amt {
+    min-height: 1em;
+  }
+
+  /* The month's own line: what each column owes once rewards are netted. */
+  .totals {
+    border-top: 1px dashed color-mix(in oklch, var(--border) 60%, transparent);
+    padding-top: 5px;
+    margin-top: 2px;
+  }
+  .sum {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 11.5px;
+    text-align: center;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .sum.zero {
+    color: var(--faint);
+    font-weight: 400;
+  }
+
+  /* Landed: the month has been counted into the bars above. Its charges come
+     up to full strength and a hairline runs off the top toward the panel. */
+  .month.landed .bar {
+    opacity: 1;
+  }
+  .month.landed .charges li:first-child .bar::after {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 1px;
+    background: linear-gradient(to top, var(--accent), transparent);
+    content: '';
+    animation: lift 0.5s cubic-bezier(0.3, 0, 0.2, 1) 1;
+  }
+  @keyframes lift {
+    from {
+      height: 0;
+      opacity: 0.85;
+    }
+    to {
+      height: 40px;
+      opacity: 0;
+    }
+  }
+
+  .nothing {
+    margin: 0;
+    padding: 0 var(--gutter);
+    max-width: 58ch;
+    font-size: 13px;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--faint);
+    text-wrap: pretty;
+  }
+
   .credit {
     margin: 0;
     max-width: 58ch;
@@ -573,17 +617,6 @@
     text-wrap: pretty;
   }
 
-  /* Column-aligned totals, on the chart's grid, with the slice that joins it */
-  .foot {
-    display: grid;
-    grid-template-columns: repeat(var(--columns, 4), minmax(0, 1fr));
-    align-items: end;
-    /* Matches the sticky panel's border + padding and its column gap, so a
-       month's slice sits directly under the bar it is about to join. */
-    gap: var(--col-gap);
-    border-bottom: 1px dashed color-mix(in oklch, var(--border) 60%, transparent);
-    padding: 0 var(--gutter) 6px;
-  }
   .cell {
     display: grid;
     justify-items: center;
@@ -602,56 +635,7 @@
     color: var(--faint);
     font-weight: 400;
   }
-  /* A faint full-height well, so a short slice reads as a small share of the
-     month rather than as a stray line. */
-  .track {
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    width: 100%;
-    height: 34px;
-    border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
-    background: linear-gradient(
-      to top,
-      color-mix(in oklch, var(--border) 24%, transparent),
-      transparent 70%
-    );
-  }
-  .piece {
-    position: relative;
-    display: flex;
-    flex-direction: column-reverse;
-    gap: 1px;
-    width: 100%;
-    max-width: var(--bar-w);
-  }
-  .piece i {
-    display: block;
-    border-radius: 1px;
-    background: var(--fill);
-    opacity: 0.4;
-    transition:
-      opacity 0.3s ease,
-      transform 0.3s ease;
-  }
-  .piece i:last-child {
-    border-radius: 3px 3px 1px 1px;
-  }
 
-  /* Landed: the slice has been counted into the bars above. It brightens and
-     nudges upward, and a hairline runs off the top toward the panel. */
-  .month.landed .piece i {
-    opacity: 1;
-  }
-  .month.landed .piece::after {
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    width: 1px;
-    background: linear-gradient(to top, var(--accent), transparent);
-    content: '';
-    animation: lift 0.5s cubic-bezier(0.3, 0, 0.2, 1) 1;
-  }
   @keyframes lift {
     from {
       height: 0;
@@ -702,9 +686,6 @@
       font-size: 13.5px;
     }
     .what,
-    .amount {
-      font-size: 13px;
-    }
     .ledger {
       --gutter: 11px;
       --col-gap: 6px;
@@ -716,12 +697,5 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .piece i {
-      transition: none;
-    }
-    .month.landed .piece::after {
-      animation: none;
-      content: none;
-    }
   }
 </style>

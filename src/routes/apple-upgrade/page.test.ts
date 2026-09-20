@@ -114,17 +114,7 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText('The catches, in plain language')).toBeTruthy();
   });
 
-  // Four columns, so four sets of aligned totals under every month.
-  it('aligns a total per column under each month', async () => {
-    const user = userEvent.setup();
-    const { container } = render(Page);
-    await walkThrough(user);
-
-    const month = container.querySelector('[data-month="1"]')!;
-    expect(month.querySelectorAll('.foot .cell')).toHaveLength(4);
-  });
-
-  it('names every charge once and says who gets billed for it', async () => {
+  it('names every charge once', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
@@ -135,6 +125,51 @@ describe('Apple Upgrade page', () => {
     expect(month).toMatch(/Lease payment/);
     expect(month).toMatch(/Installment/);
     expect(month).toMatch(/Device installment/);
+  });
+
+  /**
+   * A charge is attributed by drawing it in the columns that pay it, so every
+   * charge spans all four and the ones that owe nothing are empty. That is the
+   * whole mechanism: no chips, no swatches, just where the bars are.
+   */
+  it('draws each charge across the columns that are billed for it', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+
+    const rows = container.querySelectorAll('[data-month="1"] .charges li');
+    expect(rows.length).toBeGreaterThan(0);
+
+    const heights = (row: Element) =>
+      [...row.querySelectorAll('.bar')].map((b) =>
+        Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
+      );
+
+    for (const row of rows) {
+      expect(row.querySelectorAll('.cell')).toHaveLength(4);
+
+      const label = row.querySelector('.what')!.textContent!;
+      const drawn = heights(row).map((h) => h > 0);
+      if (label === 'AppleCare+') {
+        // Billed by Apple whatever you did about the phone.
+        expect(drawn).toEqual([true, true, true, true]);
+      } else if (label === 'Lease payment') {
+        // Only the lease column, and it is the third.
+        expect(drawn).toEqual([false, false, true, false]);
+      }
+    }
+  });
+
+  it('sizes the bars against the biggest charge of that month', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+
+    const bars = [...container.querySelectorAll('[data-month="1"] .bar')].map((b) =>
+      Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
+    );
+    // One bar reaches the top of the track; nothing exceeds it.
+    expect(Math.max(...bars)).toBe(26);
   });
 
   it('rewrites the ledger when you change the ending', async () => {

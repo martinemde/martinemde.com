@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import Step from '$lib/components/upgrade/Step.svelte';
   import Tiles from '$lib/components/upgrade/Tiles.svelte';
   import Field from '$lib/components/upgrade/Field.svelte';
@@ -159,6 +160,47 @@
   let carrierOffer = $state(initial.carrierOffer);
   let resaleAtTerm = $state(Math.round(initial.listPrice * 0.45));
   let resaleAtHorizon = $state(Math.round(initial.listPrice * 0.24));
+
+  let scrollY = $state(0);
+  let pageTitle: HTMLHeadingElement;
+  const atTop = $derived(scrollY <= 8);
+
+  async function navigateOrReset() {
+    if (!atTop) {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduced ? 'instant' : 'smooth' });
+      return;
+    }
+
+    if (screenDialog.open) screenDialog.close();
+    activeMonth = -1;
+    seen = -1;
+    deviceKey = DEFAULTS.deviceKey;
+    listPrice = DEFAULTS.listPrice;
+    hasTradeIn = DEFAULTS.hasTradeIn;
+    tradeIn = DEFAULTS.tradeIn;
+    upgradeEvery = DEFAULTS.upgradeEvery;
+    appleCare = DEFAULTS.appleCare;
+    endChoice = DEFAULTS.endChoice;
+    appleCareMonthly = DEFAULTS.appleCareMonthly;
+    appleCareOneMonthly = DEFAULTS.appleCareOneMonthly;
+    appleCareAnnual = DEFAULTS.appleCareAnnual;
+    screenChoice = DEFAULTS.screenChoice;
+    screenRepairCost = DEFAULTS.screenRepairCost;
+    appleCareRepairCost = DEFAULTS.appleCareRepairCost;
+    taxRate = DEFAULTS.taxRate;
+    activationFee = DEFAULTS.activationFee;
+    caseCost = DEFAULTS.caseCost;
+    appleCardBack = DEFAULTS.appleCardBack;
+    klarnaCardBack = DEFAULTS.klarnaCardBack;
+    carrierCardBack = DEFAULTS.carrierCardBack;
+    discountRate = DEFAULTS.discountRate;
+    carrierOffer = DEFAULTS.carrierOffer;
+    resaleAtTerm = Math.round(DEFAULTS.listPrice * usedFraction(24));
+    resaleAtHorizon = Math.round(DEFAULTS.listPrice * 0.24);
+    await tick();
+    pageTitle.focus({ preventScroll: true });
+  }
 
   // Resale estimates follow the device and the term. Change either and these
   // re-derive; they're guesses either way, so tune them after you pick.
@@ -341,10 +383,16 @@
   />
 </svelte:head>
 
+<svelte:window bind:scrollY />
+
+<button class="page-control" type="button" onclick={navigateOrReset}>
+  {atTop ? 'Start over' : 'Jump to top'}
+</button>
+
 <article>
   <header class="hero">
     <div class="eyebrow">// you never pay more than full price</div>
-    <h1>Apple Upgrade, decoded</h1>
+    <h1 bind:this={pageTitle} tabindex="-1">Apple Upgrade, decoded</h1>
     <p class="lede">Pick your phone, then compare four ways to pay over four years.</p>
   </header>
 
@@ -644,6 +692,31 @@
 {/snippet}
 
 <style>
+  .page-control {
+    position: fixed;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 21;
+    min-height: 48px;
+    min-width: 132px;
+    padding: 12px 18px;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px #0003;
+  }
+  .page-control:hover {
+    background: var(--surface2, var(--bg));
+  }
+  .page-control:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+
   .offer-bar {
     height: 10px;
     border-radius: 5px;

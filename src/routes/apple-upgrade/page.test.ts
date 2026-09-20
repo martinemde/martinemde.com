@@ -13,6 +13,8 @@ describe('Apple Upgrade page', () => {
   beforeEach(() => {
     localStorage.clear();
     scrolledMonth = -1;
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (
       this: Element
     ) {
@@ -63,6 +65,52 @@ describe('Apple Upgrade page', () => {
     scrolledMonth = month;
     await fireEvent.scroll(window);
   }
+
+  it('jumps to the top without clearing answers, then starts fresh including saved choices', async () => {
+    const user = userEvent.setup();
+    const { unmount, container } = render(Page);
+    await walkThrough(user);
+    await scrollToMonth(9);
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Deal with it' })
+    );
+    const saved = localStorage.getItem('apple-upgrade-calculator');
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 1400 });
+    await fireEvent.scroll(window);
+    const jump = screen.getByRole('button', { name: 'Jump to top' });
+    jump.focus();
+    await user.keyboard('{Enter}');
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' });
+    expect(localStorage.getItem('apple-upgrade-calculator')).toBe(saved);
+    expect(screen.queryByRole('button', { name: 'Start over' })).toBeNull();
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 });
+    await fireEvent.scroll(window);
+    await user.click(screen.getByRole('button', { name: 'Start over' }));
+    expect(screen.queryByText('No trade-in')).toBeNull();
+    expect(container.querySelector('[data-month]')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Apple Upgrade, decoded' })
+    );
+    const reset = JSON.parse(localStorage.getItem('apple-upgrade-calculator')!);
+    for (const key of [
+      'deviceKey',
+      'hasTradeIn',
+      'upgradeEvery',
+      'appleCare',
+      'endChoice',
+      'screenChoice'
+    ]) {
+      expect(reset[key]).toBeNull();
+    }
+    unmount();
+    render(Page);
+    expect(screen.queryByText('No trade-in')).toBeNull();
+    await walkThrough(user);
+    await scrollToMonth(9);
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+  });
 
   it('opens at month nine once, and dismissing it survives reload', async () => {
     const user = userEvent.setup();

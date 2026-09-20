@@ -161,7 +161,7 @@
     months.filter((month) => chargesFor(month).length === 0 && !idleLine(month))
   );
 
-  const readLine = $derived(headerPx + (panelPx || chartPx + 96) + 20);
+  const readLine = $derived(headerPx + (panelPx || chartPx + 96) + 80);
 
   /**
    * What the phone itself costs if you just buy it — the cash column's own

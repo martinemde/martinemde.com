@@ -297,6 +297,24 @@ describe('tax', () => {
     const scenario = outright(inputs({ taxRate: 8.5 }));
     expect(scenario.summary.today).toBeCloseTo(1199 * 1.085, 2);
   });
+
+  it.each([0, 375, 1199, 1250, 1500])(
+    'keeps cash totals and rewards unchanged with a $%s trade-in',
+    (tradeIn) => {
+      const scenario = outright(inputs({ taxRate: 8.5, tradeIn, appleCardBack: 3 }));
+      const owed = Math.max(0, 1199 * 1.085 - tradeIn);
+      const dayOne = scenario.rows[0];
+      expect(dayOne.outflow).toBeCloseTo(owed, 8);
+      expect(dayOne.rewards).toBeCloseTo(owed * 0.03, 8);
+      expect(scenario.summary.cash).toBeCloseTo(owed * 0.97, 8);
+      expect(scenario.summary.tradeInRefund).toBeCloseTo(Math.max(0, tradeIn - 1199 * 1.085), 8);
+      expect(dayOne.runningByCategory.fees).toBeCloseTo(
+        Math.max(0, 1199 * 0.085 - Math.max(0, tradeIn - 1199)) * 0.97,
+        8
+      );
+      expect(scenario.rows.slice(1).every((row) => row.outflow === 0)).toBe(true);
+    }
+  );
 });
 
 describe('NPV', () => {
@@ -553,9 +571,10 @@ describe('category split', () => {
     );
   });
 
-  it('books the whole cash purchase as equity on day one', () => {
+  it('separates the cash purchase from its upfront tax', () => {
     const scenario = outright(inputs({ taxRate: 8.5 }));
-    expect(scenario.rows[0].runningByCategory.phone).toBeCloseTo(1199 * 1.085, 2);
+    expect(scenario.rows[0].runningByCategory.phone).toBeCloseTo(1199, 2);
+    expect(scenario.rows[0].runningByCategory.fees).toBeCloseTo(1199 * 0.085, 2);
   });
 
   it('books the carrier’s up-front tax as a fee, not as the phone', () => {

@@ -68,7 +68,7 @@
    */
   interface Charge {
     label: string;
-    biller: Biller;
+    billers: Biller[];
     category: Category;
     note?: string;
     /** One entry per column, in column order. Zero where that column is spared. */
@@ -96,11 +96,12 @@
       for (const item of s.rows[month].items) {
         const charge = (byLabel[item.label] ??= {
           label: item.label,
-          biller: item.biller,
+          billers: [],
           category: item.category,
           note: firstSeen[item.label] === month ? CHARGE_NOTES[item.label] : undefined,
           amounts: scenarios.map(() => 0)
         });
+        if (!charge.billers.includes(item.biller)) charge.billers.push(item.biller);
         charge.amounts[column] += item.amount;
       }
     });
@@ -116,7 +117,7 @@
       if (back.some((amount) => amount > 0.005)) {
         charges.push({
           label: 'Apple credit back',
-          biller: 'apple',
+          billers: ['apple'],
           category: 'phone',
           credit: true,
           note: 'Trade-in value this path had no room for. A lease only ever collects half or seventy percent of the sticker, so it runs out of payments to discount long before a purchase does, and the difference comes back as store credit rather than as a cheaper phone.',
@@ -173,7 +174,7 @@
 
   /**
    * What the phone itself costs if you just buy it — the cash column's own
-   * equity total, so tax, trade-in and card rewards are all already in it. It
+   * device total plus its separately displayed tax, net of trade-in and rewards. It
    * gives the empty top of the plot a meaning: a column that has climbed past
    * this line has spent more than the phone was ever worth buying.
    */
@@ -182,7 +183,9 @@
     if (!outright) return undefined;
     const last = outright.rows[outright.rows.length - 1];
     const split = basis === 'npv' ? last.runningNpvByCategory : last.runningByCategory;
-    return split.phone > 0 ? { value: split.phone, label: 'the phone, in cash' } : undefined;
+    const tax = outright.rows[0].items.find((item) => item.label === 'Sales tax, up front');
+    const value = split.phone + (tax ? tax.amount - (tax.reward ?? 0) : 0);
+    return value > 0 ? { value, label: 'the phone, in cash' } : undefined;
   });
 
   // Measurement only: the site header is sticky and wraps to two lines on a
@@ -298,7 +301,7 @@
             <li>
               <span class="head">
                 <span class="what">{charge.label}</span>
-                <span class="biller">{charge.biller}</span>
+                <span class="biller">{charge.billers.join(' / ')}</span>
               </span>
 
               <!-- The attribution and the amount in one mark: a bar in every

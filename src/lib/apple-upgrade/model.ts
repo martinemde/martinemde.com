@@ -269,7 +269,7 @@ export const PASTIMES = [
  * it, which is why these live here rather than on every LineItem.
  */
 export const CHARGE_NOTES: Record<string, string> = {
-  Device: 'The whole sticker price plus tax, on day one, in one charge.',
+  Device: 'The sticker price less trade-in credit, on day one. Sales tax is shown separately.',
   Installment: 'The tax-inclusive total split 24 ways at 0% APR. Apple bills it; nothing accrues.',
   'Device installment':
     'The carrier’s share of the phone, minus this month’s slice of promo credit. Leave early and the rest of the credit evaporates.',
@@ -288,7 +288,7 @@ export const CHARGE_NOTES: Record<string, string> = {
   'AppleCare+ (annual)':
     'A year at a time, up front. Cheaper than monthly if you keep it the whole way.',
   'Sales tax, up front':
-    'Carriers collect tax on the full retail price at signing, before you have paid for the phone.',
+    'Cash purchases and carriers collect tax on the full retail price up front. On the cash path, any trade-in credit left after paying for the device covers tax too.',
   'Carrier activation':
     'One-time, at signup, and required — you cannot complete a lease without attaching a carrier.',
   Case: 'Case and glass. Not financed, not optional in practice.',
@@ -740,16 +740,28 @@ export function outright(input: Inputs): Scenario {
   const tax = 1 + input.taxRate / 100;
   const owed = input.listPrice * tax;
   const refund = Math.max(0, input.tradeIn - owed);
+  const deviceOwed = Math.max(0, input.listPrice - input.tradeIn);
+  const taxOwed = Math.max(
+    0,
+    input.listPrice * (input.taxRate / 100) - Math.max(0, input.tradeIn - input.listPrice)
+  );
 
   const items = (month: number): LineItem[] => {
     const out: LineItem[] = [];
     if (month === 0) {
       out.push({
         label: 'Device',
-        amount: Math.max(0, owed - input.tradeIn),
+        amount: deviceOwed,
         biller: 'apple',
         category: 'phone'
       });
+      if (taxOwed > 0)
+        out.push({
+          label: 'Sales tax, up front',
+          amount: taxOwed,
+          biller: 'apple',
+          category: 'fees'
+        });
       if (input.caseCost > 0)
         out.push({
           label: 'Case',

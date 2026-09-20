@@ -231,6 +231,25 @@ describe('Apple Upgrade page', () => {
     expect(month).toMatch(/Device installment/);
   });
 
+  it('shows upfront tax in both cash and carrier columns', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    const row = [...container.querySelectorAll('[data-month="0"] .charges li')].find(
+      (li) => li.querySelector('.what')?.textContent === 'Sales tax, up front'
+    )!;
+    expect(
+      [...row.querySelectorAll('.cell')].map((cell) => cell.classList.contains('zero'))
+    ).toEqual([false, true, true, false]);
+    expect(
+      [...row.querySelectorAll('.cell:not(.zero) .amt')].map((amount) => amount.textContent)
+    ).toEqual(['$101.92', '$101.92']);
+    expect(row.querySelector('[data-cat="fees"]')).toBeTruthy();
+    expect(row.querySelector('.biller')?.textContent).toBe('apple / carrier');
+    // Splitting tax out of the phone band must not lower the cash reference line.
+    expect(container.querySelector('.caption')?.textContent).toContain('$1,262');
+  });
+
   /**
    * A charge is attributed by drawing it in the columns that pay it, so every
    * charge spans all four and the ones that owe nothing are empty. That is the

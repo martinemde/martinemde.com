@@ -24,9 +24,9 @@
   {#each options as option (option.value)}
     <label class="tile" class:on={value === option.value}>
       <input type="radio" {name} value={option.value} bind:group={value} />
-      <span class="label">{option.label}</span>
-      {#if option.sub}<span class="sub">{option.sub}</span>{/if}
-      {#if option.note}<span class="note">{option.note}</span>{/if}
+      <span class="tile-name">{option.label}</span>
+      {#if option.sub}<span class="figure">{option.sub}</span>{/if}
+      {#if option.note}<span class="tile-note">{option.note}</span>{/if}
       <span class="check" aria-hidden="true"></span>
     </label>
   {/each}
@@ -84,14 +84,21 @@
     pointer-events: none;
   }
 
-  .label {
+  /*
+   * Not `.label`, `.sub` or `.note`: all three are global class names here —
+   * `.label` is a form class that forces a full-width block and `.sub` is a
+   * typographic utility with `line-height: 0`, which collapsed the price onto
+   * the line under it. Scoped styles do not win against a property the scoped
+   * rule never sets.
+   */
+  .tile-name {
     font-family: var(--font-body);
     font-weight: 560;
     font-size: 14.5px;
     letter-spacing: -0.01em;
     line-height: 1.35;
   }
-  .sub {
+  .figure {
     font-family: var(--font-mono);
     font-weight: 500;
     font-size: 17px;
@@ -99,7 +106,7 @@
     color: var(--accent);
     font-variant-numeric: tabular-nums;
   }
-  .note {
+  .tile-note {
     font-size: 12px;
     line-height: 1.45;
     color: var(--faint);

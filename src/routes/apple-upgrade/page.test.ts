@@ -2,28 +2,29 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import Page from './+page.svelte';
+import { HORIZON } from '$lib/apple-upgrade/model';
 
 /**
  * Smoke test for the step-by-step flow: the page gates each question behind the
- * previous answer and only builds the timeline once all four are in.
+ * previous answer and only builds the scrolling ledger once all four are in.
  */
 describe('Apple Upgrade page', () => {
   beforeEach(() => {
     localStorage.clear();
 
-    // jsdom has neither of these, and the timeline rail leans on both.
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        observe() {}
-        unobserve() {}
-        disconnect() {}
-      }
-    );
+    // jsdom has none of these, and the sticky column panel leans on all of them.
+    const noopObserver = class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    vi.stubGlobal('IntersectionObserver', noopObserver);
+    vi.stubGlobal('ResizeObserver', noopObserver);
     window.matchMedia ??= vi.fn().mockReturnValue({ matches: false }) as never;
     Element.prototype.scrollIntoView = vi.fn();
   });
 
+  /** The questions asked before the ledger starts. */
   async function walkThrough(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByText('iPhone 17 Pro Max'));
     await user.click(screen.getByText('No trade-in'));
@@ -31,10 +32,15 @@ describe('Apple Upgrade page', () => {
     await user.click(screen.getByText('No AppleCare'));
   }
 
+  /** …and the one the ledger stops at, part-way down. */
+  async function chooseEnding(user: ReturnType<typeof userEvent.setup>, label = 'Do nothing') {
+    await user.click(screen.getByText(label));
+  }
+
   it('starts with only the first question open', () => {
     render(Page);
 
-    expect(screen.getByText('What are you leasing?')).toBeTruthy();
+    expect(screen.getByText('What are you buying?')).toBeTruthy();
     expect(screen.getByText('iPhone 17 Pro Max')).toBeTruthy();
 
     // Later steps are visible as dimmed stubs, but their controls are not there.
@@ -70,33 +76,107 @@ describe('Apple Upgrade page', () => {
     expect(screen.getByText('$34.99/mo')).toBeTruthy();
   });
 
-  it('builds the timeline and the comparison once every question is answered', async () => {
+  it('builds the ledger once every setup question is answered', async () => {
     const user = userEvent.setup();
     render(Page);
 
-    expect(screen.queryByText('Every month, one row at a time')).toBeNull();
+    expect(screen.queryByText('Scroll, and watch them fill up')).toBeNull();
 
     await walkThrough(user);
 
-    expect(screen.getByText('Every month, one row at a time')).toBeTruthy();
+    expect(screen.getByText('Scroll, and watch them fill up')).toBeTruthy();
     expect(screen.getByText('The lease is up. Now what?')).toBeTruthy();
-    expect(screen.getByText('The same phone, five ways')).toBeTruthy();
+  });
+
+  /**
+   * The end-of-term question is a gate, not a preference: every month past it
+   * depends on the answer, so there is nothing below it to scroll to.
+   */
+  it('stops the ledger at the end-of-term question until it is answered', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(25); // 0 through 24
+    expect(container.querySelector('[data-month="25"]')).toBeNull();
+    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    expect(screen.queryByText('The catches, in plain language')).toBeNull();
+  });
+
+  it('opens the rest of the page once an ending is picked', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await chooseEnding(user);
+
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(HORIZON + 1);
+    expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
     expect(screen.getByText('The catches, in plain language')).toBeTruthy();
   });
 
-  it('renders a row for every month from pickup to the horizon', async () => {
+  it('names every charge once', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
 
-    const rows = container.querySelectorAll('[data-month]');
-    expect(rows).toHaveLength(37); // month 0 through 36
+    // Month 1: the lease, the Apple Card installment and the carrier
+    // installment all start, and paying cash is already finished.
+    const month = container.querySelector('[data-month="1"]')!.textContent!;
+    expect(month).toMatch(/Lease payment/);
+    expect(month).toMatch(/Installment/);
+    expect(month).toMatch(/Device installment/);
   });
 
-  it('rewrites the timeline when you change the ending', async () => {
+  /**
+   * A charge is attributed by drawing it in the columns that pay it, so every
+   * charge spans all four and the ones that owe nothing are empty. That is the
+   * whole mechanism: no chips, no swatches, just where the bars are.
+   */
+  it('draws each charge across the columns that are billed for it', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
+
+    const rows = container.querySelectorAll('[data-month="1"] .charges li');
+    expect(rows.length).toBeGreaterThan(0);
+
+    const heights = (row: Element) =>
+      [...row.querySelectorAll('.bar')].map((b) =>
+        Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
+      );
+
+    for (const row of rows) {
+      expect(row.querySelectorAll('.cell')).toHaveLength(4);
+
+      const label = row.querySelector('.what')!.textContent!;
+      const drawn = heights(row).map((h) => h > 0);
+      if (label === 'AppleCare+') {
+        // Billed by Apple whatever you did about the phone.
+        expect(drawn).toEqual([true, true, true, true]);
+      } else if (label === 'Lease payment') {
+        // Only the lease column, and it is the third.
+        expect(drawn).toEqual([false, false, true, false]);
+      }
+    }
+  });
+
+  it('sizes the bars against the biggest charge of that month', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+
+    const bars = [...container.querySelectorAll('[data-month="1"] .bar')].map((b) =>
+      Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0)
+    );
+    // One bar reaches the top of the track; nothing exceeds it.
+    expect(Math.max(...bars)).toBe(26);
+  });
+
+  it('rewrites the ledger when you change the ending', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await walkThrough(user);
+    await chooseEnding(user);
 
     const monthThirty = () => container.querySelector('[data-month="30"]')!.textContent!;
 
@@ -111,12 +191,12 @@ describe('Apple Upgrade page', () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
-    await user.click(screen.getByText('Hand it back'));
+    await chooseEnding(user, 'Hand it back');
 
-    // Months 25-36 are empty on the return path; each should suggest a pastime,
-    // and no two in a row should suggest the same one.
+    // Every month past the term is phoneless on the return path; each should
+    // suggest a pastime, and no two of them should suggest the same one.
     const suggestions = [];
-    for (let m = 25; m <= 36; m++) {
+    for (let m = 25; m <= HORIZON; m++) {
       const text = container.querySelector(`[data-month="${m}"]`)!.textContent!;
       const match = text.match(/You don’t have a phone: (.+)/);
       expect(match).not.toBeNull();
@@ -132,6 +212,45 @@ describe('Apple Upgrade page', () => {
     unmount();
 
     render(Page);
-    expect(screen.getByText('Every month, one row at a time')).toBeTruthy();
+    expect(screen.getByText('Scroll, and watch them fill up')).toBeTruthy();
+  });
+
+  /**
+   * A trade-in bigger than the lease can absorb comes back as Apple credit
+   * rather than as a cheaper phone, which is the thing nobody tells you.
+   */
+  it('says when a trade-in is too big for the lease to use', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+
+    await user.click(screen.getByText('Something else'));
+    const price = screen.getByLabelText(/Sticker price/i) as HTMLInputElement;
+    await user.clear(price);
+    await user.type(price, '999');
+    await user.click(screen.getByText('Yes, I have one'));
+    const trade = screen.getByLabelText(/Trade-in credit/i) as HTMLInputElement;
+    await user.clear(trade);
+    await user.type(trade, '800');
+    // By the radio, not by its text: the surplus warning this test is about
+    // names the terms too.
+    await user.click(container.querySelector('input[name="term"][value="12"]')!);
+    await user.click(screen.getByText('No AppleCare'));
+
+    const dayOne = container.querySelector('[data-month="0"]')!;
+    expect(dayOne.textContent).toMatch(/Apple credit back/);
+    expect(dayOne.textContent).toMatch(/\$300\.50/);
+
+    // Drawn below the line, outlined, only in the column that could not use it.
+    const row = [...dayOne.querySelectorAll('.charges li')].find(
+      (li) => li.querySelector('.what')?.textContent === 'Apple credit back'
+    )!;
+    expect(row.querySelector('.bars.credit')).toBeTruthy();
+    const drawn = [...row.querySelectorAll('.bar')].map(
+      (b) => Number((b.getAttribute('style') ?? '').match(/height:\s*([\d.]+)px/)?.[1] ?? 0) > 0
+    );
+    expect(drawn).toEqual([false, false, true, false]);
+
+    // And the same finding where someone entering a trade-in would meet it.
+    expect(screen.getByText(/bigger than the lease can use/i)).toBeTruthy();
   });
 });

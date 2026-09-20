@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { money0, type Scenario } from '$lib/apple-upgrade/model';
+  import { HORIZON, money0, type Scenario } from '$lib/apple-upgrade/model';
 
   interface Props {
     scenarios: Scenario[];
@@ -32,11 +32,11 @@
     },
     {
       label: 'Months you pay',
-      value: (s) => String(s.rows.filter((r) => r.month >= 1 && r.outflow > 0).length)
+      value: (s) => String(s.summary.monthsPaying)
     },
     {
       label: 'Total paid',
-      hint: 'Nominal dollars over 36 months, net of card rewards',
+      hint: `Nominal dollars over ${HORIZON} months, net of card rewards`,
       value: (s) => money0(s.summary.cash)
     },
     {
@@ -47,9 +47,9 @@
       lead: true
     },
     {
-      label: 'What you hold at month 36',
+      label: `What you hold at month ${HORIZON}`,
       hint: 'Resale value, less anything still owed on it',
-      value: (s) => (s.summary.equityAt36 > 0 ? money0(s.summary.equityAt36) : 'nothing')
+      value: (s) => (s.summary.equityAtHorizon > 0 ? money0(s.summary.equityAtHorizon) : 'nothing')
     },
     {
       label: 'Months with a phone',
@@ -118,14 +118,12 @@
 <style>
   .scroller {
     overflow-x: auto;
-    /* Bleed to the page edges so five columns get room on narrow screens. */
-    margin: 0 -4px;
-    padding: 0 4px 4px;
+    padding-bottom: 4px;
   }
 
   table {
     width: 100%;
-    min-width: 720px;
+    min-width: 620px;
     border-collapse: collapse;
     font-size: 13px;
   }

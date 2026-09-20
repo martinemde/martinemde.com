@@ -616,6 +616,9 @@
     max-width: var(--bar-w);
     border-radius: 3px 3px 0 0;
     background: var(--fill);
+  }
+  .bar,
+  .segment {
     opacity: 0.38;
     transition: opacity 0.3s ease;
   }
@@ -658,7 +661,8 @@
 
   /* Landed: the month has been counted into the bars above. Its charges come
      up to full strength and a hairline runs off the top toward the panel. */
-  .month.landed .bar {
+  .month.landed .bar,
+  .month.landed .segment {
     opacity: 1;
   }
   .month.landed .charges li:first-child .bar::after {
@@ -810,7 +814,9 @@
 
   @media (prefers-reduced-motion: reduce) {
     .breakdown,
-    .stacked {
+    .stacked,
+    .bar,
+    .segment {
       transition: none;
     }
   }

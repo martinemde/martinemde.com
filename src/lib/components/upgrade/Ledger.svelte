@@ -103,7 +103,7 @@
       const back = scenarios.map((s) => s.summary.tradeInRefund);
       if (back.some((amount) => amount > 0.005)) {
         charges.push({
-          label: 'Apple credit back',
+          label: 'Apple credit back for excess trade-in',
           billers: ['apple'],
           category: 'phone',
           credit: true,

@@ -16,7 +16,6 @@
     leaseTermForUpgrade,
     carrierTradeInDeal,
     type UpgradeInterval,
-    leaseTerms,
     money,
     money0,
     type AppleCarePlan,
@@ -266,17 +265,6 @@
   /** How far down the ledger the reader is allowed before answering. */
   const ledgerLimit = $derived(endChoice ? HORIZON : (term ?? 24));
 
-  /**
-   * What each lease term can absorb of the trade-in. A lease only collects
-   * half or seventy percent of the sticker, so a trade-in can run out of
-   * payments to reduce long before a purchase would.
-   */
-  const tradeInSurplus = $derived(
-    ([12, 24] as Term[])
-      .map((t) => ({ term: t, ...leaseTerms(listPrice, t, hasTradeIn === 'yes' ? tradeIn : 0) }))
-      .filter((t) => t.refund > 0.005)
-  );
-
   const upgradeOptions = ([12, 24, 36] as UpgradeInterval[]).map((months) => ({
     value: months,
     label: months === 12 ? 'Every year' : `Every ${months / 12} years`,
@@ -401,20 +389,6 @@
           step={50}
           hint="The whole offer, including your trade-in. Capped at the phone price; paid over 36 months."
         />
-      </div>
-    {/if}
-
-    {#if tradeInSurplus.length}
-      <div class="aside">
-        <h3>This trade-in is bigger than the lease can use</h3>
-        <ul class="surplus">
-          {#each tradeInSurplus as t (t.term)}
-            <li>
-              <strong>{t.term} months:</strong>
-              {money(t.payment)}/mo, with {money(t.refund)} back as Apple credit.
-            </li>
-          {/each}
-        </ul>
       </div>
     {/if}
   </Step>
@@ -767,26 +741,6 @@
     font-size: 15px;
     letter-spacing: -0.01em;
   }
-  .surplus {
-    margin: 0 0 11px;
-    max-width: 62ch;
-    padding-left: 18px;
-  }
-  .surplus li {
-    margin-bottom: 6px;
-    font-size: 14.5px;
-    line-height: 1.7;
-    color: var(--muted);
-    text-wrap: pretty;
-  }
-  .surplus li::marker {
-    color: var(--accent);
-  }
-  .surplus strong {
-    color: var(--text);
-    font-weight: 560;
-  }
-
   /* Section headers shared by the lower half of the page */
   .head {
     padding: 72px 0 26px;

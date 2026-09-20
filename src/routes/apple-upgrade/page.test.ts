@@ -393,7 +393,7 @@ describe('Apple Upgrade page', () => {
    * A trade-in bigger than the lease can absorb comes back as Apple credit
    * rather than as a cheaper phone, which is the thing nobody tells you.
    */
-  it('says when a trade-in is too big for the lease to use', async () => {
+  it('explains excess trade-in credit in the month zero ledger', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
 
@@ -405,8 +405,6 @@ describe('Apple Upgrade page', () => {
     const trade = screen.getByLabelText(/Apple Trade-in offer/i) as HTMLInputElement;
     await user.clear(trade);
     await user.type(trade, '800');
-    // By the radio, not by its text: the surplus warning this test is about
-    // names the terms too.
     await user.click(container.querySelector('input[name="upgrade-every"][value="12"]')!);
     await user.click(screen.getByText('No AppleCare'));
 
@@ -416,7 +414,7 @@ describe('Apple Upgrade page', () => {
 
     // Drawn below the line, outlined, only in the column that could not use it.
     const row = [...dayOne.querySelectorAll('.charges li')].find(
-      (li) => li.querySelector('.what')?.textContent === 'Apple credit back'
+      (li) => li.querySelector('.what')?.textContent === 'Apple credit back for excess trade-in'
     )!;
     expect(row.querySelector('.bars.credit')).toBeTruthy();
     const drawn = [...row.querySelectorAll('.bar')].map(
@@ -424,7 +422,6 @@ describe('Apple Upgrade page', () => {
     );
     expect(drawn).toEqual([false, false, true, false]);
 
-    // And the same finding where someone entering a trade-in would meet it.
-    expect(screen.getByText(/bigger than the lease can use/i)).toBeTruthy();
+    expect(screen.queryByText(/bigger than the lease can use/i)).toBeNull();
   });
 });

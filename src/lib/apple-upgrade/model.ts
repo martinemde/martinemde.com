@@ -1312,7 +1312,11 @@ export function beats(input: Inputs): Map<number, Beat> {
   if (input.upgradeMonths !== undefined) {
     const map = new Map<number, Beat>([
       [0, { title: 'You walk out of the store' }],
-      [1, { title: 'Thirty days later, everything starts billing' }],
+      [1, { title: 'Thirty days later, billing starts' }],
+      [2, { title: "We'll add each monthly bill..." }],
+      [3, { title: '...to the total at the top' }],
+      [4, { title: 'so you can see...' }],
+      [5, { title: 'how the payments stack up' }],
       [48, { title: 'Four years in' }]
     ]);
     for (const month of [12, 24, 36])
@@ -1346,8 +1350,12 @@ export function beats(input: Inputs): Map<number, Beat> {
   });
 
   set(1, {
-    title: 'Thirty days later, everything starts billing'
+    title: 'Thirty days later, billing starts'
   });
+  set(2, { title: "We'll add each monthly bill..." });
+  set(3, { title: '...to the total at the top' });
+  set(4, { title: 'so you can see...' });
+  set(5, { title: 'how the payments stack up' });
 
   if (input.appleCare === 'annual') {
     set(12, {

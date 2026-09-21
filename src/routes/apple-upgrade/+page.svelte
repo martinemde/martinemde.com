@@ -518,9 +518,28 @@
       );
       return {
         value: frequency,
+        annualCost: estimate.annualCost,
         label: frequency === 1 ? 'Every year' : `Every ${frequency} years`,
         sub: `${money0(estimate.annualCost)}/year`,
         note: `Best case · ${estimate.plan}`
+      };
+    })
+  );
+
+  const checkpointFrequencyOptions = $derived(
+    frequencyOptions.map((option) => {
+      const current = frequencyOptions.find((option) => option.value === upgradeFrequency);
+      const saving = current ? current.annualCost - option.annualCost : 0;
+      return {
+        ...option,
+        note:
+          option.value === upgradeFrequency
+            ? 'Current schedule'
+            : Math.abs(saving) < 0.5
+              ? 'About the same yearly cost'
+              : saving > 0
+                ? `Save ${money0(saving)}/year`
+                : `${money0(-saving)}/year more`
       };
     })
   );
@@ -1007,14 +1026,20 @@
               : 'The same decision applies to cash, financing, both leases, and the carrier.'}
           </p>
         </div>
-        <div class="screen-actions">
-          {#if upgradeFrequency}
-            {#each [1, 2, 3].filter((frequency) => frequency !== upgradeFrequency) as frequency (frequency)}
-              <button type="button" onclick={() => chooseFrequency(frequency)}>
-                Switch to {frequency === 1 ? 'every year' : `${frequency} years`}
-              </button>
-            {/each}
-          {:else}
+        {#if upgradeFrequency}
+          <Tiles
+            options={checkpointFrequencyOptions}
+            bind:value={() => upgradeFrequency, chooseFrequency}
+            name={`Year ${index + 1} upgrade frequency`}
+            min="170px"
+          />
+          <p class="frequency-note">
+            Best-case net costs in today’s dollars, averaged over the full four years. Savings
+            compare schedules from the start, including final debt and estimated phone value. Your
+            lease choices may cost more.
+          </p>
+        {:else}
+          <div class="screen-actions">
             <button
               type="button"
               aria-pressed={annualChoices[index] === 'upgrade'}
@@ -1025,8 +1050,8 @@
               aria-pressed={annualChoices[index] === 'keep'}
               onclick={() => chooseYear(index, 'keep')}>Keep this phone</button
             >
-          {/if}
-        </div>
+          </div>
+        {/if}
         {#each leaseOptions[index] as option (option.key)}
           <fieldset class="lease-choice">
             <legend>{option.term}-month lease: what happens to the old phone?</legend>

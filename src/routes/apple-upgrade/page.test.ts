@@ -416,6 +416,48 @@ describe('Apple Upgrade page', () => {
     ).toBe(true);
   });
 
+  it('shows live yearly costs for every cadence without requiring a selected schedule', async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await walkThrough(user);
+    const costs = () =>
+      screen
+        .getAllByRole('radio', { name: /^Every/ })
+        .map((radio) => radio.closest('label')!.querySelector('.figure')!.textContent);
+    const baseline = costs();
+    expect(baseline).toHaveLength(3);
+    for (const value of baseline) expect(value).toMatch(/^\$[\d,]+\/year$/);
+    expect(new Set(baseline).size).toBeGreaterThan(1);
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
+      null,
+      null,
+      null
+    ]);
+    await user.click(screen.getByRole('radio', { name: /^Every 2 years/ }));
+    expect(costs()).toEqual(baseline);
+    await user.click(screen.getByText('AppleCare+ monthly'));
+    expect(costs().every((value, index) => value !== baseline[index])).toBe(true);
+    await user.click(screen.getByText('No AppleCare'));
+    expect(costs()).toEqual(baseline);
+    await user.click(screen.getByText('Yes, I have one'));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Pick the phone you want to trade in' }),
+      'iPhone 17 Pro Max'
+    );
+    expect(costs().every((value, index) => value !== baseline[index])).toBe(true);
+    const withTrade = costs();
+    await user.click(screen.getByText('iPhone 18 Pro Max'));
+    expect(costs()).not.toEqual(withTrade);
+    expect(
+      (screen.getByRole('radio', { name: /^Every 2 years/ }) as HTMLInputElement).checked
+    ).toBe(true);
+    expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
+      'keep',
+      'upgrade',
+      'keep'
+    ]);
+  });
+
   it('toggles the full month breakdown from the card, totals, and keyboard', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);

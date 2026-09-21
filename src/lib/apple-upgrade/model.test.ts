@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   allScenarios,
+  bestUpgradeEstimate,
   closeOut,
   appleCardFinancing,
   appleUpgrade,
@@ -51,6 +52,63 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     ...overrides
   };
 }
+
+describe('live upgrade frequency estimates', () => {
+  it('finds a cheaper lease by buying out and reusing trade-in credit', () => {
+    // Four phones: $3,000 in lease payments/buyouts, $300 rewards,
+    // three $144 excess credits, and a final phone worth $744.
+    const estimate = bestUpgradeEstimate(
+      inputs({ listPrice: 1200, discountRate: 0, klarnaCardBack: 10 }),
+      1
+    );
+    expect(estimate.plan).toBe('Apple Upgrade · 12 mo');
+    expect(estimate.annualCost).toBeCloseTo((3000 - 300 - 432 - 744) / 4);
+  });
+  it.each([
+    [1, 456],
+    [2, 330],
+    [3, 315]
+  ] as const)(
+    'prices a %s-year cadence after settling debt and valuing the final phone',
+    (frequency, annualCost) => {
+      const input = inputs({ listPrice: 1200, discountRate: 0 });
+      expect(bestUpgradeEstimate(input, frequency).annualCost).toBeCloseTo(annualCost);
+      // A different current timeline or expensive lease exit must not contaminate a preset.
+      expect(
+        bestUpgradeEstimate(
+          { ...input, upgradeMonths: [12], leaseUpgradeChoices: { '12:12': 'return' } },
+          frequency
+        ).annualCost
+      ).toBeCloseTo(annualCost);
+    }
+  );
+
+  it('recalculates from coverage, trade-in and discount assumptions without changing its input', () => {
+    const input = inputs({ listPrice: 1200, discountRate: 0 });
+    const original = structuredClone(input);
+    const baseline = bestUpgradeEstimate(input, 2).annualCost;
+    expect(
+      bestUpgradeEstimate({ ...input, appleCare: 'monthly', appleCareMonthly: 10 }, 2).annualCost
+    ).toBeCloseTo(baseline + 120);
+    expect(bestUpgradeEstimate({ ...input, tradeIn: 400 }, 2).annualCost).toBeLessThan(baseline);
+    expect(bestUpgradeEstimate({ ...input, discountRate: 10 }, 2).annualCost).not.toBeCloseTo(
+      baseline
+    );
+    expect(input).toEqual(original);
+  });
+
+  it('uses the chosen ending and the final phone age for each cadence', () => {
+    const input = inputs({ listPrice: 1200, discountRate: 0 });
+    for (const frequency of [1, 2, 3] as const) {
+      expect(bestUpgradeEstimate(input, frequency, 'walkaway').annualCost).toBeCloseTo(
+        bestUpgradeEstimate(input, frequency, 'own').annualCost
+      );
+      expect(bestUpgradeEstimate(input, frequency, 'walkaway', 0).annualCost).toBeGreaterThan(
+        bestUpgradeEstimate(input, frequency, 'walkaway', 900).annualCost
+      );
+    }
+  });
+});
 
 describe('roundTo99', () => {
   it('lands on the nearest x.99', () => {

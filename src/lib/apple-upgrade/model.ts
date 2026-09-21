@@ -1460,6 +1460,44 @@ export function closeOut(
   };
 }
 
+/** Compare cadences independently of the reader's current yearly answers.
+ * Search the small set of lease exits so a preset really is a best case.
+ * Net cost accounts for different phone ages at the common four-year endpoint. */
+export function bestUpgradeEstimate(
+  input: Inputs,
+  frequency: 1 | 2 | 3,
+  ending: 'own' | 'walkaway' = 'own',
+  saleEstimate?: number
+) {
+  const upgradeMonths = [12, 24, 36].filter((month) => month % (frequency * 12) === 0);
+  const scheduled = { ...input, upgradeMonths, leaseUpgradeChoices: {} };
+  const candidates = allScenarios(scheduled).filter((s) => !s.key.startsWith('upgrade-'));
+  for (const term of [12, 24] as const) {
+    for (let mask = 0; mask < 2 ** upgradeMonths.length; mask++) {
+      const choices: Record<string, 'return' | 'buyout'> = Object.fromEntries(
+        upgradeMonths.map((month, index) => [
+          `${term}:${month}`,
+          mask & (1 << index) ? 'buyout' : 'return'
+        ])
+      );
+      candidates.push(appleUpgrade({ ...scheduled, term, leaseUpgradeChoices: choices }));
+    }
+  }
+  const age = HORIZON - (upgradeMonths.at(-1) ?? 0);
+  const sale =
+    ending === 'walkaway'
+      ? (saleEstimate ?? (input.privateSaleValues ?? input.upgradeTradeIns)?.[age / 12 - 1] ?? 0)
+      : undefined;
+  const endings = ending === 'own' ? (['buyout'] as const) : (['return', 'buyout'] as const);
+  const settled = candidates.flatMap((scenario) =>
+    endings.map((choice) => closeOut(scheduled, scenario, choice, sale))
+  );
+  const best = settled.reduce((winner, scenario) =>
+    scenario.summary.netCost < winner.summary.netCost ? scenario : winner
+  );
+  return { annualCost: best.summary.netCost / (HORIZON / 12), plan: best.name };
+}
+
 /**
  * A month that is worth stopping on, and why. The ledger runs 48 rows; without
  * these it would be 48 rows of the same four numbers getting bigger.

@@ -8,6 +8,7 @@
   import Compare from '$lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
+    bestUpgradeEstimate,
     closeOut,
     appleUpgrade,
     leaseTerms,
@@ -507,6 +508,22 @@
       )
     ) ?? null
   );
+  const frequencyOptions = $derived(
+    ([1, 2, 3] as const).map((frequency) => {
+      const estimate = bestUpgradeEstimate(
+        inputs,
+        frequency,
+        finalEnding,
+        finalSaleEstimate ?? undefined
+      );
+      return {
+        value: frequency,
+        label: frequency === 1 ? 'Every year' : `Every ${frequency} years`,
+        sub: `${money0(estimate.annualCost)}/year`,
+        note: `Best case · ${estimate.plan}`
+      };
+    })
+  );
 
   function chooseFrequency(frequency: number | null) {
     if (frequency === null) return;
@@ -708,15 +725,15 @@
     lede="Compare plans for the phone you’re buying today based on when you’ll want the next one. This fills in the yearly choices below; you can still change them and decide whether to buy out a lease or hand the phone back."
   >
     <Tiles
-      options={[
-        { value: 1, label: 'Every year', note: 'I want the next phone in 12 months.' },
-        { value: 2, label: 'Every 2 years', note: 'I usually keep a phone for 24 months.' },
-        { value: 3, label: 'Every 3 years', note: 'I’m willing to wait 36 months.' }
-      ]}
+      options={frequencyOptions}
       bind:value={() => upgradeFrequency, chooseFrequency}
       name="Upgrade frequency"
       min="170px"
     />
+    <p class="frequency-note">
+      Best-case net cost in today’s dollars, averaged over four years. Updates with your inputs and
+      includes final debt and estimated phone value. Your lease choices below may cost more.
+    </p>
   </Step>
   {#if step >= 4}
     <details class="fine-tuning">
@@ -1402,6 +1419,12 @@
     align-items: center;
     gap: 8px;
     font-weight: 600;
+  }
+  .frequency-note {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.6;
   }
   .lease-choice legend {
     padding: 0 6px;

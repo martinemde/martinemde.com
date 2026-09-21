@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PhoneOff, Smartphone } from 'lucide-svelte';
   import { HORIZON, money0, type Scenario } from '$lib/apple-upgrade/model';
   import { careAndRepairPaid } from '$lib/apple-upgrade/presentation';
 
@@ -20,9 +21,19 @@
     /** Lower is better on money rows; marks the winning cell. */
     rank?: (s: Scenario) => number;
     lead?: boolean;
+    ownership?: boolean;
   };
 
   const rows: Row[] = $derived([
+    ...(scenarios.some((s) => s.closeout)
+      ? [
+          {
+            label: 'Phone at the end',
+            ownership: true,
+            value: (s: Scenario) => (s.rows[HORIZON].hasPhone ? 'You own it' : 'No phone')
+          }
+        ]
+      : []),
     {
       label: 'Due today',
       value: (s) => money0(s.summary.today),
@@ -96,7 +107,7 @@
       label: 'Net cost',
       hint: privateSale
         ? 'Today’s dollars, minus the final phone’s estimated private-sale value'
-        : 'Today’s dollars, minus the final phone’s net Apple trade-in value',
+        : 'After subtracting the estimated value of any phone kept; that value is not cash received',
       value: (s) => money0(s.summary.netCost),
       rank: (s) => s.summary.netCost,
       lead: true
@@ -145,7 +156,15 @@
             {#if row.hint}<span class="hint">{row.hint}</span>{/if}
           </th>
           {#each scenarios as s, i (s.key)}
-            <td class:best={i === best} class:mine={s.key === highlight}>{row.value(s)}</td>
+            <td class:best={i === best} class:mine={s.key === highlight}>
+              {#if row.ownership}
+                <span class="ownership">
+                  {#if s.rows[HORIZON].hasPhone}<Smartphone size={18} aria-hidden="true" />
+                  {:else}<PhoneOff size={18} aria-hidden="true" />{/if}
+                  {row.value(s)}
+                </span>
+              {:else}{row.value(s)}{/if}
+            </td>
           {/each}
         </tr>
       {/each}
@@ -154,6 +173,12 @@
 </div>
 
 <style>
+  .ownership {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
   .scroller {
     overflow-x: auto;
     padding-bottom: 4px;

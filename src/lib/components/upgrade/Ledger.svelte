@@ -23,9 +23,17 @@
     limit?: number;
     /** -1 before the first month crosses the reading line. */
     activeMonth?: number;
+    finalLabel?: string;
   }
 
-  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
+  let {
+    scenarios,
+    beats,
+    questions = {},
+    limit,
+    finalLabel,
+    activeMonth = $bindable(-1)
+  }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
@@ -132,7 +140,10 @@
   function cellsFor(month: number) {
     return scenarios.map((s) => {
       const row = s.rows[month];
-      const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
+      const out =
+        basis === 'npv'
+          ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0)
+          : row.runningCash - (s.rows[month - 1]?.runningCash ?? 0);
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
       return { key: s.key, name: s.shortName, net };
     });
@@ -223,7 +234,7 @@
     const sync = () => {
       queued = false;
       let found = -1;
-      for (let m = 0; m <= lastMonth; m++) {
+      for (const m of months) {
         const el = blockEls[m];
         if (el && el.getBoundingClientRect().top <= line) found = m;
         else break;
@@ -246,7 +257,15 @@
   <div class="sentinel" bind:this={sentinel} aria-hidden="true"></div>
 
   <div class="panel-wrap" bind:this={panelWrap}>
-    <Columns {scenarios} month={activeMonth} {reference} bind:basis height={chartPx} {stuck} />
+    <Columns
+      {scenarios}
+      month={activeMonth}
+      {reference}
+      bind:basis
+      height={chartPx}
+      {stuck}
+      finalLabel={activeMonth === horizon ? finalLabel : undefined}
+    />
   </div>
   <div class="panel-lead" aria-hidden="true"></div>
 

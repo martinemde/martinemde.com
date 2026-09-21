@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   allScenarios,
+  bestUpgradeEstimate,
+  closeOut,
   appleCardFinancing,
   appleUpgrade,
   buyoutAfter,
@@ -50,6 +52,63 @@ function inputs(overrides: Partial<Inputs> = {}): Inputs {
     ...overrides
   };
 }
+
+describe('live upgrade frequency estimates', () => {
+  it('finds a cheaper lease by buying out and reusing trade-in credit', () => {
+    // Four phones: $3,000 in lease payments/buyouts, $300 rewards,
+    // three $144 excess credits, and a final phone worth $744.
+    const estimate = bestUpgradeEstimate(
+      inputs({ listPrice: 1200, discountRate: 0, klarnaCardBack: 10 }),
+      1
+    );
+    expect(estimate.plan).toBe('Apple Upgrade · 12 mo');
+    expect(estimate.annualCost).toBeCloseTo((3000 - 300 - 432 - 744) / 4);
+  });
+  it.each([
+    [1, 456],
+    [2, 330],
+    [3, 315]
+  ] as const)(
+    'prices a %s-year cadence after settling debt and valuing the final phone',
+    (frequency, annualCost) => {
+      const input = inputs({ listPrice: 1200, discountRate: 0 });
+      expect(bestUpgradeEstimate(input, frequency).annualCost).toBeCloseTo(annualCost);
+      // A different current timeline or expensive lease exit must not contaminate a preset.
+      expect(
+        bestUpgradeEstimate(
+          { ...input, upgradeMonths: [12], leaseUpgradeChoices: { '12:12': 'return' } },
+          frequency
+        ).annualCost
+      ).toBeCloseTo(annualCost);
+    }
+  );
+
+  it('recalculates from coverage, trade-in and discount assumptions without changing its input', () => {
+    const input = inputs({ listPrice: 1200, discountRate: 0 });
+    const original = structuredClone(input);
+    const baseline = bestUpgradeEstimate(input, 2).annualCost;
+    expect(
+      bestUpgradeEstimate({ ...input, appleCare: 'monthly', appleCareMonthly: 10 }, 2).annualCost
+    ).toBeCloseTo(baseline + 120);
+    expect(bestUpgradeEstimate({ ...input, tradeIn: 400 }, 2).annualCost).toBeLessThan(baseline);
+    expect(bestUpgradeEstimate({ ...input, discountRate: 10 }, 2).annualCost).not.toBeCloseTo(
+      baseline
+    );
+    expect(input).toEqual(original);
+  });
+
+  it('uses the chosen ending and the final phone age for each cadence', () => {
+    const input = inputs({ listPrice: 1200, discountRate: 0 });
+    for (const frequency of [1, 2, 3] as const) {
+      expect(bestUpgradeEstimate(input, frequency, 'walkaway').annualCost).toBeCloseTo(
+        bestUpgradeEstimate(input, frequency, 'own').annualCost
+      );
+      expect(bestUpgradeEstimate(input, frequency, 'walkaway', 0).annualCost).toBeGreaterThan(
+        bestUpgradeEstimate(input, frequency, 'walkaway', 900).annualCost
+      );
+    }
+  });
+});
 
 describe('roundTo99', () => {
   it('lands on the nearest x.99', () => {
@@ -945,6 +1004,63 @@ describe('upgrade preferences and carrier offers', () => {
 describe('shared yearly upgrade decisions', () => {
   const scheduled = (upgradeMonths: number[], overrides: Partial<Inputs> = {}) =>
     inputs({ listPrice: 1200, resaleAtHorizon: 288, upgradeMonths, ...overrides });
+
+  it('closes a returned lease with no phone and a bought-out lease with an owned asset', () => {
+    const input = scheduled([12, 24, 36], { term: 12, discountRate: 0 });
+    const lease = appleUpgrade(input);
+    const returned = closeOut(input, lease, 'return');
+    const bought = closeOut(input, lease, 'buyout');
+    expect(returned.rows[48].hasPhone).toBe(false);
+    expect(returned.rows[48].owns).toBe(false);
+    expect(returned.summary.equityAtHorizon).toBe(0);
+    expect(returned.summary.netCost).toBeCloseTo(returned.summary.cash);
+    expect(returned.summary.monthsWithPhone).toBe(48);
+    expect(bought.rows[48].owns).toBe(true);
+    expect(bought.rows[48].buyout).toBeNull();
+    expect(bought.summary.cash - returned.summary.cash).toBeCloseTo(lease.rows[48].buyout!);
+    expect(bought.summary.equityAtHorizon).toBe(744);
+    expect(bought.rows).toHaveLength(49);
+    expect(bought.summary.remainingBalance).toBe(0);
+  });
+
+  it('walks away with no assets or debt and only credits actual estimated sale proceeds', () => {
+    const input = scheduled([12, 24, 36], {
+      taxRate: 8.5,
+      appleCardBack: 3,
+      klarnaCardBack: 3,
+      carrierCardBack: 2,
+      discountRate: 4,
+      carrierOffer: 900
+    });
+    for (const scenario of allScenarios(input)) {
+      const owned = closeOut(input, scenario, 'buyout');
+      const sold = closeOut(input, scenario, 'buyout', 800);
+      expect(sold.rows[48].hasPhone).toBe(false);
+      expect(sold.rows[48].owns).toBe(false);
+      expect(sold.summary.monthsWithPhone).toBe(48);
+      expect(sold.summary.remainingBalance).toBe(0);
+      expect(sold.summary.equityAtHorizon).toBe(0);
+      expect(owned.summary.cash - sold.summary.cash).toBeCloseTo(800);
+      expect(sold.summary.netCost).toBeCloseTo(sold.summary.npv - sold.summary.tradeInRefund);
+    }
+  });
+
+  it('settles all carrier and Apple Card debt at the endpoint without extending the timeline', () => {
+    const input = scheduled([12, 24, 36], { carrierOffer: 900, discountRate: 0 });
+    for (const scenario of allScenarios(input).filter((s) =>
+      ['carrier', 'applecard'].includes(s.key)
+    )) {
+      const settled = closeOut(input, scenario, 'buyout');
+      expect(settled.summary.cash - scenario.summary.cash).toBeCloseTo(
+        scenario.summary.remainingBalance
+      );
+      expect(settled.summary.remainingBalance).toBe(0);
+      expect(settled.rows).toHaveLength(49);
+      expect(settled.rows[48].owns).toBe(true);
+      expect(settled.summary.netCost).toBeCloseTo(scenario.summary.netCost);
+      if (scenario.key === 'carrier') expect(settled.closeout!.creditsForfeited).toBe(600);
+    }
+  });
 
   it.each([12, 24] as const)(
     'can buy out an eligible %s-month lease and credit the next lease',

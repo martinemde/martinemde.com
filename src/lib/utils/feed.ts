@@ -23,7 +23,9 @@ export async function renderFeedItem(
   siteUrl: string
 ): Promise<string> {
   const url = new URL(`/blog/${post.slug}`, siteUrl).href;
-  const body = markdownBody(source);
+  const body = markdownBody(source)
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .trim();
   const markdown = post.image ? `![](${new URL(post.image, siteUrl).href})\n\n${body}` : body;
   // These are repository-authored Markdown/HTML files already compiled by MDsveX on
   // the site. Retain their HTML (including publisher photos and attributed quotes).

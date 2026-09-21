@@ -55,6 +55,7 @@ export function markdownBody(source: string): string {
 
 function plainText(source: string): string {
   return source
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
@@ -98,13 +99,14 @@ export function normalizePostMetadata(
     typeof originalContent === 'string'
       ? originalContent
       : (text(record(originalContent).html) ?? text(record(originalContent).text));
-  const content = plainText(originalText ?? body);
+  const content = plainText(body);
+  const discoveryContent = plainText(originalText ?? body);
   const normalizedName = plainText(title);
   const type: PostType = bookmarkOf
     ? 'bookmark'
     : photo.length
       ? 'photo'
-      : normalizedName && content && !content.startsWith(normalizedName)
+      : normalizedName && discoveryContent && !discoveryContent.startsWith(normalizedName)
         ? 'article'
         : 'note';
   const tags = [

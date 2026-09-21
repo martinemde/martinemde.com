@@ -127,6 +127,38 @@ describe('publisher files through the stream and feed', () => {
     }
   });
 
+  it('omits component scripts from feed content and share previews', async () => {
+    const entry = entries.find((entry) => entry.metadata.slug === 'note')!;
+    const source =
+      '<script lang="ts">const secretWidgetImplementation = 123;</script>\n\nA readable thought.';
+    const props = YAML.parse(entry.source.match(/^---\n([\s\S]*?)\n---/)![1]);
+    const post = normalizePostMetadata(props, 'note.md', source);
+    expect(post.excerpt).toBe('A readable thought.');
+    const xml = new DOMParser().parseFromString(
+      `<rss xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:source="https://source.scripting.com/">${await renderFeedItem(post, source, 'https://martinemde.com')}</rss>`,
+      'application/xml'
+    );
+    const body = new DOMParser().parseFromString(
+      xml.querySelector('description')!.textContent!,
+      'text/html'
+    );
+    expect(body.querySelector('script')).toBeNull();
+    expect(body.body.textContent?.trim()).toBe('A readable thought.');
+  });
+
+  it('uses the published body for previews when editing source is older', () => {
+    const entry = entries.find((entry) => entry.metadata.slug === 'note')!;
+    const metadata = YAML.parse(entry.source.match(/^---\n([\s\S]*?)\n---/)![1]);
+    const post = normalizePostMetadata(
+      metadata,
+      'note.md',
+      'The revised thought I actually published.'
+    );
+    expect(socialMetadata(post, 'https://martinemde.com').description).toBe(
+      'The revised thought I actually published.'
+    );
+  });
+
   it('produces share metadata for untitled and media entries', () => {
     const note = entries.find((entry) => entry.metadata.slug === 'note')!.metadata;
     const card = socialMetadata(note, 'https://martinemde.com');

@@ -38,8 +38,8 @@
     },
     {
       label: 'Total paid',
-      hint: `Nominal dollars over ${HORIZON} months, net of card rewards`,
-      value: (s) => money0(s.summary.cash)
+      hint: `Nominal dollars over ${HORIZON} months, net of card rewards and excess trade-in credit`,
+      value: (s) => money0(s.summary.cash - s.summary.tradeInRefund)
     },
     {
       label: 'AppleCare premiums paid',
@@ -67,9 +67,9 @@
       : []),
     {
       label: 'Cost in today’s dollars',
-      hint: 'The same stream discounted back to now',
-      value: (s) => money0(s.summary.npv),
-      rank: (s) => s.summary.npv,
+      hint: 'The same stream discounted back to now, net of excess trade-in credit',
+      value: (s) => money0(s.summary.npv - s.summary.tradeInRefund),
+      rank: (s) => s.summary.npv - s.summary.tradeInRefund,
       lead: true
     },
     {

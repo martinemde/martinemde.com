@@ -119,6 +119,8 @@ export interface Inputs {
   upgradeEvery?: UpgradeInterval;
   /** Explicit shared replacement months. An empty list means keep the original phone. */
   upgradeMonths?: number[];
+  /** Eligible lease exits, keyed by `${term}:${month}`. Defaults to returning. */
+  leaseUpgradeChoices?: Record<string, 'return' | 'buyout'>;
   /** Explicit regular trade-in estimates for phones aged one through four years.
    * Independent of private resale estimates. No quote means no assumed credit. */
   upgradeTradeIns?: readonly number[];
@@ -866,7 +868,10 @@ function scheduledLease(input: Inputs): Scenario {
     const previousAge = index > 0 ? start - starts[index - 1] : 0;
     // At an eligible return, the leased phone settles the lease; it is not a trade-in.
     const returningPrevious =
-      index > 0 && previousAge >= term && previousAge < term + EXTENSION_MONTHS;
+      index > 0 &&
+      previousAge >= term &&
+      previousAge < term + EXTENSION_MONTHS &&
+      input.leaseUpgradeChoices?.[`${term}:${start}`] !== 'buyout';
     const tradeIn =
       index === 0
         ? input.tradeIn
@@ -874,7 +879,11 @@ function scheduledLease(input: Inputs): Scenario {
           ? 0
           : replacementValue(input, previousAge, index === 1);
     const end = starts[index + 1] ?? HORIZON + 1;
-    const returns = end <= HORIZON && end - start >= term && end - start < term + EXTENSION_MONTHS;
+    const returns =
+      end <= HORIZON &&
+      end - start >= term &&
+      end - start < term + EXTENSION_MONTHS &&
+      input.leaseUpgradeChoices?.[`${term}:${end}`] !== 'buyout';
     return {
       start,
       end,
@@ -921,7 +930,7 @@ function scheduledLease(input: Inputs): Scenario {
         out.push(charge('Month-to-month payment', cycle.gross, category));
       if (age === term + EXTENSION_MONTHS)
         out.push(charge('Automatic buyout — it’s yours', balance(cycle, age), 'phone'));
-      if (month === cycle.end && age < term)
+      if (month === cycle.end && !cycle.returns && age < term + EXTENSION_MONTHS)
         out.push(charge('Buy out phone before upgrading', balance(cycle, age), 'phone'));
       if (
         cycle.start === 0 &&

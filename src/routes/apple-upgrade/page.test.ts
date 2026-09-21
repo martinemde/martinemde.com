@@ -71,6 +71,43 @@ describe('Apple Upgrade page', () => {
     await fireEvent.scroll(window);
   }
 
+  it('offers eligible lease buyouts, updates payments, and restores the choice', async () => {
+    const user = userEvent.setup();
+    const { container, unmount } = render(Page);
+    await walkThrough(user);
+    await chooseYear(user, 1, true);
+    const choice = screen.getByRole('group', {
+      name: '12-month lease: what happens to the old phone?'
+    });
+    expect(
+      screen.queryByRole('group', { name: '24-month lease: what happens to the old phone?' })
+    ).toBeNull();
+    const month = () => container.querySelector('[data-month="12"]')!;
+    expect(month().querySelector('.lease-return')).toBeTruthy();
+    await user.click(within(choice).getByRole('button', { name: /Buy it for/ }));
+    expect(month().querySelector('.lease-return')).toBeNull();
+    expect(
+      within(month() as HTMLElement).getAllByText('Buy out phone before upgrading').length
+    ).toBeGreaterThan(0);
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['12:12']
+    ).toBe('buyout');
+    unmount();
+    render(Page);
+    expect(screen.getByRole('button', { name: /Buy it for/ }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    await user.click(screen.getByRole('button', { name: 'Hand it back' }));
+    expect(screen.getByRole('button', { name: 'Hand it back' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    await chooseYear(user, 1);
+    expect(screen.queryByRole('button', { name: /Buy it for/ })).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices
+    ).toEqual({});
+  });
+
   it.each([
     ['iPhone 17', 899, '$25.99/mo on a 24-month lease'],
     ['iPhone Air', 1099, '$31.99/mo on a 24-month lease'],
@@ -338,7 +375,7 @@ describe('Apple Upgrade page', () => {
     await walkThrough(user);
     expect(container.querySelectorAll('.chart .name')).toHaveLength(5);
     expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
-    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    expect(screen.queryByText('The Totals')).toBeNull();
     for (const year of [1, 2, 3]) {
       const precedingMonth = container.querySelector(`[data-month="${year * 12 - 1}"]`)!;
       expect(precedingMonth.nextElementSibling?.querySelector(`#year-${year}-title`)).toBeTruthy();
@@ -348,7 +385,7 @@ describe('Apple Upgrade page', () => {
         year === 3 ? HORIZON + 1 : (year + 1) * 12
       );
     }
-    expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
+    expect(screen.getByText('The Totals')).toBeTruthy();
     expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
     expect(screen.queryByText('The lease is up. Now what?')).toBeNull();
   });
@@ -404,7 +441,7 @@ describe('Apple Upgrade page', () => {
     );
     await chooseYear(user, 1);
     expect(container.querySelector('[data-month="25"]')).toBeNull();
-    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    expect(screen.queryByText('The Totals')).toBeNull();
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
       'keep',
       null,
@@ -680,5 +717,39 @@ describe('Apple Upgrade page', () => {
     expect(row.textContent).toContain('−$300.50');
     expect(row.textContent).toContain('−$100.70');
     expect(row.querySelectorAll('.cell:not(.zero)')).toHaveLength(2);
+  });
+
+  it('matches the final chart to totals with a Pro Max trade-in and yearly lease buyouts', async () => {
+    const user = userEvent.setup();
+    const { container } = render(Page);
+    await user.click(screen.getByText('iPhone 18 Pro Max'));
+    await user.click(screen.getByText('Yes, I have one'));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Pick the phone you want to trade in' }),
+      'iPhone 17 Pro Max'
+    );
+    await user.click(screen.getByText('No AppleCare'));
+    for (const year of [1, 2, 3]) {
+      await chooseYear(user, year, true);
+      const section = document.getElementById(`year-${year}-title`)!.closest('section')!;
+      await user.click(within(section).getByRole('button', { name: /Buy it for/ }));
+    }
+    await scrollToMonth(HORIZON);
+    const assertTotals = (label: string) => {
+      const row = within(container.querySelector('.compare-section') as HTMLElement)
+        .getByText(label, { exact: true })
+        .closest('tr')!;
+      expect([...row.querySelectorAll('td')].map((cell) => cell.textContent)).toEqual(
+        [...container.querySelectorAll('.chart .total')].map((cell) => cell.textContent)
+      );
+    };
+    assertTotals('Cost in today’s dollars');
+    await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
+    assertTotals('Total paid');
+    const yearOne = document.getElementById('year-1-title')!.closest('section')!;
+    await user.click(within(yearOne).getByRole('button', { name: 'Hand it back' }));
+    assertTotals('Total paid');
+    await user.click(screen.getByRole('button', { name: 'nominal dollars' }));
+    assertTotals('Cost in today’s dollars');
   });
 });

@@ -946,6 +946,44 @@ describe('shared yearly upgrade decisions', () => {
   const scheduled = (upgradeMonths: number[], overrides: Partial<Inputs> = {}) =>
     inputs({ listPrice: 1200, resaleAtHorizon: 288, upgradeMonths, ...overrides });
 
+  it.each([12, 24] as const)(
+    'can buy out an eligible %s-month lease and credit the next lease',
+    (term) => {
+      const month = term;
+      const input = scheduled([month], { term, discountRate: 0 });
+      const returned = appleUpgrade(input);
+      const bought = appleUpgrade({
+        ...input,
+        leaseUpgradeChoices: { [`${term}:${month}`]: 'buyout' }
+      });
+      const exit = returned.rows[month].leaseReturn!;
+      expect(bought.rows[month].leaseReturn).toBeUndefined();
+      expect(
+        bought.rows[month].items.find((item) => item.label === 'Buy out phone before upgrading')
+          ?.amount
+      ).toBeCloseTo(exit.buyout);
+      expect(bought.rows[month + 1].outflow).toBeCloseTo(
+        leaseTerms(1200, term, exit.value).payment
+      );
+      expect(returned.summary.cash - bought.summary.cash).toBeCloseTo(exit.value - exit.buyout);
+    }
+  );
+
+  it('applies buyout choices independently to successive leases and private sales', () => {
+    const lease = appleUpgrade(
+      scheduled([12, 24, 36], {
+        term: 12,
+        privateSaleValues: [800, 600, 400, 200],
+        leaseUpgradeChoices: { '12:12': 'buyout', '12:36': 'buyout' }
+      })
+    );
+    expect(lease.rows[12].leaseReturn).toBeUndefined();
+    expect(lease.rows[24].leaseReturn).toBeDefined();
+    expect(lease.rows[36].leaseReturn).toBeUndefined();
+    expect(lease.rows[13].outflow).toBeCloseTo(49.99);
+    expect(lease.rows[12].items.some((item) => item.amount === -800)).toBe(true);
+  });
+
   it('keeps the original phone on all five paths when every answer is keep', () => {
     const scenarios = allScenarios(scheduled([]));
     expect(scenarios.map((s) => s.key)).toEqual([

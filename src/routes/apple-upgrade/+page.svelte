@@ -7,6 +7,8 @@
   import Compare from '$lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
+    appleUpgrade,
+    leaseTerms,
     beats,
     HORIZON,
     SCREEN_CRACK_MONTH,
@@ -107,6 +109,7 @@
     tradeInDevice: string;
     privateSaleValues: number[] | null;
     annualChoices: ('upgrade' | 'keep' | null)[];
+    leaseUpgradeChoices: Record<string, 'return' | 'buyout'>;
     appleCare: AppleCarePlan | null;
     appleCareMonthly: number;
     appleCareOneMonthly: number;
@@ -132,6 +135,7 @@
     tradeInDevice: '',
     privateSaleValues: null,
     annualChoices: [null, null, null],
+    leaseUpgradeChoices: {},
     appleCare: null,
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
@@ -217,6 +221,7 @@
         : 'custom'
   );
   let annualChoices = $state(initial.annualChoices);
+  let leaseUpgradeChoices = $state(initial.leaseUpgradeChoices);
   let appleCare = $state(initial.appleCare);
 
   // ---- Details ------------------------------------------------------------
@@ -282,6 +287,7 @@
     tradeIn = DEFAULTS.tradeIn;
     tradeInDevice = DEFAULTS.tradeInDevice;
     annualChoices = [...DEFAULTS.annualChoices];
+    leaseUpgradeChoices = {};
     appleCare = DEFAULTS.appleCare;
     appleCareMonthly = DEFAULTS.appleCareMonthly;
     appleCareOneMonthly = DEFAULTS.appleCareOneMonthly;
@@ -311,6 +317,7 @@
       tradeInDevice,
       privateSaleValues,
       annualChoices,
+      leaseUpgradeChoices,
       appleCare,
       appleCareMonthly,
       appleCareOneMonthly,
@@ -410,6 +417,7 @@
     resaleAtHorizon: upgradeTradeIns[3],
     privateSaleValues: privateSaleValues ?? undefined,
     upgradeTradeIns,
+    leaseUpgradeChoices,
     carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
     upgradeMonths: annualChoices.flatMap((choice, index) =>
       choice === 'upgrade' ? [(index + 1) * 12] : []
@@ -427,6 +435,39 @@
   const scenarios = $derived(allScenarios(inputs));
   const story = $derived(beats(inputs));
 
+  const leaseOptions = $derived(
+    annualChoices.map((choice, index) => {
+      if (choice !== 'upgrade') return [];
+      const month = (index + 1) * 12;
+      return ([12, 24] as const).flatMap((term) => {
+        const key = `${term}:${month}`;
+        const returning = appleUpgrade({
+          ...inputs,
+          term,
+          leaseUpgradeChoices: { ...leaseUpgradeChoices, [key]: 'return' }
+        });
+        const exit = returning.rows[month].leaseReturn;
+        if (!exit) return [];
+        const buying = appleUpgrade({
+          ...inputs,
+          term,
+          leaseUpgradeChoices: { ...leaseUpgradeChoices, [key]: 'buyout' }
+        });
+        const next = leaseTerms(listPrice, term, exit.privateSale ? 0 : exit.value);
+        return [
+          {
+            key,
+            term,
+            ...exit,
+            payment: next.payment,
+            refund: next.refund,
+            saving: returning.summary.netCost - buying.summary.netCost
+          }
+        ];
+      });
+    })
+  );
+
   /** How far down the ledger the reader is allowed before answering. */
   const unansweredYear = $derived(annualChoices.findIndex((choice) => choice === null));
   const ledgerLimit = $derived(unansweredYear < 0 ? HORIZON : (unansweredYear + 1) * 12 - 1);
@@ -434,6 +475,11 @@
   function chooseYear(index: number, choice: 'upgrade' | 'keep') {
     if (annualChoices[index] === choice) return;
     annualChoices = annualChoices.map((old, i) => (i < index ? old : i === index ? choice : null));
+    leaseUpgradeChoices = Object.fromEntries(
+      Object.entries(leaseUpgradeChoices).filter(
+        ([key]) => Number(key.split(':')[1]) < (index + 1) * 12
+      )
+    );
   }
 
   const careOptions = $derived([
@@ -766,6 +812,66 @@
             onclick={() => chooseYear(index, 'keep')}>Keep this phone</button
           >
         </div>
+        {#each leaseOptions[index] as option (option.key)}
+          <fieldset class="lease-choice">
+            <legend>{option.term}-month lease: what happens to the old phone?</legend>
+            <div class="screen-actions">
+              <button
+                type="button"
+                aria-pressed={leaseUpgradeChoices[option.key] !== 'buyout'}
+                onclick={() =>
+                  (leaseUpgradeChoices = { ...leaseUpgradeChoices, [option.key]: 'return' })}
+              >
+                Hand it back
+              </button>
+              <button
+                type="button"
+                aria-pressed={leaseUpgradeChoices[option.key] === 'buyout'}
+                onclick={() =>
+                  (leaseUpgradeChoices = { ...leaseUpgradeChoices, [option.key]: 'buyout' })}
+              >
+                Buy it for {money(option.buyout)}, then {option.privateSale
+                  ? 'sell it'
+                  : 'trade it in'}
+              </button>
+            </div>
+            <p>
+              Hand it back to settle the lease: no trade-in credit. The new lease starts at
+              {money(leasePayment(listPrice, option.term))}/mo before tax.
+              {screenChoice === 'defer' &&
+              appleCare === 'none' &&
+              index === annualChoices.indexOf('upgrade')
+                ? ' A deferred screen repair is charged before return.'
+                : ''}
+            </p>
+            <p>
+              Buy it out: put up {money(option.buyout)} including tax to own the phone.
+              {#if option.privateSale}
+                Then sell it for an estimated {money(option.value)}; the new lease stays at full
+                price.
+              {:else}
+                Then trade it in for an estimated {money(option.value)} credit, reducing the next
+                {option.term} months of the new lease to {money(option.payment)}/mo before tax while
+                you keep that lease.
+                {#if option.refund > 0}
+                  Another {money(option.refund)} comes back as Apple credit beyond the lease payments.
+                {/if}
+              {/if}
+            </p>
+            <p>
+              <strong>
+                {#if Math.abs(option.saving) < 0.5}
+                  The two choices have about the same 48-month net cost.
+                {:else}
+                  Buying out is {money0(Math.abs(option.saving))}
+                  {option.saving > 0 ? 'cheaper' : 'more expensive'}
+                  over 48 months in today’s dollars.
+                {/if}
+              </strong> Includes taxes, card rewards, and the phone’s remaining value. Future upgrade
+              answers stay the same; unanswered years assume you keep the phone.
+            </p>
+          </fieldset>
+        {/each}
         <p>
           Keep it and the lease continues at its full payment after the term ends, with an automatic
           buyout six months later. Upgrade before a lease ends and the remaining buyout is paid
@@ -777,8 +883,8 @@
     {#if unansweredYear < 0}
       <section class="compare-section">
         <div class="head">
-          <div class="eyebrow">// the same five columns, totalled</div>
-          <h2>What the scroll adds up to</h2>
+          <div class="eyebrow">// break it down</div>
+          <h2>The Totals</h2>
         </div>
 
         <Compare
@@ -801,9 +907,10 @@
         </p>
         <p>
           Lease payments use 50% of the sticker for 12 months or 70% for 24, rounded to x.99.
-          Payments and trade-in credit reduce the buyout. Future phones keep the same price.
-          Returning a leased phone settles the lease without a trade-in credit; owned phones use
-          Apple’s age-based trade-in values unless you choose a private sale.
+          Payments and trade-in credit reduce the buyout. Future phones keep the same price. At
+          eligible upgrades, choose to return the lease or buy it out first. Returning a leased
+          phone settles the lease without a trade-in credit; owned phones use Apple’s age-based
+          trade-in values unless you choose a private sale.
         </p>
         <p>
           The September 2026 iPhone 18 Pro at $1,199 gives $49.99 over 12 months and $34.99 over 24;
@@ -1100,6 +1207,22 @@
   }
   .decide-head {
     padding-bottom: 18px;
+  }
+  .lease-choice {
+    min-width: 0;
+    margin: 20px 0;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .lease-choice legend {
+    padding: 0 6px;
+    font-weight: 600;
+  }
+  .lease-choice p {
+    margin: 12px 0 0;
+    font-size: 14px;
+    line-height: 1.6;
   }
   .decide-head h3 {
     margin: 10px 0 8px;

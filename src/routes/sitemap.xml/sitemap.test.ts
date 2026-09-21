@@ -172,6 +172,11 @@ describe('Sitemap', () => {
   describe('getPostLastModified', () => {
     const post = (extra: Partial<PostMetadata>): PostMetadata => ({
       title: 'Test',
+      published: true,
+      tags: [],
+      type: 'article',
+      photo: [],
+      excerpt: '',
       slug: 'test',
       date: new Date(2025, 0, 15, 12, 0, 0),
       ...extra

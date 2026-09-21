@@ -1,6 +1,8 @@
 import { error } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { getPostBySlug } from '$lib/utils/posts';
+import { getPostBySlug, getPublishedSlugs } from '$lib/utils/posts';
+
+export const entries = () => getPublishedSlugs().map((slug) => ({ slug }));
 
 export const load: PageLoad = async ({ params }) => {
   const { slug } = params;

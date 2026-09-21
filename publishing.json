@@ -1,0 +1,8 @@
+{
+  "post-types": [
+    { "type": "note", "name": "Note" },
+    { "type": "article", "name": "Article" },
+    { "type": "photo", "name": "Photo" },
+    { "type": "bookmark", "name": "Bookmark" }
+  ]
+}

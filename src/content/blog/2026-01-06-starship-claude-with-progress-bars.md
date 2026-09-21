@@ -1,5 +1,5 @@
 ---
-title: 'starship-claude: Claude Code statusline with progress bars
+title: 'starship-claude: Claude Code statusline with progress bars'
 date: 2026-01-02T06:46:04.079Z
 author: martinemde
 description: 'starship-claude is a custom statusline script for claude code that renders using Starship and shows context usage as a Ghostty (or other modern terminal) progress bar.'

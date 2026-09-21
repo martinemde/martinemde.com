@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { getAllPosts } from '$lib/utils/posts';
+import { getAllPosts, postDisplayTitle } from '$lib/utils/posts';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
 /**
@@ -15,7 +15,7 @@ export const GET: RequestHandler = async () => {
 
   for (const post of posts) {
     const url = `${baseUrl}/blog/${post.slug}.txt`;
-    content += `- [${post.title}](${url})\n`;
+    content += `- [${postDisplayTitle(post)}](${url})\n`;
   }
 
   return new Response(content, {

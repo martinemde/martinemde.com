@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { PhoneOff, Smartphone } from 'lucide-svelte';
   import Step from '$lib/components/upgrade/Step.svelte';
   import Tiles from '$lib/components/upgrade/Tiles.svelte';
   import Field from '$lib/components/upgrade/Field.svelte';
@@ -7,6 +8,7 @@
   import Compare from '$lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
+    closeOut,
     appleUpgrade,
     leaseTerms,
     beats,
@@ -110,6 +112,9 @@
     privateSaleValues: number[] | null;
     annualChoices: ('upgrade' | 'keep' | null)[];
     leaseUpgradeChoices: Record<string, 'return' | 'buyout'>;
+    finalChoices: Record<string, 'return' | 'buyout'>;
+    finalEnding: 'own' | 'walkaway';
+    finalSaleEstimate: number | null;
     appleCare: AppleCarePlan | null;
     appleCareMonthly: number;
     appleCareOneMonthly: number;
@@ -136,6 +141,9 @@
     privateSaleValues: null,
     annualChoices: [null, null, null],
     leaseUpgradeChoices: {},
+    finalChoices: {},
+    finalEnding: 'own',
+    finalSaleEstimate: null,
     appleCare: null,
     appleCareMonthly: 13.49,
     appleCareOneMonthly: 19.99,
@@ -222,6 +230,9 @@
   );
   let annualChoices = $state(initial.annualChoices);
   let leaseUpgradeChoices = $state(initial.leaseUpgradeChoices);
+  let finalChoices = $state(initial.finalChoices);
+  let finalEnding = $state(initial.finalEnding);
+  let finalSaleEstimate = $state(initial.finalSaleEstimate);
   let appleCare = $state(initial.appleCare);
 
   // ---- Details ------------------------------------------------------------
@@ -288,6 +299,9 @@
     tradeInDevice = DEFAULTS.tradeInDevice;
     annualChoices = [...DEFAULTS.annualChoices];
     leaseUpgradeChoices = {};
+    finalChoices = {};
+    finalEnding = 'own';
+    finalSaleEstimate = null;
     appleCare = DEFAULTS.appleCare;
     appleCareMonthly = DEFAULTS.appleCareMonthly;
     appleCareOneMonthly = DEFAULTS.appleCareOneMonthly;
@@ -318,6 +332,9 @@
       privateSaleValues,
       annualChoices,
       leaseUpgradeChoices,
+      finalChoices,
+      finalEnding,
+      finalSaleEstimate,
       appleCare,
       appleCareMonthly,
       appleCareOneMonthly,
@@ -432,7 +449,19 @@
       appleCare: appleCare === 'none' ? 'monthly' : 'none'
     })
   );
-  const scenarios = $derived(allScenarios(inputs));
+  const finalAge = $derived((HORIZON - Math.max(0, ...inputs.upgradeMonths!)) / 12);
+  const finalSaleOffer = $derived(
+    finalSaleEstimate ?? (privateSaleValues ?? upgradeTradeIns)[finalAge - 1]
+  );
+  function finishScenario(scenario: ReturnType<typeof appleUpgrade>) {
+    return closeOut(
+      inputs,
+      scenario,
+      finalEnding === 'own' ? 'buyout' : finalChoices[scenario.key],
+      finalEnding === 'walkaway' ? finalSaleOffer : undefined
+    );
+  }
+  const scenarios = $derived(allScenarios(inputs).map(finishScenario));
   const story = $derived(beats(inputs));
 
   const leaseOptions = $derived(
@@ -461,7 +490,7 @@
             ...exit,
             payment: next.payment,
             refund: next.refund,
-            saving: returning.summary.netCost - buying.summary.netCost
+            saving: finishScenario(returning).summary.npv - finishScenario(buying).summary.npv
           }
         ];
       });
@@ -474,6 +503,7 @@
 
   function chooseYear(index: number, choice: 'upgrade' | 'keep') {
     if (annualChoices[index] === choice) return;
+    finalChoices = {};
     annualChoices = annualChoices.map((old, i) => (i < index ? old : i === index ? choice : null));
     leaseUpgradeChoices = Object.fromEntries(
       Object.entries(leaseUpgradeChoices).filter(
@@ -775,11 +805,20 @@
       <Ledger
         bind:activeMonth
         {scenarios}
+        finalLabel={finalEnding === 'own'
+          ? 'Cost to finish owning the phone'
+          : 'Cost to sell/return and walk away'}
         beats={story}
         limit={ledgerLimit}
         questions={screenChoice !== null
-          ? { 11: yearOne, 23: yearTwo, 35: yearThree, [SCREEN_CRACK_MONTH]: screenCard }
-          : { 11: yearOne, 23: yearTwo, 35: yearThree }}
+          ? {
+              11: yearOne,
+              23: yearTwo,
+              35: yearThree,
+              [SCREEN_CRACK_MONTH]: screenCard,
+              [HORIZON]: finalCard
+            }
+          : { 11: yearOne, 23: yearTwo, 35: yearThree, [HORIZON]: finalCard }}
       />
     </section>
 
@@ -792,6 +831,111 @@
     {#snippet yearOne()}{@render annualDecision(0)}{/snippet}
     {#snippet yearTwo()}{@render annualDecision(1)}{/snippet}
     {#snippet yearThree()}{@render annualDecision(2)}{/snippet}
+
+    {#snippet finalCard()}
+      <section class="decide" aria-labelledby="closeout-title">
+        <div class="decide-head">
+          <span class="eyebrow">// month {HORIZON} · the final closeout</span>
+          <h3 id="closeout-title">Where did you end up?</h3>
+          <p>
+            A leased phone isn’t yours until you buy it out. Settle any remaining debt here and
+            choose the same ending for every path.
+          </p>
+        </div>
+        <div class="screen-actions">
+          <button
+            type="button"
+            aria-pressed={finalEnding === 'own'}
+            onclick={() => (finalEnding = 'own')}
+          >
+            Finish owning the phone
+          </button>
+          <button
+            type="button"
+            aria-pressed={finalEnding === 'walkaway'}
+            onclick={() => (finalEnding = 'walkaway')}
+          >
+            Sell/return and walk away
+          </button>
+        </div>
+        {#if finalEnding === 'own'}
+          <p>
+            Every path finishes with a fully paid phone of the same age. The graph includes final
+            buyouts and loan payoffs; retained phone value appears separately in the totals.
+          </p>
+        {:else}
+          <p>
+            Every path finishes with no phone and no debt. Return eligible leases or sell owned
+            phones using the estimate below.
+          </p>
+          <Field
+            label="Final phone resale estimate"
+            step={25}
+            bind:value={() => finalSaleOffer, (value) => (finalSaleEstimate = value)}
+            hint="Net proceeds after selling fees and shipping. Starts from your age-based phone estimate; edit it for a realistic private sale. Unrepaired damage is deducted separately."
+          />
+        {/if}
+        {#each scenarios as scenario (scenario.key)}
+          {@const ending = scenario.closeout!}
+          <fieldset class="lease-choice">
+            <legend>{scenario.name}</legend>
+            <p class="ending-status">
+              {#if scenario.rows[HORIZON].hasPhone}<Smartphone size={20} aria-hidden="true" />
+                You own the phone
+              {:else}<PhoneOff size={20} aria-hidden="true" />No phone left{/if}
+            </p>
+            {#if ending.canReturn && finalEnding === 'walkaway'}
+              <div class="screen-actions">
+                <button
+                  type="button"
+                  aria-pressed={ending.choice === 'return'}
+                  onclick={() => (finalChoices = { ...finalChoices, [scenario.key]: 'return' })}
+                >
+                  Return it — no phone left
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={ending.choice === 'buyout'}
+                  onclick={() => (finalChoices = { ...finalChoices, [scenario.key]: 'buyout' })}
+                >
+                  Buy it out for {money(ending.payoff)}, then sell it
+                </button>
+              </div>
+            {/if}
+            {#if ending.choice === 'return'}
+              <p>
+                Return the leased phone to settle the lease. No trade-in credit, no phone asset. Any
+                required repair is included in the final month.
+              </p>
+            {:else}
+              <p>
+                {ending.payoff > 0
+                  ? `Pay ${money(ending.payoff)} to settle the remaining ${scenario.key.startsWith('upgrade-') ? 'buyout, including tax' : 'installments'} in month ${HORIZON}.`
+                  : 'Your phone is already paid off.'}
+                {#if finalEnding === 'own'}You finish owning the phone. Its estimated value is
+                  {money(ending.phoneValue)}, shown separately in the totals.
+                {:else}Sell it for an estimated {money(ending.saleProceeds)}. No phone or debt
+                  remains.{/if}
+              </p>
+            {/if}
+            {#if ending.creditsForfeited > 0}
+              <p>
+                Paying off now forfeits {money(ending.creditsForfeited)} in future carrier credits. Those
+                credits are not earned by this endpoint.
+              </p>
+            {/if}
+            <p>
+              <strong
+                >{money0(scenario.summary.npv - scenario.summary.tradeInRefund)} in today’s dollars.</strong
+              >
+              {finalEnding === 'own'
+                ? 'You own the phone; nothing still owed.'
+                : 'No phone left; nothing still owed.'}
+            </p>
+          </fieldset>
+        {/each}
+      </section>
+    {/snippet}
 
     {#snippet annualDecision(index: number)}
       <section class="decide" aria-labelledby="year-{index + 1}-title">
@@ -861,13 +1005,15 @@
             <p>
               <strong>
                 {#if Math.abs(option.saving) < 0.5}
-                  The two choices have about the same 48-month net cost.
+                  The two choices cost about the same over 48 months.
                 {:else}
                   Buying out is {money0(Math.abs(option.saving))}
                   {option.saving > 0 ? 'cheaper' : 'more expensive'}
                   over 48 months in today’s dollars.
                 {/if}
-              </strong> Includes taxes, card rewards, and the phone’s remaining value. Future upgrade
+              </strong>
+              Includes taxes, card rewards, and the final closeout. Both paths finish
+              {finalEnding === 'own' ? 'owning the phone' : 'with no phone or debt'}. Future upgrade
               answers stay the same; unanswered years assume you keep the phone.
             </p>
           </fieldset>
@@ -1214,6 +1360,12 @@
     padding: 16px;
     border: 1px solid var(--border);
     border-radius: 10px;
+  }
+  .ending-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
   }
   .lease-choice legend {
     padding: 0 6px;

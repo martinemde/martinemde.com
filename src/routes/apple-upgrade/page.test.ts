@@ -70,6 +70,14 @@ describe('Apple Upgrade page', () => {
     scrolledMonth = month;
     await fireEvent.scroll(window);
   }
+  function expectTimelineThrough(container: HTMLElement, last: number) {
+    const covered = [...container.querySelectorAll('[data-month]')].flatMap((card) => {
+      const start = Number(card.getAttribute('data-start-month'));
+      const end = Number(card.getAttribute('data-month'));
+      return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    });
+    expect(covered).toEqual(Array.from({ length: last + 1 }, (_, month) => month));
+  }
 
   it('offers eligible lease buyouts, updates payments, and restores the choice', async () => {
     const user = userEvent.setup();
@@ -179,7 +187,7 @@ describe('Apple Upgrade page', () => {
       })
     );
     const { container } = render(Page);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(36);
+    expectTimelineThrough(container, 35);
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!)).toMatchObject({
       listPrice: price,
       annualChoices: ['keep', 'upgrade', null]
@@ -381,28 +389,30 @@ describe('Apple Upgrade page', () => {
       expect(precedingMonth.nextElementSibling?.querySelector(`#year-${year}-title`)).toBeTruthy();
       expect(container.querySelector(`[data-month="${year * 12}"]`)).toBeNull();
       await chooseYear(user, year);
-      expect(container.querySelectorAll('[data-month]')).toHaveLength(
-        year === 3 ? HORIZON + 1 : (year + 1) * 12
-      );
+      expectTimelineThrough(container, year === 3 ? HORIZON : (year + 1) * 12 - 1);
     }
     expect(screen.getByText('The Totals')).toBeTruthy();
     expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
     expect(screen.queryByText('The lease is up. Now what?')).toBeNull();
   });
 
-  it('celebrates paid-off months with a different suggestion each month', async () => {
+  it('compresses later paid-off months while keeping the final month separate', async () => {
     const user = userEvent.setup();
     const { container } = render(Page);
     await walkThrough(user);
     await finish(user);
-    const suggestions = Array.from({ length: 12 }, (_, index) => {
-      const month = container.querySelector(`[data-month="${37 + index}"]`)!;
+    const suggestions = [47, 48].map((end) => {
+      const month = container.querySelector(`[data-month="${end}"]`)!;
       const text = month.querySelector('.nothing')?.textContent?.trim();
       expect(text).toContain('Your phone is paid off.');
       expect(month.querySelector('.charges')).toBeNull();
       return text;
     });
-    expect(new Set(suggestions).size).toBe(12);
+    expect(new Set(suggestions).size).toBe(2);
+    expect(container.querySelector('[data-month="47"]')?.getAttribute('data-start-month')).toBe(
+      '37'
+    );
+    expectTimelineThrough(container, HORIZON);
     expect(container.querySelector('[data-month="1"]')?.textContent).not.toContain(
       'Your phone is paid off.'
     );
@@ -436,7 +446,7 @@ describe('Apple Upgrade page', () => {
     expect(container.querySelector('[data-month="36"]')?.textContent).toContain(
       'New phone after trade-in'
     );
-    expect(container.querySelector('[data-month="13"]')?.textContent).toContain(
+    expect(container.querySelector('[data-start-month="13"]')?.textContent).toContain(
       'Installment on traded-in phone'
     );
     await chooseYear(user, 1);
@@ -678,8 +688,7 @@ describe('Apple Upgrade page', () => {
       Number(text?.match(/\$([\d,]+\.\d{2})/)?.[1].replaceAll(',', '')) || 0;
     for (const discounted of [true, false]) {
       if (!discounted) await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
-      for (const month of [0, 1, 12, 18, 24, 30, 36, HORIZON]) {
-        const block = container.querySelector(`[data-month="${month}"]`)!;
+      for (const block of container.querySelectorAll('[data-month]')) {
         const sums = [...block.querySelectorAll('.sum')];
         expect(sums).toHaveLength(5);
         sums.forEach((sum, column) => {
@@ -751,5 +760,60 @@ describe('Apple Upgrade page', () => {
     assertTotals('Total paid');
     await user.click(screen.getByRole('button', { name: 'nominal dollars' }));
     assertTotals('Cost in today’s dollars');
+  });
+
+  it('finishes every path with the same ownership state and settles debt in the final month', async () => {
+    const user = userEvent.setup();
+    const { container, unmount } = render(Page);
+    await walkThrough(user);
+    for (const year of [1, 2, 3]) await chooseYear(user, year, true);
+    const card = () => document.getElementById('closeout-title')!.closest('section')!;
+    expect(container.querySelector('[data-month="48"]')!.nextElementSibling!.contains(card())).toBe(
+      true
+    );
+    expect(within(card()).getAllByText('You own the phone', { exact: true })).toHaveLength(5);
+    expect(
+      within(container.querySelector('[data-month="48"]') as HTMLElement).getByText(
+        'Final buyout — own the phone'
+      )
+    ).toBeTruthy();
+    expect(
+      within(container.querySelector('[data-month="48"]') as HTMLElement).getByText(
+        'Settle remaining installments'
+      )
+    ).toBeTruthy();
+    const totals = () =>
+      [...container.querySelectorAll('.chart .total')].map((cell) => cell.textContent);
+    await scrollToMonth(48);
+    const ownedTotals = totals();
+    await user.click(within(card()).getByRole('button', { name: 'Sell/return and walk away' }));
+    expect(within(card()).getAllByText('No phone left', { exact: true })).toHaveLength(5);
+    expect(
+      within(card())
+        .getByRole('button', { name: 'Return it — no phone left' })
+        .getAttribute('aria-pressed')
+    ).toBe('true');
+    expect(totals()).not.toEqual(ownedTotals);
+    await user.click(within(card()).getByRole('button', { name: /Buy it out for/ }));
+    expect(within(card()).getAllByText('No phone left', { exact: true })).toHaveLength(5);
+    const boughtAndSold = totals();
+    await fireEvent.input(
+      screen.getByRole('spinbutton', { name: /^Final phone resale estimate/ }),
+      {
+        target: { value: '0' }
+      }
+    );
+    expect(totals()).not.toEqual(boughtAndSold);
+    await user.click(within(card()).getByRole('button', { name: 'Finish owning the phone' }));
+    expect(totals()).toEqual(ownedTotals);
+    expectTimelineThrough(container, HORIZON);
+    expect(container.querySelectorAll('[data-month]').length).toBeLessThan(35);
+    unmount();
+    render(Page);
+    expect(
+      within(card())
+        .getByRole('button', { name: 'Finish owning the phone' })
+        .getAttribute('aria-pressed')
+    ).toBe('true');
   });
 });

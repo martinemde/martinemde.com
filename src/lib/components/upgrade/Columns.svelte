@@ -16,9 +16,18 @@
     reference?: { value: number; label: string };
     /** Set once the panel has latched to the top of the viewport. */
     stuck?: boolean;
+    finalLabel?: string;
   }
 
-  let { scenarios, month, basis = $bindable(), height, reference, stuck = false }: Props = $props();
+  let {
+    scenarios,
+    month,
+    basis = $bindable(),
+    height,
+    reference,
+    stuck = false,
+    finalLabel
+  }: Props = $props();
 
   const empty = { phone: 0, rent: 0, care: 0, fees: 0, repair: 0, tax: 0 };
 
@@ -89,7 +98,7 @@
 <div class="panel" class:stuck>
   <div class="top">
     <h3 class="chart-title">
-      {month < 0 ? 'Total spent so far' : `Total spent by month ${month}`}
+      {finalLabel ?? (month < 0 ? 'Total spent so far' : `Total spent by month ${month}`)}
     </h3>
     <button
       class="basis"

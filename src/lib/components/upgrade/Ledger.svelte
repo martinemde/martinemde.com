@@ -23,9 +23,17 @@
     limit?: number;
     /** -1 before the first month crosses the reading line. */
     activeMonth?: number;
+    finalLabel?: string;
   }
 
-  let { scenarios, beats, questions = {}, limit, activeMonth = $bindable(-1) }: Props = $props();
+  let {
+    scenarios,
+    beats,
+    questions = {},
+    limit,
+    finalLabel,
+    activeMonth = $bindable(-1)
+  }: Props = $props();
 
   let basis = $state<'cash' | 'npv'>('npv');
   let stuck = $state(false);
@@ -44,6 +52,28 @@
   const columns = $derived(scenarios.length);
   const lastMonth = $derived(Math.min(limit ?? horizon, horizon));
   const months = $derived(Array.from({ length: lastMonth + 1 }, (_, i) => i));
+  // Keep the first year detailed. Later identical payment months share a card;
+  // event beats and decision points always get their own card.
+  const groups = $derived.by(() => {
+    const result: { start: number; end: number }[] = [];
+    const signature = (month: number) => JSON.stringify(scenarios.map((s) => s.rows[month].items));
+    for (const month of months) {
+      const previous = result.at(-1);
+      if (
+        previous &&
+        previous.start > 12 &&
+        !beats.has(month) &&
+        !questions[month] &&
+        !beats.has(previous.end) &&
+        !questions[previous.end] &&
+        Math.ceil(previous.start / 12) === Math.ceil(month / 12) &&
+        signature(previous.end) === signature(month)
+      )
+        previous.end = month;
+      else result.push({ start: month, end: month });
+    }
+    return result;
+  });
 
   /**
    * A charge, described once and then drawn across the columns that get handed
@@ -61,7 +91,19 @@
     credit?: boolean;
   }
 
-  function chargesFor(month: number): Charge[] {
+  function chargesFor(month: number, start = month): Charge[] {
+    if (start < month) {
+      const combined: Record<string, Charge> = {};
+      for (let current = start; current <= month; current++) {
+        for (const charge of chargesFor(current)) {
+          const previous = combined[charge.label];
+          if (previous)
+            charge.amounts.forEach((amount, index) => (previous.amounts[index] += amount));
+          else combined[charge.label] = { ...charge, amounts: [...charge.amounts] };
+        }
+      }
+      return Object.values(combined);
+    }
     const byLabel: Record<string, Charge> = {};
     scenarios.forEach((s, column) => {
       for (const item of s.rows[month].items) {
@@ -129,10 +171,13 @@
    * and, on day one, once the store credit a path could not use is netted too,
    * so the month lines up with what the panel above it is drawing.
    */
-  function cellsFor(month: number) {
+  function cellsFor(month: number, start = month) {
     return scenarios.map((s) => {
       const row = s.rows[month];
-      const out = basis === 'npv' ? row.runningNpv - (s.rows[month - 1]?.runningNpv ?? 0) : row.net;
+      const out =
+        basis === 'npv'
+          ? row.runningNpv - (s.rows[start - 1]?.runningNpv ?? 0)
+          : row.runningCash - (s.rows[start - 1]?.runningCash ?? 0);
       const net = month === 0 ? out - s.summary.tradeInRefund : out;
       return { key: s.key, name: s.shortName, net };
     });
@@ -223,7 +268,7 @@
     const sync = () => {
       queued = false;
       let found = -1;
-      for (let m = 0; m <= lastMonth; m++) {
+      for (const { end: m } of groups) {
         const el = blockEls[m];
         if (el && el.getBoundingClientRect().top <= line) found = m;
         else break;
@@ -246,14 +291,22 @@
   <div class="sentinel" bind:this={sentinel} aria-hidden="true"></div>
 
   <div class="panel-wrap" bind:this={panelWrap}>
-    <Columns {scenarios} month={activeMonth} {reference} bind:basis height={chartPx} {stuck} />
+    <Columns
+      {scenarios}
+      month={activeMonth}
+      {reference}
+      bind:basis
+      height={chartPx}
+      {stuck}
+      finalLabel={activeMonth === horizon ? finalLabel : undefined}
+    />
   </div>
   <div class="panel-lead" aria-hidden="true"></div>
 
-  {#each months as month (month)}
+  {#each groups as { start, end: month } (month)}
     {@const beat = beats.get(month)}
-    {@const charges = chargesFor(month)}
-    {@const cells = cellsFor(month)}
+    {@const charges = chargesFor(month, start)}
+    {@const cells = cellsFor(month, start)}
     {@const idle = idleLine(month)}
     {@const peak = Math.max(0, ...charges.flatMap((c) => c.amounts.map(Math.abs)))}
     {@const stacks = cells.map((_, i) =>
@@ -273,7 +326,7 @@
     <div
       role="button"
       tabindex="0"
-      aria-label={`Month ${month}: ${expanded[month] ? 'hide' : 'show'} breakdown`}
+      aria-label={`${start === month ? `Month ${month}` : `Months ${start}–${month}`}: ${expanded[month] ? 'hide' : 'show'} breakdown`}
       aria-expanded={!!expanded[month]}
       onclick={() => (expanded[month] = !expanded[month])}
       onkeydown={(event) => {
@@ -284,6 +337,7 @@
       }}
       bind:this={blockEls[month]}
       data-month={month}
+      data-start-month={start}
       class="month"
       class:expanded={!!expanded[month]}
       class:on={month === activeMonth}
@@ -292,9 +346,13 @@
       class:quiet={charges.length === 0}
     >
       <header>
-        <span class="mnum">{String(month).padStart(2, '0')}</span>
+        <span class="mnum"
+          >{start === month ? String(month).padStart(2, '0') : `${start}–${month}`}</span
+        >
         {#if beat}
           <h3>{beat.title}</h3>
+        {:else if start < month}
+          <h3>{month - start + 1} months · {charges.length ? 'same payments' : 'paid off'}</h3>
         {:else}
           <span class="rule"></span>
           <span class="year">year {Math.floor((month + 11) / 12) || 1}</span>

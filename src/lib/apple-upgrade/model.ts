@@ -211,6 +211,14 @@ export interface Summary {
 }
 
 export interface Scenario {
+  closeout?: {
+    choice: 'return' | 'buyout';
+    canReturn: boolean;
+    payoff: number;
+    phoneValue: number;
+    creditsForfeited: number;
+    saleProceeds: number;
+  };
   key: string;
   /** Full name, for the comparison table. */
   name: string;
@@ -1323,6 +1331,133 @@ export function allScenarios(input: Inputs): Scenario[] {
       : ([12, 24] as const).map((term) => appleUpgrade({ ...input, term }))),
     carrierFinancing(input)
   ];
+}
+
+/** Settle every obligation at the same endpoint, without buying another phone.
+ * Returning a lease leaves no asset; all other paths finish with an owned phone.
+ * The remaining phone value is an asset, not a cash receipt. */
+export function closeOut(
+  input: Inputs,
+  scenario: Scenario,
+  requested?: 'return' | 'buyout',
+  saleEstimate?: number
+): Scenario {
+  const starts = purchaseMonths(input);
+  const age = HORIZON - starts[starts.length - 1];
+  const original = starts.length === 1;
+  const last = scenario.rows[HORIZON];
+  const term = scenario.key === 'upgrade-12' ? 12 : 24;
+  const leased = scenario.key.startsWith('upgrade-') && !last.owns;
+  const canReturn = leased && age >= term && age < term + EXTENSION_MONTHS;
+  const choice = canReturn && requested !== 'buyout' ? 'return' : 'buyout';
+  const payoff = leased
+    ? (last.buyout ?? 0) * (1 + input.taxRate / 100)
+    : scenario.summary.remainingBalance;
+  const selling = saleEstimate !== undefined && choice !== 'return';
+  const saleProceeds = selling ? Math.max(0, saleEstimate - tradeInDamage(input, original)) : 0;
+  const phoneValue = choice === 'return' || selling ? 0 : closingValue(input, age, original);
+  const extra: LineItem[] = [];
+  if (choice === 'buyout' && payoff > 0) {
+    extra.push({
+      label: leased ? 'Final buyout — own the phone' : 'Settle remaining installments',
+      amount: payoff,
+      includedTax: leased ? payoff - (last.buyout ?? 0) : 0,
+      biller: leased ? 'klarna' : scenario.key === 'carrier' ? 'carrier' : 'apple',
+      category: 'phone'
+    });
+  }
+  if (
+    choice === 'return' &&
+    original &&
+    input.screenChoice === 'defer' &&
+    input.appleCare === 'none'
+  ) {
+    extra.push(
+      ...screenRepairItems({ ...input, screenChoice: 'repair' }, SCREEN_CRACK_MONTH).map(
+        (item) => ({ ...item, label: 'Screen repair before final return' })
+      )
+    );
+  }
+  if (saleProceeds > 0)
+    extra.push({
+      label: 'Sell final phone',
+      amount: -saleProceeds,
+      reward: 0,
+      biller: 'apple',
+      category: 'phone'
+    });
+  const latestIndex = starts.length - 1;
+  const creditsForfeited =
+    scenario.key === 'carrier' &&
+    input.carrierOffer !== null &&
+    !(input.privateSaleValues && !original)
+      ? carrierTradeInDeal(
+          input,
+          original
+            ? input.tradeIn
+            : replacementValue(
+                input,
+                starts[latestIndex] - starts[latestIndex - 1],
+                latestIndex === 1
+              ),
+          age,
+          tradeInDamage(input, latestIndex === 1)
+        ).forfeited
+      : 0;
+  const rows = assemble(
+    input,
+    (month) => [
+      ...scenario.rows[month].items.map((item) =>
+        choice === 'return' &&
+        month > starts[starts.length - 1] &&
+        item.biller === 'klarna' &&
+        item.category === 'phone'
+          ? { ...item, category: 'rent' as const }
+          : item
+      ),
+      ...(month === HORIZON ? extra : [])
+    ],
+    (month) =>
+      month === HORIZON
+        ? {
+            buyout: null,
+            owns: choice !== 'return' && !selling,
+            hasPhone: choice !== 'return' && !selling,
+            forfeitedCredits: (last.forfeitedCredits ?? 0) + creditsForfeited
+          }
+        : {
+            buyout: scenario.rows[month].buyout,
+            owns: scenario.rows[month].owns,
+            hasPhone: scenario.rows[month].hasPhone,
+            note: scenario.rows[month].note,
+            idleNote: scenario.rows[month].idleNote,
+            forfeitedCredits: scenario.rows[month].forfeitedCredits
+          }
+  );
+  // Preserve the explanations attached after the original cash-flow assembly.
+  rows.forEach((row, month) => {
+    row.leaseReturn = scenario.rows[month].leaseReturn;
+  });
+  const summary = summarize(input, rows, phoneValue, scenario.summary.tradeInRefund);
+  // Disposing of the phone after the last payment does not erase that month's use.
+  summary.monthsWithPhone = scenario.summary.monthsWithPhone;
+  summary.perMonth = summary.monthsWithPhone > 0 ? summary.netCost / summary.monthsWithPhone : 0;
+  return {
+    ...scenario,
+    rows,
+    summary: {
+      ...summary,
+      carrierCreditsLost: (scenario.summary.carrierCreditsLost ?? 0) + creditsForfeited
+    },
+    closeout: {
+      choice,
+      canReturn,
+      payoff,
+      phoneValue,
+      creditsForfeited,
+      saleProceeds
+    }
+  };
 }
 
 /**

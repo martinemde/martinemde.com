@@ -332,7 +332,7 @@ describe('Apple Upgrade page', () => {
     ).toBe('13.49');
   });
 
-  it('asks for the phone, trade-in and coverage, without an upfront upgrade schedule', async () => {
+  it('asks about upgrade frequency after the phone, trade-in and coverage', async () => {
     const user = userEvent.setup();
     render(Page);
     expect(screen.queryByText('No trade-in')).toBeNull();
@@ -341,8 +341,79 @@ describe('Apple Upgrade page', () => {
     expect(screen.queryByText('No AppleCare')).toBeNull();
     await user.click(screen.getByText('No trade-in'));
     expect(screen.getByText('No AppleCare')).toBeTruthy();
-    expect(screen.queryByText('How often do you want a new phone?')).toBeNull();
+    expect(screen.queryByRole('radio', { name: /^Every year/ })).toBeNull();
+    await user.click(screen.getByText('No AppleCare'));
+    expect(screen.getByRole('heading', { name: 'How often do you upgrade?' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /^Every year/ })).toBeTruthy();
     expect(screen.getByText('$34.99/mo on a 24-month lease')).toBeTruthy();
+  });
+
+  it.each([
+    ['Every year', ['upgrade', 'upgrade', 'upgrade'], 3],
+    ['Every 2 years', ['keep', 'upgrade', 'keep'], 1],
+    ['Every 3 years', ['keep', 'keep', 'upgrade'], 0]
+  ] as const)(
+    'prefills %s while keeping yearly decisions and lease exits editable',
+    async (label, choices, exits) => {
+      const user = userEvent.setup();
+      const { unmount } = render(Page);
+      await walkThrough(user);
+      await user.click(screen.getByRole('radio', { name: new RegExp(`^${label}`) }));
+      for (const [index, choice] of choices.entries()) {
+        const section = document.getElementById(`year-${index + 1}-title`)!.closest('section')!;
+        expect(
+          within(section)
+            .getByRole('button', { name: choice === 'upgrade' ? 'Upgrade' : 'Keep this phone' })
+            .getAttribute('aria-pressed')
+        ).toBe('true');
+      }
+      expect(screen.queryAllByRole('button', { name: 'Hand it back' })).toHaveLength(exits);
+      expect(screen.getByText('The Totals')).toBeTruthy();
+      expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual(
+        choices
+      );
+      unmount();
+      render(Page);
+      expect(
+        (screen.getByRole('radio', { name: new RegExp(`^${label}`) }) as HTMLInputElement).checked
+      ).toBe(true);
+      await chooseYear(user, 1, choices[0] !== 'upgrade');
+      expect(
+        screen
+          .getAllByRole('radio', { name: /^Every/ })
+          .every((radio) => !(radio as HTMLInputElement).checked)
+      ).toBe(true);
+      expect(screen.queryByText('The Totals')).toBeNull();
+    }
+  );
+
+  it('changes presets without retaining buyout choices from a different upgrade schedule', async () => {
+    const user = userEvent.setup();
+    render(Page);
+    await walkThrough(user);
+    await user.click(screen.getByRole('radio', { name: /^Every year/ }));
+    const firstYear = document.getElementById('year-1-title')!.closest('section')!;
+    await user.click(within(firstYear).getByRole('button', { name: /Buy it for/ }));
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['12:12']
+    ).toBe('buyout');
+    await user.click(screen.getByRole('radio', { name: /^Every 2 years/ }));
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices
+    ).toEqual({});
+    const secondYear = document.getElementById('year-2-title')!.closest('section')!;
+    expect(
+      within(secondYear).getByRole('group', {
+        name: '24-month lease: what happens to the old phone?'
+      })
+    ).toBeTruthy();
+    await user.click(within(secondYear).getByRole('button', { name: /Buy it for/ }));
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['24:24']
+    ).toBe('buyout');
+    expect(
+      (screen.getByRole('radio', { name: /^Every 2 years/ }) as HTMLInputElement).checked
+    ).toBe(true);
   });
 
   it('toggles the full month breakdown from the card, totals, and keyboard', async () => {

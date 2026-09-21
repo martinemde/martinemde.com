@@ -500,6 +500,20 @@
   /** How far down the ledger the reader is allowed before answering. */
   const unansweredYear = $derived(annualChoices.findIndex((choice) => choice === null));
   const ledgerLimit = $derived(unansweredYear < 0 ? HORIZON : (unansweredYear + 1) * 12 - 1);
+  const upgradeFrequency = $derived(
+    ([1, 2, 3] as const).find((frequency) =>
+      annualChoices.every(
+        (choice, index) => choice === ((index + 1) % frequency === 0 ? 'upgrade' : 'keep')
+      )
+    ) ?? null
+  );
+
+  function chooseFrequency(frequency: number | null) {
+    if (frequency === null) return;
+    for (let index = 0; index < annualChoices.length; index++) {
+      chooseYear(index, (index + 1) % frequency === 0 ? 'upgrade' : 'keep');
+    }
+  }
 
   function chooseYear(index: number, choice: 'upgrade' | 'keep') {
     if (annualChoices[index] === choice) return;
@@ -682,6 +696,28 @@
   </Step>
 
   <div id="step-4"></div>
+  <Step
+    n={4}
+    title="How often do you upgrade?"
+    locked={step < 4}
+    answer={upgradeFrequency === 1
+      ? 'every year'
+      : upgradeFrequency
+        ? `every ${upgradeFrequency} years`
+        : undefined}
+    lede="Compare plans for the phone you’re buying today based on when you’ll want the next one. This fills in the yearly choices below; you can still change them and decide whether to buy out a lease or hand the phone back."
+  >
+    <Tiles
+      options={[
+        { value: 1, label: 'Every year', note: 'I want the next phone in 12 months.' },
+        { value: 2, label: 'Every 2 years', note: 'I usually keep a phone for 24 months.' },
+        { value: 3, label: 'Every 3 years', note: 'I’m willing to wait 36 months.' }
+      ]}
+      bind:value={() => upgradeFrequency, chooseFrequency}
+      name="Upgrade frequency"
+      min="170px"
+    />
+  </Step>
   {#if step >= 4}
     <details class="fine-tuning">
       <summary>Nitpicky stuff if you want to account for every penny</summary>

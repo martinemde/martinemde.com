@@ -90,7 +90,7 @@ describe('Apple Upgrade page', () => {
     ).toBeNull();
     const month = () => container.querySelector('[data-month="12"]')!;
     expect(month().querySelector('.lease-return')).toBeTruthy();
-    await user.click(within(choice).getByRole('button', { name: /Buy it for/ }));
+    await user.click(within(choice).getByRole('radio', { name: /Pay off/ }));
     expect(month().querySelector('.lease-return')).toBeNull();
     expect(
       within(month() as HTMLElement).getAllByText('Buy out phone before upgrading').length
@@ -100,15 +100,13 @@ describe('Apple Upgrade page', () => {
     ).toBe('buyout');
     unmount();
     render(Page);
-    expect(screen.getByRole('button', { name: /Buy it for/ }).getAttribute('aria-pressed')).toBe(
-      'true'
-    );
-    await user.click(screen.getByRole('button', { name: 'Hand it back' }));
-    expect(screen.getByRole('button', { name: 'Hand it back' }).getAttribute('aria-pressed')).toBe(
-      'true'
+    expect((screen.getByRole('radio', { name: /Pay off/ }) as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByRole('radio', { name: /^Give it back/ }));
+    expect((screen.getByRole('radio', { name: /^Give it back/ }) as HTMLInputElement).checked).toBe(
+      true
     );
     await chooseYear(user, 1);
-    expect(screen.queryByRole('button', { name: /Buy it for/ })).toBeNull();
+    expect(screen.queryByRole('radio', { name: /Pay off/ })).toBeNull();
     expect(
       JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices
     ).toEqual({});
@@ -371,7 +369,11 @@ describe('Apple Upgrade page', () => {
         expect(title.textContent?.trim()).toBe(`Upgrade: ${label}`);
         expect(within(section).queryByRole('button', { name: 'Upgrade' })).toBeNull();
         expect(within(section).queryByRole('button', { name: 'Keep this phone' })).toBeNull();
-        expect(within(section).getAllByRole('radio')).toHaveLength(3);
+        expect(
+          within(
+            within(section).getByRole('group', { name: `Year ${index + 1} upgrade frequency` })
+          ).getAllByRole('radio')
+        ).toHaveLength(3);
         expect(
           (
             within(section).getByRole('radio', {
@@ -380,7 +382,7 @@ describe('Apple Upgrade page', () => {
           ).checked
         ).toBe(true);
       }
-      expect(screen.queryAllByRole('button', { name: 'Hand it back' })).toHaveLength(exits);
+      expect(screen.queryAllByRole('radio', { name: /^Give it back/ })).toHaveLength(exits);
       expect(screen.getByText('The Totals')).toBeTruthy();
       expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual(
         choices
@@ -424,7 +426,7 @@ describe('Apple Upgrade page', () => {
       })
     );
     const firstYear = document.getElementById('year-1-title')!.closest('section')!;
-    await user.click(within(firstYear).getByRole('button', { name: /Buy it for/ }));
+    await user.click(within(firstYear).getByRole('radio', { name: /Pay off/ }));
     expect(
       JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['12:12']
     ).toBe('buyout');
@@ -438,7 +440,7 @@ describe('Apple Upgrade page', () => {
         name: '24-month lease: what happens to the old phone?'
       })
     ).toBeTruthy();
-    await user.click(within(secondYear).getByRole('button', { name: /Buy it for/ }));
+    await user.click(within(secondYear).getByRole('radio', { name: /Pay off/ }));
     expect(
       JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['24:24']
     ).toBe('buyout');
@@ -919,7 +921,7 @@ describe('Apple Upgrade page', () => {
     for (const year of [1, 2, 3]) {
       await chooseYear(user, year, true);
       const section = document.getElementById(`year-${year}-title`)!.closest('section')!;
-      await user.click(within(section).getByRole('button', { name: /Buy it for/ }));
+      await user.click(within(section).getByRole('radio', { name: /Pay off/ }));
     }
     await scrollToMonth(HORIZON);
     const assertTotals = (label: string) => {
@@ -934,7 +936,7 @@ describe('Apple Upgrade page', () => {
     await user.click(screen.getByRole('button', { name: 'today’s dollars' }));
     assertTotals('Total paid');
     const yearOne = document.getElementById('year-1-title')!.closest('section')!;
-    await user.click(within(yearOne).getByRole('button', { name: 'Hand it back' }));
+    await user.click(within(yearOne).getByRole('radio', { name: /^Give it back/ }));
     assertTotals('Total paid');
     await user.click(screen.getByRole('button', { name: 'nominal dollars' }));
     assertTotals('Cost in today’s dollars');

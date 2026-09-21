@@ -1021,7 +1021,7 @@
           <p>
             {upgradeFrequency
               ? annualChoices[index] === 'upgrade'
-                ? 'Time for your next phone on this schedule. Choose how to end any eligible lease below.'
+                ? 'Time for your next phone on this schedule.'
                 : 'Keep this phone on your current schedule.'
               : 'The same decision applies to cash, financing, both leases, and the carrier.'}
           </p>
@@ -1055,47 +1055,48 @@
         {#each leaseOptions[index] as option (option.key)}
           <fieldset class="lease-choice">
             <legend>{option.term}-month lease: what happens to the old phone?</legend>
-            <div class="screen-actions">
-              <button
-                type="button"
-                aria-pressed={leaseUpgradeChoices[option.key] !== 'buyout'}
-                onclick={() =>
-                  (leaseUpgradeChoices = { ...leaseUpgradeChoices, [option.key]: 'return' })}
-              >
-                Hand it back
-              </button>
-              <button
-                type="button"
-                aria-pressed={leaseUpgradeChoices[option.key] === 'buyout'}
-                onclick={() =>
-                  (leaseUpgradeChoices = { ...leaseUpgradeChoices, [option.key]: 'buyout' })}
-              >
-                Buy it for {money(option.buyout)}, then {option.privateSale
-                  ? 'sell it'
-                  : 'trade it in'}
-              </button>
-            </div>
             <p>
-              Hand it back to settle the lease: no trade-in credit. The new lease starts at
-              {money(leasePayment(listPrice, option.term))}/mo before tax.
-              {screenChoice === 'defer' &&
-              appleCare === 'none' &&
-              index === annualChoices.indexOf('upgrade')
-                ? ' A deferred screen repair is charged before return.'
-                : ''}
+              Your phone would be worth {money0(option.value)}
+              {option.privateSale ? 'sold privately' : 'traded in'}.
             </p>
+            <Tiles
+              options={[
+                {
+                  value: 'return',
+                  label: 'Give it back',
+                  sub: '$0 trade-in',
+                  note: `${money(leasePayment(listPrice, option.term))}/mo next lease`
+                },
+                {
+                  value: 'buyout',
+                  label: `${money(option.buyout)} Pay off`,
+                  sub: `${money0(option.value)} ${option.privateSale ? 'private sale' : 'trade-in'}`,
+                  note: `${money(option.payment)}/mo next lease`
+                }
+              ]}
+              bind:value={
+                () => leaseUpgradeChoices[option.key] ?? 'return',
+                (value) => {
+                  if (value === 'return' || value === 'buyout')
+                    leaseUpgradeChoices = { ...leaseUpgradeChoices, [option.key]: value };
+                }
+              }
+              name={`Year ${index + 1} · ${option.term}-month lease exit`}
+              min="170px"
+            />
             <p>
-              Buy it out: put up {money(option.buyout)} including tax to own the phone.
+              Payoff includes tax. Next lease payments are before tax.
               {#if option.privateSale}
-                Then sell it for an estimated {money(option.value)}; the new lease stays at full
-                price.
+                Private-sale proceeds go to you; the new lease stays at full price.
               {:else}
-                Then trade it in for an estimated {money(option.value)} credit, reducing the next
-                {option.term} months of the new lease to {money(option.payment)}/mo before tax while
-                you keep that lease.
+                Trade-in credit reduces payments over the next {option.term} months while you keep the
+                lease.
                 {#if option.refund > 0}
                   Another {money(option.refund)} comes back as Apple credit beyond the lease payments.
                 {/if}
+              {/if}
+              {#if screenChoice === 'defer' && appleCare === 'none' && index === annualChoices.indexOf('upgrade')}
+                A deferred screen repair is charged before return.
               {/if}
             </p>
             <p>

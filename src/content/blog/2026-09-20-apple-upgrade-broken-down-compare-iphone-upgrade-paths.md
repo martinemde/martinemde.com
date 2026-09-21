@@ -35,10 +35,11 @@ micropub:
 
 
         After many iterations, I'm happy enough to release it into the wild.
-        I'll warn you though, this is not designed to be easy to understand, and
-        so while I did my best, it's going to take a moment to absorb it all. If
-        you want the short answer, the difference between plans is small and the
-        levers for saving money are the obvious ones.
+        I'll warn you though, the Apple Upgrade program is not easy to
+        understand, and so while I did my best to make sense of it, it's still a
+        lot of data that will take a moment to absorb. If you want the short
+        answer, the difference between plans is small and the levers for saving
+        money are the obvious ones.
 
 
         **Simplest answer: pick the longest plan you're willing to live with:
@@ -152,7 +153,7 @@ The best way for me to understand what's going on is to build a tool to help mys
 
 [Apple Upgrade Broken Down](https://martinemde.com/apple-upgrade) - My interactive exploration of the new Apple lease program.
 
-After many iterations, I'm happy enough to release it into the wild. I'll warn you though, this is not designed to be easy to understand, and so while I did my best, it's going to take a moment to absorb it all. If you want the short answer, the difference between plans is small and the levers for saving money are the obvious ones.
+After many iterations, I'm happy enough to release it into the wild. I'll warn you though, the Apple Upgrade program is not easy to understand, and so while I did my best to make sense of it, it's still a lot of data that will take a moment to absorb. If you want the short answer, the difference between plans is small and the levers for saving money are the obvious ones.
 
 **Simplest answer: pick the longest plan you're willing to live with: the 24 month lease is the best if you want optionality, the 36 month carrier deal is the best if you want the absolute cheapest no matter the downsides.**
 

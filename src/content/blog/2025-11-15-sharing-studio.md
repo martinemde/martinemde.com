@@ -1,5 +1,5 @@
 ---
-date: '2025-11-15'
+date: '2025-11-15T08:12:35+00:00'
 published: true
 slug: sharing-studio
 micropub:

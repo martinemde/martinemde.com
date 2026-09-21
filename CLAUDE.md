@@ -204,10 +204,14 @@ of every type, including expandable article previews.
 Projects enter the stream through ordinary bookmark posts that link to the project
 and provide an introduction. Project pages and the directory stay independent;
 there is no project stream type. Backfilled introductions reuse directory copy
-and use the commit date that first added the local page file (`jj log` on
+and use the full author timestamp of the commit that first added the local page file (`jj log` on
 `src/routes/NAME/+page.svelte`, following renames). External links use the first
 directory listing (`jj diff -r REV src/lib/data/projects.ts`), not the external
-project launch date. These are historical entries, not new announcements.
+project launch date. Read the full timestamp with
+`jj log -r REV --no-graph -T 'author.timestamp().format("%Y-%m-%dT%H:%M:%S%:z")'`.
+Keep the timezone offset and time in frontmatter; do not truncate to a calendar date.
+These are historical entries, not new announcements. Legacy date-only posts show
+a calendar date in the stream because their actual publication time is unknown.
 RSS carries the same published entries with full HTML, optional titles, stable
 permalink GUIDs, real publication timestamps, and matching `source:markdown`.
 Drafts stay out of lists and feeds. Draft direct pages retain existing preview

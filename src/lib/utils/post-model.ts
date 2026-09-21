@@ -4,6 +4,7 @@ export type PostType = 'article' | 'note' | 'bookmark' | 'photo';
 export interface PostMetadata {
   title: string;
   date: Date;
+  dateOnly?: boolean;
   updated?: Date;
   author?: string;
   description?: string;
@@ -38,13 +39,8 @@ function date(value: unknown): Date | undefined {
   if (input instanceof Date) return Number.isFinite(input.getTime()) ? input : undefined;
   if (typeof input !== 'string') return undefined;
   const parsed = /^\d{4}-\d{2}-\d{2}$/.test(input)
-    ? new Date(
-        ...(input
-          .split('-')
-          .map(Number)
-          .map((v, i) => (i === 1 ? v - 1 : v)) as [number, number, number]),
-        12
-      )
+    ? // Date-only legacy entries have no known time. Use a stable anchor for sorting.
+      new Date(`${input}T12:00:00Z`)
     : new Date(input);
   return Number.isFinite(parsed.getTime()) ? parsed : undefined;
 }
@@ -85,7 +81,8 @@ export function normalizePostMetadata(
   const props = hasMicropub ? record(micropub.properties) : meta;
   // An absent Micropub name means untitled, even if the legacy wrapper says "Untitled Post".
   const title = text(props.name) ?? (hasMicropub ? '' : (text(meta.title) ?? ''));
-  const publishedAt = date(props.published) ?? date(meta.date);
+  const publicationValue = date(props.published) ? props.published : meta.date;
+  const publishedAt = date(publicationValue);
   const status = text(props['post-status']);
   const photo = values(props.photo).flatMap((item) => {
     const object = record(item);
@@ -120,6 +117,7 @@ export function normalizePostMetadata(
   return {
     title,
     date: publishedAt ?? new Date(0),
+    dateOnly: /^\d{4}-\d{2}-\d{2}$/.test(String(values(publicationValue)[0])),
     updated: date(props.updated ?? meta.updated),
     slug:
       text(meta.slug) ??

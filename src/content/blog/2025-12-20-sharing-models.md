@@ -1,5 +1,5 @@
 ---
-date: '2025-12-20'
+date: '2025-12-20T11:14:28-08:00'
 published: true
 slug: sharing-models
 micropub:

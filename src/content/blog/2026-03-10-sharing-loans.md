@@ -1,5 +1,5 @@
 ---
-date: '2026-03-10'
+date: '2026-03-10T20:56:42-07:00'
 published: true
 slug: sharing-loans
 micropub:

@@ -1,5 +1,5 @@
 ---
-date: '2026-08-12'
+date: '2026-08-12T14:03:07-07:00'
 published: true
 slug: sharing-trillion
 micropub:

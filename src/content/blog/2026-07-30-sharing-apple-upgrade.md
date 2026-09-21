@@ -1,5 +1,5 @@
 ---
-date: '2026-07-30'
+date: '2026-07-30T20:48:31-07:00'
 published: true
 slug: sharing-apple-upgrade
 micropub:

@@ -37,12 +37,24 @@
     <div class="entry-body e-content prose max-w-none"><Content /></div>
   {/if}
   <a class="permalink u-url" href={url} aria-label={`Permalink: ${postDisplayTitle(metadata)}`}>
-    <time class="dt-published" datetime={metadata.date.toISOString()}>
-      {metadata.date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: 'America/Los_Angeles'
-      })}
+    <time
+      class="dt-published"
+      datetime={metadata.dateOnly
+        ? metadata.date.toISOString().slice(0, 10)
+        : metadata.date.toISOString()}
+    >
+      {metadata.dateOnly
+        ? metadata.date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            timeZone: 'America/Los_Angeles'
+          })
+        : metadata.date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: 'America/Los_Angeles'
+          })}
     </time>
   </a>
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>

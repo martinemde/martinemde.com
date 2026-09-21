@@ -175,8 +175,7 @@ export function getRawPostBySlug(slug: string): string | null {
 
 /**
  * Format a date from post frontmatter consistently
- * The date is already normalized to local timezone at noon,
- * so we can format it directly
+ * Full timestamps retain their instant; date-only legacy values use a stable UTC anchor.
  */
 export function formatPostDate(date: Date): string {
   return date.toLocaleDateString('en-US', {

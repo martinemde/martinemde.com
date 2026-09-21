@@ -1,5 +1,5 @@
 ---
-date: '2025-12-14'
+date: '2025-12-14T15:36:53-08:00'
 published: true
 slug: sharing-rubygems
 micropub:

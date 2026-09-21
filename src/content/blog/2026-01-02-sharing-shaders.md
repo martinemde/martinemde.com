@@ -1,5 +1,5 @@
 ---
-date: '2026-01-02'
+date: '2026-01-02T20:37:57-08:00'
 published: true
 slug: sharing-shaders
 micropub:

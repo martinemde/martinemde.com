@@ -116,6 +116,31 @@ describe('publisher files through the stream and feed', () => {
     outside.remove();
   });
 
+  it('shows precise publication times and does not present date-only posts as noon', () => {
+    const note = published.find((entry) => entry.metadata.slug === 'note')!;
+    const dated = normalizePostMetadata(
+      { date: '2025-12-14', published: true, slug: 'dated' },
+      'dated.md',
+      'An older note.'
+    );
+    const precise = normalizePostMetadata(
+      { date: '2026-07-30T20:48:31-07:00', published: true, slug: 'precise' },
+      'precise.md',
+      'A new note.'
+    );
+    const { container } = render(Stream, {
+      entries: [
+        { metadata: precise, content: note.content },
+        { metadata: dated, content: note.content }
+      ]
+    });
+    const times = [...container.querySelectorAll('time.dt-published')];
+    expect(times[0].textContent?.trim()).toBe('8:48 PM');
+    expect(times[0].getAttribute('datetime')).toBe('2026-07-31T03:48:31.000Z');
+    expect(times[1].textContent?.trim()).toBe('Dec 14, 2025');
+    expect(times[1].getAttribute('datetime')).toBe('2025-12-14');
+  });
+
   it('publishes full readable RSS with stable permalinks, untitled notes, and intact media', async () => {
     const items = await Promise.all(
       published.map((entry) =>

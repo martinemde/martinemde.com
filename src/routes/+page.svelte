@@ -1,7 +1,6 @@
 <script lang="ts">
   import Stream from '$lib/components/Stream.svelte';
   import type { PageData } from './$types';
-  import { formatPostDateShort, getReadingTime } from '$lib/utils/posts';
   import { projects } from '$lib/data/projects';
   import { resolve } from '$app/paths';
 
@@ -33,36 +32,11 @@
   </div>
 </section>
 
-<section class="block">
-  <div class="section-head">
-    <span class="sec-num">01</span>
-    <h2 class="sec-title">Writing</h2>
-    <span class="rule"></span>
-    <a class="sec-link" href={resolve('/blog')}>all posts →</a>
-  </div>
-  <div class="post-list">
-    {#each data.recentPosts as post (post.slug)}
-      <a class="post-row" href={resolve(`/blog/${post.slug}`)}>
-        <div class="post-meta">
-          <span class="post-date">{formatPostDateShort(post.date)}</span>
-          <span class="post-read">{getReadingTime(post.slug)}</span>
-        </div>
-        <div>
-          <div class="post-title">{post.title}</div>
-          {#if post.description}
-            <div class="post-desc">{post.description}</div>
-          {/if}
-        </div>
-      </a>
-    {/each}
-  </div>
-</section>
-
 {#if data.recentEntries.length}
   <section class="recent block">
     <div class="section-head">
       <h2 class="sec-title">Recently</h2>
-      <span class="rule"></span><a class="sec-link" href={resolve('/stream')}>the stream →</a>
+      <span class="rule"></span><a class="sec-link" href={resolve('/stream')}>full stream →</a>
     </div>
     <Stream entries={data.recentEntries} />
   </section>
@@ -70,7 +44,6 @@
 
 <section class="block">
   <div class="section-head">
-    <span class="sec-num">02</span>
     <h2 class="sec-title">Selected projects</h2>
     <span class="rule"></span>
     <a class="sec-link" href={resolve('/projects')}>all projects →</a>
@@ -179,12 +152,6 @@
     gap: 14px;
     margin-bottom: 30px;
   }
-  .sec-num {
-    font-family: var(--font-mono);
-    font-weight: 520;
-    font-size: 12px;
-    color: var(--faint);
-  }
   .sec-title {
     margin: 0;
     font-family: var(--font-body);
@@ -206,55 +173,6 @@
   }
   .sec-link:hover {
     color: var(--accent);
-  }
-
-  .post-list {
-    display: flex;
-    flex-direction: column;
-  }
-  .post-row {
-    display: grid;
-    grid-template-columns: 118px 1fr;
-    gap: 22px;
-    align-items: start;
-    border-top: 1px solid var(--border);
-    padding: 22px 4px;
-  }
-  .post-row:hover {
-    background: color-mix(in oklch, var(--surface) 50%, transparent);
-  }
-  .post-meta {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    padding-top: 3px;
-    font-family: var(--font-mono);
-  }
-  .post-date {
-    font-weight: 480;
-    font-size: 11.5px;
-    color: var(--muted);
-  }
-  .post-read {
-    font-weight: 440;
-    font-size: 11px;
-    color: var(--faint);
-  }
-  .post-title {
-    margin-bottom: 7px;
-    font-family: var(--font-body);
-    font-weight: 540;
-    font-size: 18px;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-    color: var(--text);
-  }
-  .post-desc {
-    max-width: 560px;
-    font-size: 14.5px;
-    line-height: 1.6;
-    color: var(--muted);
-    text-wrap: pretty;
   }
 
   .proj-grid {

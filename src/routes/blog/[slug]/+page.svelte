@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import ShareButtons from '$lib/components/ShareButtons.svelte';
-  import { formatPostDateShort, getReadingTime } from '$lib/utils/posts';
+  import { formatPostDateShort, getReadingTime, postDisplayTitle } from '$lib/utils/posts';
   import { resolve } from '$app/paths';
 
   let { data }: { data: PageData } = $props();
@@ -9,17 +9,26 @@
   const readingTime = $derived(getReadingTime(data.metadata.slug));
 </script>
 
-<article class="post">
+<svelte:head
+  >{#if !data.metadata.published}<meta name="robots" content="noindex,nofollow" />{/if}</svelte:head
+>
+<article class="post h-entry">
+  <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
   <a class="back" href={resolve('/blog')}>
     <span class="back-path">~/blog/</span>{data.metadata.slug}
   </a>
 
-  <h1 class="post-title">{data.metadata.title}</h1>
+  {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>{/if}
 
   <div class="meta">
-    <span class="meta-date">{formatPostDateShort(data.metadata.date)}</span>
-    <span class="meta-dot"></span>
-    <span class="meta-read">{readingTime}</span>
+    <a class="u-url" href={resolve(`/blog/${data.metadata.slug}`)}
+      ><time class="meta-date dt-published" datetime={data.metadata.date.toISOString()}
+        >{formatPostDateShort(data.metadata.date)}</time
+      ></a
+    >
+    {#if data.metadata.type === 'article'}<span class="meta-dot"></span><span class="meta-read"
+        >{readingTime}</span
+      >{/if}
     <span class="meta-spacer"></span>
     {#if data.metadata.tags && data.metadata.tags.length}
       <span class="meta-tag">{data.metadata.tags[0]}</span>
@@ -30,16 +39,16 @@
     <img class="post-image" src={data.metadata.image} alt={data.metadata.title} />
   {/if}
 
-  <div class="prose prose-lg max-w-none">
+  <div class="e-content prose prose-lg max-w-none">
     <data.content />
   </div>
 
   <footer class="post-footer">
-    <span class="share-label">Share this article</span>
+    <span class="share-label">Share this {data.metadata.type}</span>
     <ShareButtons
       slug={data.metadata.slug}
-      title={data.metadata.title}
-      description={data.metadata.description}
+      title={postDisplayTitle(data.metadata)}
+      description={data.metadata.description || data.metadata.excerpt}
     />
   </footer>
 </article>

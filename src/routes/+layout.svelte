@@ -5,39 +5,24 @@
   import { resolve } from '$app/paths';
   import { afterNavigate } from '$app/navigation';
   import { PUBLIC_APP_URL } from '$env/static/public';
+  import { socialMetadata } from '$lib/utils/social';
   import { createAutoHide } from '$lib/utils/autohide';
 
   let { children } = $props();
 
-  // Derive the page title from the current page data
-  const pageTitle = $derived(
-    page.data.metadata?.title ? `${page.data.metadata.title} - Martin Emde` : 'Martin Emde'
+  const social = $derived(
+    page.data.metadata ? socialMetadata(page.data.metadata, PUBLIC_APP_URL) : undefined
   );
-
-  // Derive the page description
-  const pageDescription = $derived(page.data.metadata?.description || undefined);
-
-  // Derive the page image - convert relative URLs to absolute
-  const pageImage = $derived.by(() => {
-    const image = page.data.metadata?.image;
-    if (!image) return undefined;
-    // If it's already absolute, return as-is
-    if (image.startsWith('http://') || image.startsWith('https://')) return image;
-    // Convert relative path to absolute URL
-    return `${PUBLIC_APP_URL}${image}`;
-  });
-
-  // Get the current page URL
-  const pageUrl = $derived(`${PUBLIC_APP_URL}${page.url.pathname}`);
-
-  // Determine content type - article for blog posts, website otherwise
-  const contentType = $derived(
-    page.url.pathname.startsWith('/blog/') && page.data.metadata?.slug ? 'article' : 'website'
-  );
+  const pageTitle = $derived(social ? `${social.title} - Martin Emde` : 'Martin Emde');
+  const pageDescription = $derived(social?.description);
+  const pageImage = $derived(social?.image);
+  const pageUrl = $derived(social?.url ?? new URL(page.url.pathname, PUBLIC_APP_URL).href);
+  const contentType = $derived(social ? 'article' : 'website');
 
   // Active-section + status-line path for the redesigned chrome
   const path = $derived(page.url.pathname);
   const isBlog = $derived(path === '/blog' || path.startsWith('/blog/'));
+  const isStream = $derived(path === '/stream');
   const isProjects = $derived(path.startsWith('/projects'));
   const isAbout = $derived(path.startsWith('/about'));
   const pathDisplay = $derived('martinemde.com' + (path === '/' ? '' : path));
@@ -100,10 +85,20 @@
     type="application/rss+xml"
     title="Martin Emde"
   />
-  <meta property="og:title" content={pageTitle} />
+  <link rel="canonical" href={pageUrl} />
+  <meta property="og:site_name" content="Martin Emde" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:title" content={social?.title ?? pageTitle} />
+  {#if social}
+    <meta property="article:published_time" content={page.data.metadata.date.toISOString()} />
+    {#if page.data.metadata.updated}<meta
+        property="article:modified_time"
+        content={page.data.metadata.updated.toISOString()}
+      />{/if}
+  {/if}
   <meta property="og:url" content={pageUrl} />
   <meta property="og:type" content={contentType} />
-  <meta name="twitter:title" content={pageTitle} />
+  <meta name="twitter:title" content={social?.title ?? pageTitle} />
 
   {#if pageDescription}
     <meta property="og:description" content={pageDescription} />
@@ -112,6 +107,13 @@
 
   {#if pageImage}
     <meta property="og:image" content={pageImage} />
+    <meta property="og:image:alt" content={social?.imageAlt ?? ''} />
+    <meta name="twitter:image:alt" content={social?.imageAlt ?? ''} />
+    {#if social?.generatedImage}
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
+      <meta property="og:image:type" content="image/png" />
+    {/if}
     <meta name="twitter:image" content={pageImage} />
     <meta name="twitter:card" content="summary_large_image" />
   {:else}
@@ -130,7 +132,10 @@
         <span class="brand-mark"></span>
         <span class="brand-name">Martin Emde</span>
       </a>
-      <nav class="nav">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="nav-link" class:active={isStream} href={resolve('/stream')}
+          ><span class="slash">/</span>stream</a
+        >
         <a class="nav-link" class:active={isBlog} href={resolve('/blog')}>
           <span class="slash">/</span>blog
         </a>

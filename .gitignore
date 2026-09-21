@@ -27,3 +27,6 @@ vite.config.ts.timestamp-*
 
 # Claude Code scratch worktrees
 .claude/worktrees/
+
+# Generated permalink share cards
+/static/social/

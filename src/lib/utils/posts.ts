@@ -5,17 +5,10 @@
 
 import type { Component } from 'svelte';
 
-export interface PostMetadata {
-  title: string;
-  date: Date; // Normalized to Date object at load time
-  updated?: Date; // Optional revision date, normalized alongside `date`
-  author?: string;
-  description?: string;
-  published?: boolean;
-  slug: string;
-  image?: string; // Optional header image URL
-  tags?: string[]; // Optional list of tags; rendered only when present
-}
+import { normalizePostMetadata } from './post-model';
+import type { PostMetadata } from './post-model';
+export type { PostMetadata } from './post-model';
+export { postDisplayTitle } from './post-model';
 
 export interface Post extends PostMetadata {
   path: string;
@@ -41,106 +34,16 @@ const allPostFiles = import.meta.glob('../../content/blog/*.{md,svx}', {
   eager: true
 });
 
+const rawPosts = import.meta.glob('../../content/blog/*.{md,svx}', {
+  query: '?raw',
+  import: 'default',
+  eager: true
+});
+
 interface PostIndexEntry {
   path: string;
   metadata: PostMetadata;
   component: Component;
-}
-
-/**
- * Extract basename from file path (without extension)
- */
-function getBasename(path: string): string {
-  const filename = path.split('/').pop() || 'untitled';
-  return filename.replace(/\.(md|svx)$/, '');
-}
-
-/**
- * Check if metadata has all required fields
- */
-function hasRequiredFields(meta: Record<string, unknown>): boolean {
-  return Boolean(meta.title && meta.slug && meta.date);
-}
-
-/**
- * Check if a value is a valid date (string or Date object)
- */
-function isValidDate(value: unknown): value is string | Date {
-  return typeof value === 'string' || value instanceof Date;
-}
-
-/**
- * Parse a date string or Date object to a Date
- * - If ISO8601 datetime is provided (e.g., 2025-10-25T14:30:00), parse the full datetime
- * - If only a date is provided (e.g., 2025-10-25), default to noon local time
- * - This avoids timezone issues by ensuring the date components match the input
- */
-function parseToDate(value: string | Date): Date {
-  if (value instanceof Date) {
-    // If YAML already parsed it to a Date, return as-is
-    return value;
-  }
-
-  // Check if the string contains time information (has 'T' followed by time components)
-  const hasTime = value.includes('T') && value.split('T')[1]?.length > 0;
-
-  if (hasTime) {
-    // Parse full ISO8601 datetime string
-    const date = new Date(value);
-    // Verify it's a valid date
-    if (!isNaN(date.getTime())) {
-      return date;
-    }
-    // If parsing failed, fall through to date-only parsing
-  }
-
-  // Parse YYYY-MM-DD string to Date at noon local time (default behavior)
-  const dateStr = value.split('T')[0];
-  const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0);
-}
-
-/**
- * Get today's date as a Date object
- */
-function getTodayDate(): Date {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
-}
-
-/**
- * Fill in missing frontmatter with sensible defaults
- * Posts with any missing required fields become drafts
- * Normalizes dates to Date objects at load time
- */
-function normalizeMetadata(metadata: unknown, path: string): PostMetadata {
-  const meta =
-    metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : {};
-
-  // Warn about posts that had missing frontmatter
-  if (!hasRequiredFields(meta)) {
-    console.warn(
-      `Auto-filled missing frontmatter for ${path} (marked as draft). ` +
-        `Add title, date, and slug to publish.`
-    );
-  }
-
-  const basename = getBasename(path);
-  const isComplete = hasRequiredFields(meta);
-
-  return {
-    title: typeof meta.title === 'string' ? meta.title : `Draft: ${basename}`,
-    date: isValidDate(meta.date) ? parseToDate(meta.date) : getTodayDate(),
-    updated: isValidDate(meta.updated) ? parseToDate(meta.updated) : undefined,
-    slug: typeof meta.slug === 'string' ? meta.slug : basename,
-    author: typeof meta.author === 'string' ? meta.author : 'Martin Emde',
-    description: typeof meta.description === 'string' ? meta.description : `Draft: ${basename}`,
-    published: isComplete ? meta.published !== false : false,
-    image: typeof meta.image === 'string' ? meta.image : undefined,
-    tags: Array.isArray(meta.tags)
-      ? meta.tags.filter((t): t is string => typeof t === 'string')
-      : undefined
-  };
 }
 
 /**
@@ -155,7 +58,11 @@ function buildPostIndex(): Map<string, PostIndexEntry> {
     const typedModule = module as { default: Component; metadata?: unknown };
     const { metadata: rawMetadata, default: component } = typedModule;
 
-    const metadata = normalizeMetadata(rawMetadata, path);
+    const metadata = normalizePostMetadata(
+      rawMetadata,
+      path,
+      (rawPosts[path] as string | undefined) ?? ''
+    );
     const slug = metadata.slug;
 
     // Check for duplicate slugs
@@ -225,7 +132,7 @@ export async function getPostBySlug(
  * Validate that a post matches the expected date components
  */
 export function validatePostDate(
-  metadata: PostMetadata,
+  metadata: Pick<PostMetadata, 'date'>,
   year: string,
   month: string,
   day: string
@@ -241,11 +148,6 @@ export function validatePostDate(
  * Get raw content of a post by slug (for text/plain endpoints)
  * Uses Vite's glob import with ?raw query
  */
-const rawPosts = import.meta.glob('../../content/blog/*.{md,svx}', {
-  query: '?raw',
-  import: 'default',
-  eager: true
-});
 
 /**
  * Build a mapping from slug to raw content
@@ -323,4 +225,23 @@ export function getReadingTime(slug: string): string {
     return '1 min read';
   }
   return calculateReadingTime(rawContent);
+}
+
+/** Renderable public entries shared by the stream and homepage. */
+export async function getStreamEntries(limit?: number) {
+  const posts = await getAllPosts();
+  return posts.slice(0, limit).map((post) => ({
+    metadata: post,
+    content: postIndex.get(post.slug)!.component
+  }));
+}
+
+export async function getArticles() {
+  return (await getAllPosts()).filter((post) => post.type === 'article');
+}
+
+export function getPublishedSlugs(): string[] {
+  return [...postIndex.values()]
+    .filter((entry) => entry.metadata.published)
+    .map((entry) => entry.metadata.slug);
 }

@@ -29,6 +29,7 @@
     "prettier": "^3.9.6",
     "prettier-plugin-svelte": "^4.1.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "sharp": "0.33.5",
     "shiki": "^4.3.0",
     "svelte": "^5.56.10",
     "svelte-check": "^4.7.6",
@@ -36,7 +37,8 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yaml": "1.10.2"
   },
   "dependencies": {
     "lucide-svelte": "^1.0.1",
@@ -46,8 +48,8 @@
   },
   "private": true,
   "scripts": {
-    "dev": "vite dev",
-    "build": "svelte-kit sync && vite build",
+    "dev": "bun run social:images && vite dev",
+    "build": "bun run social:images && svelte-kit sync && vite build",
     "preview": "vite preview",
     "prepare": "svelte-kit sync || echo ''",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo",
@@ -58,7 +60,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "blog:new": "bun scripts/blog-new.ts",
-    "blog:publish": "bun scripts/blog-publish.ts"
+    "blog:publish": "bun scripts/blog-publish.ts",
+    "social:images": "bun scripts/social-images.ts"
   },
   "type": "module"
 }

@@ -46,7 +46,7 @@ describe('ShareButtons', () => {
     expect(screen.getByText('LLM')).toBeTruthy();
 
     // Check for Share button
-    expect(screen.getByRole('button', { name: 'Share article' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share this post' })).toBeTruthy();
   });
 
   it('should copy LLM URL when LLM button is clicked', async () => {
@@ -86,7 +86,7 @@ describe('ShareButtons', () => {
       }
     });
 
-    const shareButton = screen.getByRole('button', { name: 'Share article' });
+    const shareButton = screen.getByRole('button', { name: 'Share this post' });
     await user.click(shareButton);
 
     expect(mockShare).toHaveBeenCalledWith({
@@ -112,7 +112,7 @@ describe('ShareButtons', () => {
       }
     });
 
-    const shareButton = screen.getByRole('button', { name: 'Share article' });
+    const shareButton = screen.getByRole('button', { name: 'Share this post' });
     await user.click(shareButton);
 
     expect(mockShare).toHaveBeenCalledWith({
@@ -139,7 +139,7 @@ describe('ShareButtons', () => {
       }
     });
 
-    const shareButton = screen.getByRole('button', { name: 'Share article' });
+    const shareButton = screen.getByRole('button', { name: 'Share this post' });
     await user.click(shareButton);
 
     // Wait a bit and check that the operation completed (no error thrown)
@@ -166,7 +166,7 @@ describe('ShareButtons', () => {
       }
     });
 
-    const shareButton = screen.getByRole('button', { name: 'Share article' });
+    const shareButton = screen.getByRole('button', { name: 'Share this post' });
     await user.click(shareButton);
 
     expect(consoleError).toHaveBeenCalledWith('Failed to share:', expect.any(Error));

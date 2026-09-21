@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Stream from '$lib/components/Stream.svelte';
   import type { PageData } from './$types';
   import { formatPostDateShort, getReadingTime } from '$lib/utils/posts';
   import { projects } from '$lib/data/projects';
@@ -57,6 +58,16 @@
   </div>
 </section>
 
+{#if data.recentEntries.length}
+  <section class="recent block">
+    <div class="section-head">
+      <h2 class="sec-title">Recently</h2>
+      <span class="rule"></span><a class="sec-link" href={resolve('/stream')}>the stream →</a>
+    </div>
+    <Stream entries={data.recentEntries} />
+  </section>
+{/if}
+
 <section class="block">
   <div class="section-head">
     <span class="sec-num">02</span>
@@ -96,6 +107,9 @@
 </section>
 
 <style>
+  .recent {
+    max-width: 680px;
+  }
   a {
     color: inherit;
     text-decoration: none;
@@ -154,9 +168,6 @@
   }
   .dot-a {
     background: var(--accent);
-  }
-  .dot-b {
-    background: var(--accent2);
   }
 
   .block {

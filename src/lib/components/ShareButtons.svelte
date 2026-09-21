@@ -41,7 +41,7 @@
     ariaLabel="Copy a link to the plain text of this post"
     title="Copy a link to the plain text of this post"
   />
-  <button onclick={shareArticle} class="share-btn" aria-label="Share article">
+  <button onclick={shareArticle} class="share-btn" aria-label="Share this post">
     <Share2 size={16} />
     <span>Share</span>
   </button>

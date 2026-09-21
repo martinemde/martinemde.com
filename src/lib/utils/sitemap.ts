@@ -26,7 +26,7 @@ const EXCLUDED_PREFIXES = [
 /**
  * Pages built from blog posts, so they change whenever a post does.
  */
-const POST_DRIVEN_PATHS = new Set(['/', '/blog']);
+const POST_DRIVEN_PATHS = new Set(['/', '/blog', '/stream']);
 
 /**
  * Route modules are only used for their paths; the thunks are never called.
@@ -55,7 +55,7 @@ function isExcluded(path: string): boolean {
  * A post's last modification date: the `updated` frontmatter field when the
  * post has been revised, otherwise its publication date.
  */
-export function getPostLastModified(post: PostMetadata): Date {
+export function getPostLastModified(post: Pick<PostMetadata, 'date' | 'updated'>): Date {
   return post.updated ?? post.date;
 }
 

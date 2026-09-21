@@ -1033,11 +1033,6 @@
             name={`Year ${index + 1} upgrade frequency`}
             min="170px"
           />
-          <p class="frequency-note">
-            Best-case net costs in today’s dollars, averaged over the full four years. Savings
-            compare schedules from the start, including final debt and estimated phone value. Your
-            lease choices may cost more.
-          </p>
         {:else}
           <div class="screen-actions">
             <button
@@ -1056,8 +1051,8 @@
           <fieldset class="lease-choice">
             <legend>{option.term}-month lease: what happens to the old phone?</legend>
             <p>
-              Your phone would be worth {money0(option.value)}
-              {option.privateSale ? 'sold privately' : 'traded in'}.
+              You could give back your phone for free, but buying it outright and trading in might
+              be a better value.
             </p>
             <Tiles
               options={[
@@ -1084,44 +1079,8 @@
               name={`Year ${index + 1} · ${option.term}-month lease exit`}
               min="170px"
             />
-            <p>
-              Payoff includes tax. Next lease payments are before tax.
-              {#if option.privateSale}
-                Private-sale proceeds go to you; the new lease stays at full price.
-              {:else}
-                Trade-in credit reduces payments over the next {option.term} months while you keep the
-                lease.
-                {#if option.refund > 0}
-                  Another {money(option.refund)} comes back as Apple credit beyond the lease payments.
-                {/if}
-              {/if}
-              {#if screenChoice === 'defer' && appleCare === 'none' && index === annualChoices.indexOf('upgrade')}
-                A deferred screen repair is charged before return.
-              {/if}
-            </p>
-            <p>
-              <strong>
-                {#if Math.abs(option.saving) < 0.5}
-                  The two choices cost about the same over 48 months.
-                {:else}
-                  Buying out is {money0(Math.abs(option.saving))}
-                  {option.saving > 0 ? 'cheaper' : 'more expensive'}
-                  over 48 months in today’s dollars.
-                {/if}
-              </strong>
-              Includes taxes, card rewards, and the final closeout. Both paths finish
-              {finalEnding === 'own' ? 'owning the phone' : 'with no phone or debt'}.
-              {upgradeFrequency
-                ? 'Your upgrade schedule stays the same.'
-                : 'Future upgrade answers stay the same; unanswered years assume you keep the phone.'}
-            </p>
           </fieldset>
         {/each}
-        <p>
-          Keep it and the lease continues at its full payment after the term ends, with an automatic
-          buyout six months later. Upgrade before a lease ends and the remaining buyout is paid
-          before trading it in.
-        </p>
       </section>
     {/snippet}
 

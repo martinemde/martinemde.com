@@ -375,7 +375,7 @@ describe('Apple Upgrade page', () => {
     await walkThrough(user);
     expect(container.querySelectorAll('.chart .name')).toHaveLength(5);
     expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
-    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    expect(screen.queryByText('The Totals')).toBeNull();
     for (const year of [1, 2, 3]) {
       const precedingMonth = container.querySelector(`[data-month="${year * 12 - 1}"]`)!;
       expect(precedingMonth.nextElementSibling?.querySelector(`#year-${year}-title`)).toBeTruthy();
@@ -385,7 +385,7 @@ describe('Apple Upgrade page', () => {
         year === 3 ? HORIZON + 1 : (year + 1) * 12
       );
     }
-    expect(screen.getByText('What the scroll adds up to')).toBeTruthy();
+    expect(screen.getByText('The Totals')).toBeTruthy();
     expect(screen.getByText('Assumptions and lease terms')).toBeTruthy();
     expect(screen.queryByText('The lease is up. Now what?')).toBeNull();
   });
@@ -441,7 +441,7 @@ describe('Apple Upgrade page', () => {
     );
     await chooseYear(user, 1);
     expect(container.querySelector('[data-month="25"]')).toBeNull();
-    expect(screen.queryByText('What the scroll adds up to')).toBeNull();
+    expect(screen.queryByText('The Totals')).toBeNull();
     expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual([
       'keep',
       null,

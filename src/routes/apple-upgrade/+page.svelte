@@ -883,8 +883,8 @@
     {#if unansweredYear < 0}
       <section class="compare-section">
         <div class="head">
-          <div class="eyebrow">// the same five columns, totalled</div>
-          <h2>What the scroll adds up to</h2>
+          <div class="eyebrow">// break it down</div>
+          <h2>The Totals</h2>
         </div>
 
         <Compare

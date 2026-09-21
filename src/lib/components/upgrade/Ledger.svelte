@@ -248,6 +248,7 @@
   <div class="panel-wrap" bind:this={panelWrap}>
     <Columns {scenarios} month={activeMonth} {reference} bind:basis height={chartPx} {stuck} />
   </div>
+  <div class="panel-lead" aria-hidden="true"></div>
 
   {#each months as month (month)}
     {@const beat = beats.get(month)}
@@ -421,6 +422,10 @@
       <div class="question">{@render questions[month]()}</div>
     {/if}
   {/each}
+  {#if lastMonth === horizon}
+    <!-- Room for the sticky graph to park below the final month. -->
+    <div aria-hidden="true" style:height="{panelPx + 32}px"></div>
+  {/if}
 </div>
 
 <style>
@@ -505,10 +510,12 @@
     position: sticky;
     top: var(--sticky-top, 57px);
     z-index: 4;
-    /* Let the empty accumulator settle before month zero reaches the reading line. */
-    margin-bottom: clamp(140px, 25svh, 240px);
     background: var(--bg);
     padding: 4px 0;
+  }
+  .panel-lead {
+    /* Separate from the sticky box so its margin cannot shorten the travel. */
+    height: clamp(140px, 25svh, 240px);
   }
 
   /* One month */

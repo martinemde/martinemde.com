@@ -7,7 +7,10 @@
 
 <svelte:head>
   <title>Stream - Martin Emde</title>
-  <meta name="description" content="Notes, links, photos, and longer thoughts by Martin Emde." />
+  <meta
+    name="description"
+    content="Notes, links, projects, photos, and longer thoughts by Martin Emde."
+  />
 </svelte:head>
 
 <div class="stream-page">
@@ -19,7 +22,7 @@
       <a href={resolve('/rss.xml')}>Subscribe via RSS</a>
     </p>
   </header>
-  <Stream entries={data.entries} keyboard />
+  <Stream entries={data.entries} />
 </div>
 
 <style>

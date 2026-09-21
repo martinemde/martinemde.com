@@ -59,36 +59,61 @@ describe('publisher files through the stream and feed', () => {
     );
   });
 
-  it('keeps shortcuts opt-in, preserves arrows and interactive focus, and returns focus on collapse', async () => {
-    const { container } = render(Stream, { entries: published, keyboard: true });
+  it('always offers Vim navigation inside the stream and restores focus after reading', async () => {
+    const { container } = render(Stream, { entries: published });
+    expect(screen.queryByRole('checkbox')).toBeNull();
     const articles = [...container.querySelectorAll<HTMLElement>('article')];
-    document.body.focus();
-    const disabled = new KeyboardEvent('keydown', { key: 'j', bubbles: true, cancelable: true });
-    window.dispatchEvent(disabled);
-    expect(disabled.defaultPrevented).toBe(false);
-    await fireEvent.click(screen.getByRole('checkbox'));
-    await fireEvent.click(screen.getByRole('button', { name: 'Start keyboard navigation' }));
-    expect(document.activeElement).toBe(articles[0]);
-    await fireEvent.keyDown(articles[0], { key: 'j' });
-    expect(document.activeElement).toBe(articles[1]);
-    const arrow = new KeyboardEvent('keydown', {
-      key: 'ArrowDown',
-      bubbles: true,
-      cancelable: true
-    });
-    articles[1].dispatchEvent(arrow);
-    expect(arrow.defaultPrevented).toBe(false);
-    const link = screen.getByRole('link', { name: 'a related thought' });
-    link.focus();
-    await fireEvent.keyDown(link, { key: 'j' });
-    expect(document.activeElement).toBe(link);
-    const details = container.querySelector('details')!;
-    details.open = true;
-    const summary = details.querySelector('summary')!;
-    summary.focus();
-    await fireEvent.keyDown(summary, { key: 'Escape' });
-    expect(details.open).toBe(false);
-    expect(document.activeElement).toBe(summary);
+    // Tab naturally reaches links; no separate mode or starting control is needed.
+    const title = screen.getByRole('link', { name: 'Giving a thought a home' });
+    title.focus();
+    const entry = title.closest('article')!;
+    const index = articles.indexOf(entry);
+    await fireEvent.keyDown(title, { key: 'j' });
+    expect(document.activeElement).toBe(articles[index + 1]);
+    await fireEvent.keyDown(document.activeElement!, { key: 'k' });
+    expect(document.activeElement).toBe(entry);
+    const details = entry.querySelector('details')!;
+    for (const [open, close] of [
+      ['l', 'h'],
+      ['Enter', 'Escape']
+    ]) {
+      await fireEvent.keyDown(entry, { key: open });
+      expect(details.open).toBe(true);
+      expect(document.activeElement).toBe(details.querySelector('.entry-body'));
+      await fireEvent.keyDown(document.activeElement!, { key: close });
+      expect(details.open).toBe(false);
+      expect(document.activeElement).toBe(entry);
+    }
+  });
+
+  it('preserves native controls, typing, arrows, and shortcuts outside the stream', () => {
+    const { container } = render(Stream, { entries: published });
+    const entry = container.querySelector<HTMLElement>('article')!;
+    const link = screen.getByRole('link', { name: 'Giving a thought a home' });
+    const untouched = (target: HTMLElement, key: string, options = {}) => {
+      target.focus();
+      const event = new KeyboardEvent('keydown', {
+        key,
+        bubbles: true,
+        cancelable: true,
+        ...options
+      });
+      target.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(target);
+    };
+    untouched(entry, 'ArrowDown');
+    untouched(entry, 'ArrowUp');
+    untouched(entry, 'j', { ctrlKey: true });
+    untouched(link, 'Enter');
+    untouched(entry.querySelector('summary')!, 'Enter');
+    const input = document.createElement('input');
+    entry.append(input);
+    for (const key of ['j', 'k', 'h', 'l', 'Enter', 'Escape']) untouched(input, key);
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    untouched(outside, 'j');
+    outside.remove();
   });
 
   it('publishes full readable RSS with stable permalinks, untitled notes, and intact media', async () => {

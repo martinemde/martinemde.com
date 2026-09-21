@@ -23,7 +23,7 @@
       {/if}
       <details>
         <summary>Read here<span class="sr-only">: {metadata.title}</span></summary>
-        <div class="entry-body e-content prose max-w-none">
+        <div class="entry-body e-content prose max-w-none" tabindex="-1">
           {#if metadata.image}<img src={metadata.image} alt="" />{/if}
           <Content />
         </div>

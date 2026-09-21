@@ -994,20 +994,38 @@
       <section class="decide" aria-labelledby="year-{index + 1}-title">
         <div class="decide-head">
           <span class="eyebrow">// year {index + 1} · every payment path</span>
-          <h3 id="year-{index + 1}-title">New phones are out. Upgrade or keep this phone?</h3>
-          <p>The same decision applies to cash, financing, both leases, and the carrier.</p>
+          <h3 id="year-{index + 1}-title">
+            {upgradeFrequency
+              ? `Upgrade: Every ${upgradeFrequency === 1 ? 'year' : `${upgradeFrequency} years`}`
+              : 'New phones are out. Upgrade or keep this phone?'}
+          </h3>
+          <p>
+            {upgradeFrequency
+              ? annualChoices[index] === 'upgrade'
+                ? 'Time for your next phone on this schedule. Choose how to end any eligible lease below.'
+                : 'Keep this phone on your current schedule.'
+              : 'The same decision applies to cash, financing, both leases, and the carrier.'}
+          </p>
         </div>
         <div class="screen-actions">
-          <button
-            type="button"
-            aria-pressed={annualChoices[index] === 'upgrade'}
-            onclick={() => chooseYear(index, 'upgrade')}>Upgrade</button
-          >
-          <button
-            type="button"
-            aria-pressed={annualChoices[index] === 'keep'}
-            onclick={() => chooseYear(index, 'keep')}>Keep this phone</button
-          >
+          {#if upgradeFrequency}
+            {#each [1, 2, 3].filter((frequency) => frequency !== upgradeFrequency) as frequency (frequency)}
+              <button type="button" onclick={() => chooseFrequency(frequency)}>
+                Switch to {frequency === 1 ? 'every year' : `${frequency} years`}
+              </button>
+            {/each}
+          {:else}
+            <button
+              type="button"
+              aria-pressed={annualChoices[index] === 'upgrade'}
+              onclick={() => chooseYear(index, 'upgrade')}>Upgrade</button
+            >
+            <button
+              type="button"
+              aria-pressed={annualChoices[index] === 'keep'}
+              onclick={() => chooseYear(index, 'keep')}>Keep this phone</button
+            >
+          {/if}
         </div>
         {#each leaseOptions[index] as option (option.key)}
           <fieldset class="lease-choice">
@@ -1066,8 +1084,10 @@
                 {/if}
               </strong>
               Includes taxes, card rewards, and the final closeout. Both paths finish
-              {finalEnding === 'own' ? 'owning the phone' : 'with no phone or debt'}. Future upgrade
-              answers stay the same; unanswered years assume you keep the phone.
+              {finalEnding === 'own' ? 'owning the phone' : 'with no phone or debt'}.
+              {upgradeFrequency
+                ? 'Your upgrade schedule stays the same.'
+                : 'Future upgrade answers stay the same; unanswered years assume you keep the phone.'}
             </p>
           </fieldset>
         {/each}

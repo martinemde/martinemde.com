@@ -353,19 +353,19 @@ describe('Apple Upgrade page', () => {
     ['Every 2 years', ['keep', 'upgrade', 'keep'], 1],
     ['Every 3 years', ['keep', 'keep', 'upgrade'], 0]
   ] as const)(
-    'prefills %s while keeping yearly decisions and lease exits editable',
+    'shows %s at yearly checkpoints and lets you switch schedules',
     async (label, choices, exits) => {
       const user = userEvent.setup();
       const { unmount } = render(Page);
       await walkThrough(user);
       await user.click(screen.getByRole('radio', { name: new RegExp(`^${label}`) }));
-      for (const [index, choice] of choices.entries()) {
-        const section = document.getElementById(`year-${index + 1}-title`)!.closest('section')!;
-        expect(
-          within(section)
-            .getByRole('button', { name: choice === 'upgrade' ? 'Upgrade' : 'Keep this phone' })
-            .getAttribute('aria-pressed')
-        ).toBe('true');
+      for (const index of choices.keys()) {
+        const title = document.getElementById(`year-${index + 1}-title`)!;
+        const section = title.closest('section')!;
+        expect(title.textContent?.trim()).toBe(`Upgrade: ${label}`);
+        expect(within(section).queryByRole('button', { name: 'Upgrade' })).toBeNull();
+        expect(within(section).queryByRole('button', { name: 'Keep this phone' })).toBeNull();
+        expect(within(section).getAllByRole('button', { name: /^Switch to/ })).toHaveLength(2);
       }
       expect(screen.queryAllByRole('button', { name: 'Hand it back' })).toHaveLength(exits);
       expect(screen.getByText('The Totals')).toBeTruthy();
@@ -377,13 +377,24 @@ describe('Apple Upgrade page', () => {
       expect(
         (screen.getByRole('radio', { name: new RegExp(`^${label}`) }) as HTMLInputElement).checked
       ).toBe(true);
-      await chooseYear(user, 1, choices[0] !== 'upgrade');
+      const nextLabel = label === 'Every year' ? 'Every 2 years' : 'Every year';
+      const nextChoices =
+        label === 'Every year' ? ['keep', 'upgrade', 'keep'] : ['upgrade', 'upgrade', 'upgrade'];
+      const section = document.getElementById('year-1-title')!.closest('section')!;
+      await user.click(
+        within(section).getByRole('button', {
+          name: label === 'Every year' ? 'Switch to 2 years' : 'Switch to every year'
+        })
+      );
       expect(
-        screen
-          .getAllByRole('radio', { name: /^Every/ })
-          .every((radio) => !(radio as HTMLInputElement).checked)
+        (screen.getByRole('radio', { name: new RegExp(`^${nextLabel}`) }) as HTMLInputElement)
+          .checked
       ).toBe(true);
-      expect(screen.queryByText('The Totals')).toBeNull();
+      expect(screen.getAllByRole('heading', { name: `Upgrade: ${nextLabel}` })).toHaveLength(3);
+      expect(JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).annualChoices).toEqual(
+        nextChoices
+      );
+      expect(screen.getByText('The Totals')).toBeTruthy();
     }
   );
 
@@ -397,7 +408,7 @@ describe('Apple Upgrade page', () => {
     expect(
       JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['12:12']
     ).toBe('buyout');
-    await user.click(screen.getByRole('radio', { name: /^Every 2 years/ }));
+    await user.click(within(firstYear).getByRole('button', { name: 'Switch to 2 years' }));
     expect(
       JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices
     ).toEqual({});

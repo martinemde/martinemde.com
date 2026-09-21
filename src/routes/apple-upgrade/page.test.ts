@@ -71,6 +71,43 @@ describe('Apple Upgrade page', () => {
     await fireEvent.scroll(window);
   }
 
+  it('offers eligible lease buyouts, updates payments, and restores the choice', async () => {
+    const user = userEvent.setup();
+    const { container, unmount } = render(Page);
+    await walkThrough(user);
+    await chooseYear(user, 1, true);
+    const choice = screen.getByRole('group', {
+      name: '12-month lease: what happens to the old phone?'
+    });
+    expect(
+      screen.queryByRole('group', { name: '24-month lease: what happens to the old phone?' })
+    ).toBeNull();
+    const month = () => container.querySelector('[data-month="12"]')!;
+    expect(month().querySelector('.lease-return')).toBeTruthy();
+    await user.click(within(choice).getByRole('button', { name: /Buy it for/ }));
+    expect(month().querySelector('.lease-return')).toBeNull();
+    expect(
+      within(month() as HTMLElement).getAllByText('Buy out phone before upgrading').length
+    ).toBeGreaterThan(0);
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices['12:12']
+    ).toBe('buyout');
+    unmount();
+    render(Page);
+    expect(screen.getByRole('button', { name: /Buy it for/ }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    await user.click(screen.getByRole('button', { name: 'Hand it back' }));
+    expect(screen.getByRole('button', { name: 'Hand it back' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    await chooseYear(user, 1);
+    expect(screen.queryByRole('button', { name: /Buy it for/ })).toBeNull();
+    expect(
+      JSON.parse(localStorage.getItem('apple-upgrade-calculator')!).leaseUpgradeChoices
+    ).toEqual({});
+  });
+
   it.each([
     ['iPhone 17', 899, '$25.99/mo on a 24-month lease'],
     ['iPhone Air', 1099, '$31.99/mo on a 24-month lease'],

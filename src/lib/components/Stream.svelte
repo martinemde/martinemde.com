@@ -98,7 +98,6 @@
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--muted);
-    border-bottom: 1px solid var(--border);
     padding-bottom: 12px;
   }
 </style>

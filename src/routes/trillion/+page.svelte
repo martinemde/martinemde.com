@@ -951,7 +951,7 @@
     background: color-mix(in oklch, var(--tier) 16%, transparent);
   }
   .stepper button:disabled {
-    color: var(--muted); /* --faint lands near 3:1 on both surfaces; still reads as off */
+    color: var(--muted); /* --faint now clears AA, but --muted still reads more clearly as off */
     opacity: 0.75;
     cursor: not-allowed;
   }

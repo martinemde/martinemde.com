@@ -20,8 +20,8 @@
   <div class="flex items-center gap-3">
     {#if state.user}
       <div class="flex items-center gap-2">
-        <User class="size-4 text-surface-600-400" />
-        <span class="text-sm text-surface-600-400">{state.user.name || state.user.email}</span>
+        <User class="size-4 text-surface-700-300" />
+        <span class="text-sm text-surface-700-300">{state.user.name || state.user.email}</span>
       </div>
     {/if}
     <button

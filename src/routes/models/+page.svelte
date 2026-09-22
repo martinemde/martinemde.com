@@ -378,7 +378,7 @@ ${contextBeforeCursor}<cursorPosition>`;
   <!-- Header -->
   <div class="space-y-2">
     <h1 class="h1 text-surface-950-50">OpenRouter Model Tester</h1>
-    <p class="text-surface-600-400">
+    <p class="text-surface-700-300">
       Test and compare response times across different OpenRouter models
     </p>
   </div>
@@ -386,7 +386,7 @@ ${contextBeforeCursor}<cursorPosition>`;
   <!-- Config Section -->
   <section class="variant-filled-surface space-y-4 card p-6">
     <h2 class="h2 text-surface-950-50">Configuration</h2>
-    <p class="text-sm text-surface-600-400">
+    <p class="text-sm text-surface-700-300">
       Your OpenRouter API token is loaded only in the browser and stored in memory. It will be lost
       when you refresh the page. For transparency, you can view the source code on
       <a
@@ -403,7 +403,7 @@ ${contextBeforeCursor}<cursorPosition>`;
           <div class="space-y-1">
             <p class="font-semibold">Authenticated via OAuth</p>
             {#if authState.user}
-              <p class="text-sm text-surface-600-400">
+              <p class="text-sm text-surface-700-300">
                 Logged in as {authState.user.name || authState.user.email}
               </p>
             {/if}
@@ -415,7 +415,7 @@ ${contextBeforeCursor}<cursorPosition>`;
         <span class="text-surface-950-50">OpenRouter API Token</span>
         {#if hasStoredToken}
           <div class="flex items-center gap-2">
-            <span class="text-sm text-surface-600-400">Token saved in local storage</span>
+            <span class="text-sm text-surface-700-300">Token saved in local storage</span>
             <button onclick={clearToken} class="variant-ghost-error btn btn-sm">
               Clear Token
             </button>
@@ -433,7 +433,7 @@ ${contextBeforeCursor}<cursorPosition>`;
                 Save in Local Storage
               </button>
             </div>
-            <p class="text-sm text-surface-600-400">
+            <p class="text-sm text-surface-700-300">
               Or <button onclick={initiateOAuthLogin} class="anchor">login with OpenRouter</button> to
               use OAuth
             </p>
@@ -486,7 +486,7 @@ ${contextBeforeCursor}<cursorPosition>`;
 
           <!-- Time to First Token -->
           <div class="space-y-2">
-            <div class="text-xs text-surface-600-400">Time to First Token</div>
+            <div class="text-xs text-surface-700-300">Time to First Token</div>
             {#if model.isRunning}
               <Progress class="w-fit items-center" value={null}>
                 <Progress.Circle>
@@ -536,13 +536,13 @@ ${contextBeforeCursor}<cursorPosition>`;
                 </Progress.ValueText>
               </Progress>
             {:else}
-              <div class="text-xs text-surface-600-400">—</div>
+              <div class="text-xs text-surface-700-300">—</div>
             {/if}
           </div>
 
           <!-- Total Time -->
           <div class="space-y-2">
-            <div class="text-xs text-surface-600-400">Total Time</div>
+            <div class="text-xs text-surface-700-300">Total Time</div>
             {#if model.isRunning}
               <Progress class="w-fit items-center" value={null}>
                 <Progress.Circle>
@@ -575,7 +575,7 @@ ${contextBeforeCursor}<cursorPosition>`;
                 </Progress.ValueText>
               </Progress>
             {:else}
-              <div class="text-xs text-surface-600-400">—</div>
+              <div class="text-xs text-surface-700-300">—</div>
             {/if}
           </div>
 
@@ -586,7 +586,7 @@ ${contextBeforeCursor}<cursorPosition>`;
             </div>
           {:else if model.result?.output}
             <div class="space-y-1">
-              <div class="text-xs text-surface-600-400">Output</div>
+              <div class="text-xs text-surface-700-300">Output</div>
               <pre class="max-h-32 overflow-x-auto rounded bg-surface-100-900 p-2 text-xs"><code
                   >{model.result.output}</code
                 ></pre>
@@ -604,7 +604,7 @@ ${contextBeforeCursor}<cursorPosition>`;
       class="flex w-full items-center justify-between text-left"
     >
       <h2 class="h2 text-surface-950-50">Prompts</h2>
-      <span class="text-surface-600-400">{promptsExpanded ? '▼' : '▶'}</span>
+      <span class="text-surface-700-300">{promptsExpanded ? '▼' : '▶'}</span>
     </button>
 
     <!-- FIM Mode Toggle -->
@@ -612,12 +612,12 @@ ${contextBeforeCursor}<cursorPosition>`;
       <input type="checkbox" bind:checked={useFIM} class="checkbox" />
       <span class="text-surface-950-50">
         Use Fill-In-Middle (FIM) mode
-        <span class="text-xs text-surface-600-400">(simpler prompt, /completions endpoint)</span>
+        <span class="text-xs text-surface-700-300">(simpler prompt, /completions endpoint)</span>
       </span>
     </label>
 
     {#if promptsExpanded}
-      <p class="text-sm text-surface-600-400">
+      <p class="text-sm text-surface-700-300">
         {#if useFIM}
           FIM mode uses a simple prompt/suffix structure with the /completions endpoint.
         {:else}
@@ -629,7 +629,7 @@ ${contextBeforeCursor}<cursorPosition>`;
       <!-- Code Preview -->
       <label class="space-y-2">
         <span class="text-surface-950-50">Code Preview</span>
-        <p class="text-xs text-surface-600-400">
+        <p class="text-xs text-surface-700-300">
           Edit the code below. Place <code class="rounded bg-surface-100-900 px-1"
             >&lt;|cursor|&gt;</code
           > where you want the model to generate completions.

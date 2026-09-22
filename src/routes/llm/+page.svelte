@@ -37,7 +37,7 @@
   <!-- Header -->
   <div class="space-y-4 text-center">
     <h1 class="h1 text-surface-950-50">Connect an LLM</h1>
-    <p class="text-lg text-surface-600-400">Play with AI models safely and transparently</p>
+    <p class="text-lg text-surface-700-300">Play with AI models safely and transparently</p>
   </div>
 
   {#if isLoggedIn}
@@ -75,12 +75,12 @@
                 <svelte:component this={toy.icon} class="size-6 text-primary-500" />
               </div>
               <ExternalLink
-                class="size-4 text-surface-600-400 opacity-0 transition-opacity group-hover:opacity-100"
+                class="size-4 text-surface-700-300 opacity-0 transition-opacity group-hover:opacity-100"
               />
             </div>
             <div>
               <h3 class="h4 text-surface-950-50">{toy.name}</h3>
-              <p class="text-sm text-surface-600-400">{toy.description}</p>
+              <p class="text-sm text-surface-700-300">{toy.description}</p>
             </div>
           </a>
         {/each}
@@ -98,7 +98,7 @@
           everyone due to rate limits and costs. Instead, you can connect your own
           <strong>free</strong> OpenRouter account to try them out!
         </p>
-        <p class="text-surface-600-400">
+        <p class="text-surface-700-300">
           OpenRouter provides access to many AI models, including free ones. You can set spending
           limits, create temporary keys, and revoke access anytime.
         </p>
@@ -115,7 +115,7 @@
           </div>
           <div class="flex-1 space-y-3">
             <h3 class="text-lg font-semibold text-surface-950-50">My promise to you</h3>
-            <ul class="space-y-2 text-surface-600-400">
+            <ul class="space-y-2 text-surface-700-300">
               <li class="flex items-start gap-2">
                 <Shield class="mt-0.5 size-5 flex-shrink-0 text-primary-500" />
                 <span>
@@ -144,7 +144,7 @@
                 </span>
               </li>
             </ul>
-            <p class="text-sm text-surface-600-400 italic">
+            <p class="text-sm text-surface-700-300 italic">
               This site is open source - you can
               <a
                 href="https://github.com/martinemde/martinemde.com"
@@ -168,7 +168,7 @@
         <ol class="space-y-3 text-surface-950-50">
           <li class="flex gap-3">
             <span
-              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white"
+              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full preset-filled-primary-500 text-sm font-semibold"
             >
               1
             </span>
@@ -179,7 +179,7 @@
           </li>
           <li class="flex gap-3">
             <span
-              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white"
+              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full preset-filled-primary-500 text-sm font-semibold"
             >
               2
             </span>
@@ -187,7 +187,7 @@
           </li>
           <li class="flex gap-3">
             <span
-              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white"
+              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full preset-filled-primary-500 text-sm font-semibold"
             >
               3
             </span>
@@ -197,7 +197,7 @@
           </li>
           <li class="flex gap-3">
             <span
-              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white"
+              class="flex size-6 flex-shrink-0 items-center justify-center rounded-full preset-filled-primary-500 text-sm font-semibold"
             >
               4
             </span>
@@ -213,7 +213,7 @@
         <ExternalLink class="size-5" />
         <span>Connect to OpenRouter</span>
       </button>
-      <p class="text-center text-sm text-surface-600-400">Free account • No credit card required</p>
+      <p class="text-center text-sm text-surface-700-300">Free account • No credit card required</p>
     </section>
 
     <!-- Optional: Manual Token Input -->
@@ -222,7 +222,7 @@
         <summary class="cursor-pointer text-surface-950-50 hover:text-primary-500">
           Advanced: Use a manual API key instead
         </summary>
-        <div class="mt-4 space-y-3 text-sm text-surface-600-400">
+        <div class="mt-4 space-y-3 text-sm text-surface-700-300">
           <p>
             If you prefer, you can manually enter an API key on the
             <a href={resolve('/models')} class="anchor">Model Tester</a> page. This is useful if you already
@@ -235,7 +235,7 @@
 
   <!-- Questions -->
   <section class="border-t border-surface-200-800 pt-8">
-    <p class="text-center text-sm text-surface-600-400">
+    <p class="text-center text-sm text-surface-700-300">
       Have questions or concerns?
       <a href={resolve('/about')} class="anchor">Reach out</a> - I'm happy to help!
     </p>

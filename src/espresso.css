@@ -1,6 +1,8 @@
 [data-theme='espresso'] {
   --text-scaling: 1.067;
-  --typo-base--color-light: var(--color-surface-700);
+  /* Contrast-solved against --bg/--surface in theme.css; see the note there.
+     surface-700 was 5.5:1 on --surface, surface-800 is 8.3:1 (AAA). */
+  --typo-base--color-light: var(--color-surface-800);
   --typo-base--color-dark: var(--color-surface-50);
   --typo-base--font-family: system-ui, sans-serif;
   --typo-base--font-size: inherit;
@@ -8,7 +10,9 @@
   --typo-base--font-weight: normal;
   --typo-base--font-style: normal;
   --typo-base--letter-spacing: 0em;
-  --typo-heading--color-light: var(--color-tertiary-500);
+  /* tertiary-500 was 2.9:1 on --bg — below AA even for large text.
+     tertiary-700 is 5.1:1, clearing AA at every heading size. */
+  --typo-heading--color-light: var(--color-tertiary-700);
   --typo-heading--color-dark: var(--color-secondary-200);
   --typo-heading--font-family:
     'MonoLisaText', Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro,
@@ -16,7 +20,8 @@
   --typo-heading--font-weight: 700;
   --typo-heading--font-style: normal;
   --typo-heading--letter-spacing: inherit;
-  --typo-anchor--color-light: var(--color-primary-600);
+  /* primary-600 was 3.9:1 on --bg. primary-700 is 5.3:1 (AA at body size). */
+  --typo-anchor--color-light: var(--color-primary-700);
   --typo-anchor--color-dark: var(--color-tertiary-400);
   --typo-anchor--font-family: inherit;
   --typo-anchor--font-size: inherit;
@@ -46,7 +51,15 @@
   --color-primary-800: oklch(45.1% 0.17 267.87deg);
   --color-primary-900: oklch(38.01% 0.17 265.59deg);
   --color-primary-950: oklch(30.85% 0.16 263.43deg);
-  --color-primary-contrast-dark: var(--color-primary-950);
+  /*
+   * Skeleton pairs every `preset-filled-*-N` with contrast-dark below the
+   * midpoint and contrast-light above it, which leaves the mid steps short:
+   * primary-950 on primary-500 is only 4.3:1. This anchor is pulled darker
+   * so `preset-filled-primary-500` (the one mid-step preset in use) reaches
+   * 4.7:1; every lighter step it serves gains contrast too. The 500/600
+   * steps of the other families have the same gap if they are ever used.
+   */
+  --color-primary-contrast-dark: oklch(28.42% 0.16 263.43deg);
   --color-primary-contrast-light: var(--color-primary-50);
   --color-primary-contrast-50: var(--color-primary-contrast-dark);
   --color-primary-contrast-100: var(--color-primary-contrast-dark);
@@ -94,7 +107,9 @@
   --color-tertiary-800: oklch(44.12% 0.08 221.58deg);
   --color-tertiary-900: oklch(36.77% 0.07 225.7deg);
   --color-tertiary-950: oklch(29% 0.06 231.13deg);
-  --color-tertiary-contrast-dark: var(--color-tertiary-950);
+  /* Same mid-step gap as primary above: tertiary-950 on tertiary-500 is
+     4.4:1, and `.mark` pairs exactly those two. Pulled darker for 4.7:1. */
+  --color-tertiary-contrast-dark: oklch(27.22% 0.06 231.13deg);
   --color-tertiary-contrast-light: var(--color-tertiary-50);
   --color-tertiary-contrast-50: var(--color-tertiary-contrast-dark);
   --color-tertiary-contrast-100: var(--color-tertiary-contrast-dark);

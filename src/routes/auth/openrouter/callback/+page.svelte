@@ -50,7 +50,7 @@
           class="mx-auto size-12 animate-spin rounded-full border-4 border-surface-200-800 border-t-primary-500"
         ></div>
         <h1 class="h2 text-surface-950-50">Completing login...</h1>
-        <p class="text-surface-600-400">Please wait while we exchange your authorization code.</p>
+        <p class="text-surface-700-300">Please wait while we exchange your authorization code.</p>
       </div>
     {:else if status === 'success'}
       <div class="space-y-4">
@@ -66,7 +66,7 @@
           </svg>
         </div>
         <h1 class="h2 text-surface-950-50">Connected successfully!</h1>
-        <p class="text-surface-600-400">Taking you to your AI toys...</p>
+        <p class="text-surface-700-300">Taking you to your AI toys...</p>
       </div>
     {:else if status === 'error'}
       <div class="space-y-4">

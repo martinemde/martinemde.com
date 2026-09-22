@@ -13,11 +13,32 @@
   --surface: light-dark(oklch(0.945 0.011 85), oklch(0.21 0.025 264));
   --code: light-dark(oklch(0.928 0.013 85), oklch(0.235 0.025 264));
   --border: light-dark(oklch(0.875 0.013 80), oklch(0.32 0.025 264));
+  /*
+   * Text lightness is set by contrast, not by eye. Each foreground below is
+   * solved in OKLCH against the lowest-contrast surface it can actually land
+   * on. That is not --bg: it is a 9% --accent tint over --surface, the deepest
+   * panel in the app (upgrade/Tiles.svelte; .prose blockquote is 8%). Clearing
+   * it means clearing --bg, --surface, --code and every lighter tint too.
+   * Hue and chroma are held fixed, only L moves. Worst case, light / dark:
+   *
+   *   --text    11.3 / 13.9  body copy            AAA  (WCAG 1.4.6, >= 7)
+   *   --muted    7.1 /  7.9  bylines, dates       AAA
+   *   --faint    4.6 /  4.7  tags, footer, rules  AA   (WCAG 1.4.3, >= 4.5)
+   *   --accent   4.6 /  8.9  links, eyebrows      AA
+   *   --accent2  4.6 /  7.1  secondary accent     AA
+   *
+   * The bottom three sit at AA, not AAA, because they carry hue and still have
+   * to read as a step lighter than --muted. Forced to 7:1 on a near-white
+   * background the teal goes black and the --muted/--faint step disappears;
+   * 4.5:1 with the hue intact is the better trade. Nothing here is used for
+   * text below AA at any size. Retuning means re-solving against the tinted
+   * panel, not eyeballing it against --bg.
+   */
   --text: light-dark(oklch(0.27 0.013 75), oklch(0.965 0.006 264));
-  --muted: light-dark(oklch(0.475 0.015 75), oklch(0.79 0.017 264));
-  --faint: light-dark(oklch(0.65 0.013 75), oklch(0.58 0.015 264));
-  --accent: light-dark(oklch(0.545 0.1 200), oklch(0.81 0.11 195));
-  --accent2: light-dark(oklch(0.52 0.14 305), oklch(0.77 0.11 305));
+  --muted: light-dark(oklch(0.393 0.015 75), oklch(0.79 0.017 264));
+  --faint: light-dark(oklch(0.495 0.013 75), oklch(0.645 0.015 264));
+  --accent: light-dark(oklch(0.475 0.1 200), oklch(0.81 0.11 195));
+  --accent2: light-dark(oklch(0.51 0.14 305), oklch(0.77 0.11 305));
 }
 
 body {

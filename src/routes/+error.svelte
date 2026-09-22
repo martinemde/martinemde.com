@@ -79,7 +79,7 @@
     <h2 class="preset-typo-display mb-2">
       {page.error?.message || 'Page Not Found'}
     </h2>
-    <p class="text-surface-600-400">The page you're looking for doesn't exist.</p>
+    <p class="text-surface-700-300">The page you're looking for doesn't exist.</p>
   </div>
 
   {#if page.status === 404}
@@ -90,7 +90,7 @@
           <Sparkles class="size-12 text-tertiary-500" />
         </div>
         <h3 class="mb-2 text-lg font-semibold">Want something more entertaining?</h3>
-        <p class="mb-4 text-sm text-surface-600-400">
+        <p class="mb-4 text-sm text-surface-700-300">
           Connect your LLM to get a personalized limerick about this missing page!
         </p>
         <a
@@ -109,7 +109,7 @@
             <div
               class="size-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
             ></div>
-            <p class="text-surface-600-400">Composing a limerick about your missing page...</p>
+            <p class="text-surface-700-300">Composing a limerick about your missing page...</p>
           </div>
         {:else if error}
           <div class="text-error-500">

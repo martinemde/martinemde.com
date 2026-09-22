@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { resolve } from '$app/paths';
   import { PhoneOff, Smartphone } from 'lucide-svelte';
   import Step from '$lib/components/upgrade/Step.svelte';
   import Tiles from '$lib/components/upgrade/Tiles.svelte';
@@ -20,87 +21,21 @@
     leasePayment,
     money,
     money0,
-    type AppleCarePlan,
-    type Inputs
+    type AppleCarePlan
   } from '$lib/apple-upgrade/model';
+  import {
+    ASSUMPTIONS,
+    DEFAULT_CARRIER_OFFER,
+    DEFAULT_LIST_PRICE,
+    DEFAULT_TRADE_IN,
+    DEVICES,
+    TRADE_IN_DEVICES,
+    buildInputs,
+    carePrices,
+    tradeInRates as tradeInRatesFor
+  } from '$lib/apple-upgrade/presets';
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
-
-  // Apple maximum offers from the supplied 2026-09-20 trade-in list.
-  const TRADE_IN_DEVICES = [
-    ['iPhone 17 Pro Max', 885],
-    ['iPhone 17 Pro', 785],
-    ['iPhone Air', 585],
-    ['iPhone 17', 585],
-    ['iPhone 16 Pro Max', 610],
-    ['iPhone 16 Pro', 510],
-    ['iPhone 16 Plus', 430],
-    ['iPhone 16', 430],
-    ['iPhone 16e', 270],
-    ['iPhone 15 Pro Max', 455],
-    ['iPhone 15 Pro', 370],
-    ['iPhone 15 Plus', 315],
-    ['iPhone 15', 305],
-    ['iPhone 14 Pro Max', 360],
-    ['iPhone 14 Pro', 285],
-    ['iPhone 14 Plus', 210],
-    ['iPhone 14', 195],
-    ['iPhone SE (3rd generation)', 75],
-    ['iPhone 13 Pro Max', 320],
-    ['iPhone 13 Pro', 255],
-    ['iPhone 13', 175],
-    ['iPhone 13 mini', 145],
-    ['iPhone 12 Pro Max', 210],
-    ['iPhone 12 Pro', 165],
-    ['iPhone 12', 120],
-    ['iPhone 12 mini', 80],
-    ['iPhone SE (2nd generation)', 40],
-    ['iPhone 11 Pro Max', 140],
-    ['iPhone 11 Pro', 125],
-    ['iPhone 11', 100],
-    ['iPhone XS Max', 85],
-    ['iPhone XS', 60],
-    ['iPhone XR', 75],
-    ['iPhone X', 50],
-    ['iPhone 8 Plus', 35],
-    ['Galaxy S22 Ultra 5G', 125],
-    ['Galaxy S22+ 5G', 80],
-    ['Galaxy S22 5G', 80],
-    ['Galaxy S21 Ultra 5G', 95],
-    ['Galaxy S21+ 5G', 70],
-    ['Galaxy S21 5G', 55],
-    ['Google Pixel 9 Pro XL', 290],
-    ['Google Pixel 9 Pro', 275],
-    ['Google Pixel 9', 200],
-    ['Google Pixel 8 Pro', 150],
-    ['Google Pixel 8', 115],
-    ['Google Pixel 8a', 105],
-    ['Google Pixel 7 Pro', 90],
-    ['Google Pixel 7', 65],
-    ['OnePlus 13', 250],
-    ['OnePlus 13R', 165],
-    ['Other — Recycling', 0]
-  ] as const;
-
-  // September 2026 lineup; iPhone 16 is not eligible for Apple Upgrade.
-  // Apple’s US maximum trade-in quotes, checked 2026-09-20:
-  // https://www.apple.com/shop/browse/overlay/tradein_landing/iphone_values
-  // Age proxies: 17/16/15/14 of the same tier; Air uses regular 16/15/14 for older ages.
-  // Duo has no older generations, so it uses the Pro Max percentages, like custom phones.
-  // These estimate future offers, not private-sale proceeds or guaranteed quotes.
-  const DEVICES = [
-    { key: 'iphone-17', label: 'iPhone 17', price: 899, tradeIns: [585, 430, 305, 195] },
-    { key: 'iphone-air', label: 'iPhone Air', price: 1099, tradeIns: [585, 430, 305, 195] },
-    { key: 'iphone-18-pro', label: 'iPhone 18 Pro', price: 1199, tradeIns: [785, 510, 370, 285] },
-    {
-      key: 'iphone-18-pro-max',
-      label: 'iPhone 18 Pro Max',
-      price: 1299,
-      tradeIns: [885, 610, 455, 360]
-    },
-    { key: 'iphone-duo', label: 'iPhone Duo', price: 1999, tradeIns: null },
-    { key: 'custom', label: 'Something else', price: 0, tradeIns: null }
-  ];
 
   /** Everything the page remembers between visits. Apple trade-in values
    * re-derive from the selected device; private-sale estimates are saved. */
@@ -134,10 +69,11 @@
   }
 
   const DEFAULTS: Saved = {
+    ...ASSUMPTIONS,
     deviceKey: null,
-    listPrice: 1199,
+    listPrice: DEFAULT_LIST_PRICE,
     hasTradeIn: null,
-    tradeIn: 375,
+    tradeIn: DEFAULT_TRADE_IN,
     tradeInDevice: '',
     privateSaleValues: null,
     annualChoices: [null, null, null],
@@ -146,20 +82,8 @@
     finalEnding: 'own',
     finalSaleEstimate: null,
     appleCare: null,
-    appleCareMonthly: 13.49,
-    appleCareOneMonthly: 19.99,
-    appleCareAnnual: 149,
     screenChoice: null,
-    screenRepairCost: 250,
-    appleCareRepairCost: 29,
-    taxRate: 8.5,
-    activationFee: 35,
-    caseCost: 59,
-    appleCardBack: 3,
-    klarnaCardBack: 3,
-    carrierCardBack: 2,
-    discountRate: 4,
-    carrierOffer: 1000
+    carrierOffer: DEFAULT_CARRIER_OFFER
   };
 
   // Restore at init, like the loan calculator, so the page comes back the way
@@ -269,12 +193,7 @@
   let carrierCardBack = $state(initial.carrierCardBack);
   let discountRate = $state(initial.discountRate);
   let carrierOffer = $state(initial.carrierOffer);
-  const tradeInRates = $derived.by(() => {
-    const device =
-      DEVICES.find((device) => device.key === deviceKey && device.tradeIns !== null) ??
-      DEVICES.find((device) => device.key === 'iphone-18-pro-max')!;
-    return device.tradeIns!.map((value) => value / device.price);
-  });
+  const tradeInRates = $derived(tradeInRatesFor(deviceKey));
   let upgradeTradeIns = $derived(tradeInRates.map((rate) => Math.round(listPrice * rate)));
   let privateSaleValues = $state(initial.privateSaleValues);
   let previousDevice = initial.deviceKey;
@@ -400,8 +319,7 @@
   function pickDevice(key: string | null) {
     if (key !== previousDevice) {
       privateSaleValues = null;
-      appleCareMonthly = key === 'iphone-duo' ? 19.99 : DEFAULTS.appleCareMonthly;
-      appleCareAnnual = key === 'iphone-duo' ? 199.99 : DEFAULTS.appleCareAnnual;
+      ({ appleCareMonthly, appleCareAnnual } = carePrices(key));
     }
     previousDevice = key;
     const device = DEVICES.find((d) => d.key === key);
@@ -412,36 +330,34 @@
   });
 
   // ---- Model --------------------------------------------------------------
-  const inputs = $derived<Inputs>({
-    listPrice,
-    tradeIn: hasTradeIn === 'yes' ? tradeIn : 0,
-    term: 12,
-    endChoice: 'nothing',
-    appleCare: appleCare ?? 'none',
-    appleCareMonthly,
-    appleCareOneMonthly,
-    appleCareAnnual,
-    screenChoice,
-    screenRepairCost,
-    appleCareRepairCost,
-    taxRate,
-    activationFee,
-    caseCost,
-    appleCardBack,
-    klarnaCardBack,
-    carrierCardBack,
-    discountRate,
-    resaleAtTerm: upgradeTradeIns[1],
-    resaleAtHorizon: upgradeTradeIns[3],
-    privateSaleValues: privateSaleValues ?? undefined,
-    upgradeTradeIns,
-    leaseUpgradeChoices,
-    carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
-    upgradeMonths: annualChoices.flatMap((choice, index) =>
-      choice === 'upgrade' ? [(index + 1) * 12] : []
-    ),
-    carrierTerm: 36
-  });
+  const inputs = $derived(
+    buildInputs({
+      deviceKey,
+      listPrice,
+      tradeIn: hasTradeIn === 'yes' ? tradeIn : 0,
+      carrierOffer: hasTradeIn === 'yes' ? carrierOffer : null,
+      appleCare: appleCare ?? 'none',
+      appleCareMonthly,
+      appleCareOneMonthly,
+      appleCareAnnual,
+      screenChoice,
+      screenRepairCost,
+      appleCareRepairCost,
+      taxRate,
+      activationFee,
+      caseCost,
+      appleCardBack,
+      klarnaCardBack,
+      carrierCardBack,
+      discountRate,
+      upgradeTradeIns,
+      privateSaleValues,
+      leaseUpgradeChoices,
+      upgradeMonths: annualChoices.flatMap((choice, index) =>
+        choice === 'upgrade' ? [(index + 1) * 12] : []
+      )
+    })
+  );
 
   const repairPrice = $derived(screenRepairPrice(inputs));
   const alternativeRepairPrice = $derived(
@@ -624,6 +540,12 @@
       Watch the costs accumulate on the floating bar graph and notice which graph has the highest
       spend at any given moment. Pay attention to how they jump around and click on the months with
       big charges to see why.
+    </p>
+    <p class="lede">
+      In a hurry, or reading this on someone else's behalf? <a
+        href={resolve('/apple-upgrade/summary')}>The short version</a
+      > has the rules that decide it, the catches that cost real money, and a JSON endpoint you can query
+      directly.
     </p>
   </header>
 

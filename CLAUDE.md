@@ -399,6 +399,31 @@ The site provides special endpoints for LLM consumption:
   which would mark every page as modified on every deploy
 - Cache control: 1 hour (`max-age=0, s-maxage=3600`)
 
+### 5. Apple Upgrade summary and calculator (`/apple-upgrade/*`)
+
+The interactive comparison at `/apple-upgrade` runs on `src/lib/apple-upgrade/model.ts`.
+Three smaller modules sit on top of it so the same arithmetic serves more than one page:
+
+- `presets.ts` — the device list, Apple's published trade-in maximums, the default
+  cost assumptions, and `buildInputs()`, the only place answers become model `Inputs`.
+  The interactive page, the summary page and the endpoint all go through it.
+- `advice.ts` — reduces the 48-month model to an answer: ranked plans, the lease
+  buyout thresholds, the AppleCare break-even, cadence costs, and a list of priced
+  gotchas. Pure and JSON-serializable.
+- `query.ts` / `calculator.ts` — the endpoint's parameter table and response body.
+  `PARAMETERS` is the single source for both the parser and the documentation, so
+  they cannot drift; a query test asserts every documented parameter is read.
+
+`/apple-upgrade/summary` is a prerendered page that prints `advice.ts` output, so its
+prose numbers are computed rather than typed. `/apple-upgrade/calculator` is a
+`+server.ts` returning that structure as JSON; it sets `prerender = false` because the
+query string is the point, and it describes itself when called with no parameters.
+
+Cost facts worth not re-deriving: a lease collects 50% of list over 12 months or 70%
+over 24, so the buyout is always the remaining 50% or 30% — a trade-in credit lowers
+the payments and the buyout equally and never changes that share. Apple accepts no
+trade-in against a replacement lease. AppleCare is billed separately on every path.
+
 ## Build and Deployment
 
 ### Cloudflare Pages Configuration

@@ -1460,6 +1460,26 @@ export function closeOut(
   };
 }
 
+/**
+ * Every combination of hand-it-back and buy-it-out at the shared upgrade
+ * months. There are only ever a handful, and a best case that skipped any of
+ * them would not be one: buying a lease out so the phone can be traded in is
+ * exactly the move that wins when the trade-in beats the buyout.
+ */
+export function leaseExitChoices(
+  upgradeMonths: readonly number[],
+  term: Term
+): Record<string, 'return' | 'buyout'>[] {
+  return Array.from({ length: 2 ** upgradeMonths.length }, (_, mask) =>
+    Object.fromEntries(
+      upgradeMonths.map((month, index) => [
+        `${term}:${month}`,
+        mask & (1 << index) ? 'buyout' : 'return'
+      ])
+    )
+  );
+}
+
 /** Compare cadences independently of the reader's current yearly answers.
  * Search the small set of lease exits so a preset really is a best case.
  * Net cost accounts for different phone ages at the common four-year endpoint. */
@@ -1473,13 +1493,7 @@ export function bestUpgradeEstimate(
   const scheduled = { ...input, upgradeMonths, leaseUpgradeChoices: {} };
   const candidates = allScenarios(scheduled).filter((s) => !s.key.startsWith('upgrade-'));
   for (const term of [12, 24] as const) {
-    for (let mask = 0; mask < 2 ** upgradeMonths.length; mask++) {
-      const choices: Record<string, 'return' | 'buyout'> = Object.fromEntries(
-        upgradeMonths.map((month, index) => [
-          `${term}:${month}`,
-          mask & (1 << index) ? 'buyout' : 'return'
-        ])
-      );
+    for (const choices of leaseExitChoices(upgradeMonths, term)) {
       candidates.push(appleUpgrade({ ...scheduled, term, leaseUpgradeChoices: choices }));
     }
   }

@@ -23,11 +23,46 @@
     if (Number.isFinite(next)) value = next;
   }
 
+  /**
+   * On a phone the open keyboard fights the sticky graph for the viewport and
+   * iOS renders the panel in the wrong place. Once the focused box has been
+   * scrolled out of sight nobody is typing into it any more, so drop focus and
+   * let the keyboard go. Only the visible → hidden transition counts: a box
+   * focused programmatically may report hidden before the browser scrolls it
+   * into view.
+   */
+  let offscreen: IntersectionObserver | undefined;
+
+  function onFocus(event: FocusEvent & { currentTarget: HTMLInputElement }) {
+    const input = event.currentTarget;
+    offscreen?.disconnect();
+    offscreen = undefined;
+    if (typeof IntersectionObserver === 'undefined') return;
+    if (!window.matchMedia?.('(pointer: coarse)').matches) return;
+
+    // The site header is sticky, so a box tucked under it is out of sight too.
+    const header = document.querySelector('header');
+    const top = header ? Math.round(header.getBoundingClientRect().height) : 0;
+    let seen = false;
+    offscreen = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) seen = true;
+        else if (seen && document.activeElement === input) input.blur();
+      },
+      { rootMargin: `-${top}px 0px 0px 0px` }
+    );
+    offscreen.observe(input);
+  }
+
   function onBlur(event: FocusEvent & { currentTarget: HTMLInputElement }) {
+    offscreen?.disconnect();
+    offscreen = undefined;
     if (!Number.isFinite(event.currentTarget.valueAsNumber)) {
       event.currentTarget.value = String(value);
     }
   }
+
+  $effect(() => () => offscreen?.disconnect());
 </script>
 
 <label class="field">
@@ -46,6 +81,7 @@
       autocapitalize="off"
       spellcheck={false}
       oninput={onInput}
+      onfocus={onFocus}
       onblur={onBlur}
     />
     {#if unit === '%'}<span class="unit right" aria-hidden="true">%</span>{/if}

@@ -72,7 +72,7 @@
       </p>
       <p>
         Press the
-        <mark class="mark bg-secondary-500 text-black opacity-80">Copy</mark>
+        <mark class="mark bg-secondary-500 text-black">Copy</mark>
         button above to copy your progress as a markdown list.
       </p>
     </details>

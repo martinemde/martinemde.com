@@ -180,11 +180,11 @@
           class="input w-28 rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-8 pl-3 text-right text-sm text-surface-950-50 tabular-nums"
         />
         <span
-          class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-600-400"
+          class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-700-300"
           >%</span
         >
       </div>
-      <span class="text-xs text-surface-600-400">Expected return on unspent cash</span>
+      <span class="text-xs text-surface-700-300">Expected return on unspent cash</span>
     </label>
   </div>
 </div>
@@ -206,7 +206,7 @@
                 <button
                   type="button"
                   onclick={() => removeLoan(i)}
-                  class="text-xs font-bold text-error-500 hover:text-error-400"
+                  class="text-xs font-bold text-error-700-300 hover:text-error-800-200"
                   aria-label="Remove {loan.name}"
                 >
                   &times;
@@ -227,7 +227,7 @@
               <div class="relative">
                 {#if row.type === 'currency'}
                   <span
-                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-surface-600-400"
+                    class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-surface-700-300"
                     >$</span
                   >
                   <input
@@ -248,7 +248,7 @@
                     class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 py-2 pr-8 pl-3 text-right text-sm text-surface-950-50 tabular-nums"
                   />
                   <span
-                    class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-600-400"
+                    class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-surface-700-300"
                     >%</span
                   >
                 {:else}
@@ -287,7 +287,7 @@
       <tr class="bg-primary-100-800/30 border-b border-surface-200-800">
         <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Monthly Payment</td>
         {#each loans as loan, i (i)}
-          <td class="px-4 py-3 text-right text-sm font-bold text-primary-600-400 tabular-nums">
+          <td class="px-4 py-3 text-right text-sm font-bold text-primary-700-300 tabular-nums">
             {fmt(monthlyPayment(loan))}
           </td>
         {/each}
@@ -314,7 +314,7 @@
       <tr class="bg-tertiary-100-800/30 border-b border-surface-200-800">
         <td class="px-4 py-3 text-sm font-bold text-surface-950-50">Grand Total</td>
         {#each loans as loan, i (i)}
-          <td class="px-4 py-3 text-right text-sm font-bold text-tertiary-600-400 tabular-nums">
+          <td class="px-4 py-3 text-right text-sm font-bold text-tertiary-700-300 tabular-nums">
             {fmt(grandTotal(loan))}
           </td>
         {/each}
@@ -323,7 +323,7 @@
       <tr class="bg-secondary-100-800/30">
         <td class="px-4 py-3 text-sm font-bold text-surface-950-50">
           NPV
-          <span class="block text-xs font-normal text-surface-600-400"
+          <span class="block text-xs font-normal text-surface-700-300"
             >at {num(discountRate)}% discount</span
           >
         </td>
@@ -346,12 +346,12 @@
 </div>
 
 <div class="p-4">
-  <p class="text-sm text-surface-600-400">
+  <p class="text-sm text-surface-700-300">
     Monthly payment uses the standard amortization formula. Principal = Total Price &minus; Down
     Payment. Upfront Cost = Down Payment + Tax + Delivery Fees. Grand Total = Principal + Total
     Interest + Upfront Cost.
   </p>
-  <p class="mt-2 text-sm text-surface-600-400">
+  <p class="mt-2 text-sm text-surface-700-300">
     <strong class="text-surface-950-50">NPV</strong> (Net Present Value) discounts each future monthly
     payment back to today&rsquo;s dollars at the given rate, then adds the upfront cost. The loan with
     the lowest NPV costs the least when accounting for the opportunity cost of your money.

@@ -15,12 +15,12 @@
     {#each crumbs as crumb, index (index)}
       <li class="flex items-center gap-2">
         {#if index > 0}
-          <ChevronRight class="h-4 w-4 text-surface-600-400" />
+          <ChevronRight class="h-4 w-4 text-surface-700-300" />
         {/if}
         {#if crumb.href}
           <a href={resolve(crumb.href)} class="anchor text-primary-500">{crumb.label}</a>
         {:else}
-          <span class="text-surface-600-400">{crumb.label}</span>
+          <span class="text-surface-700-300">{crumb.label}</span>
         {/if}
       </li>
     {/each}

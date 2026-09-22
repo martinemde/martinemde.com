@@ -112,7 +112,7 @@
 
   <div class="mx-auto max-w-xl">
     <h1 class="mb-2 text-2xl font-bold sm:text-3xl">Fix a word-wrapped URL and go</h1>
-    <p class="mb-6 text-sm text-surface-600-400">
+    <p class="mb-6 text-sm text-surface-700-300">
       Paste a URL that got broken across lines. We'll strip the newlines, spaces, and any terminal
       frame characters, then send you on your way.
     </p>
@@ -130,7 +130,7 @@
         <button
           type="button"
           onclick={handlePasteAndGo}
-          class="btn inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-500 px-4 py-3 text-sm font-medium text-white hover:bg-primary-600"
+          class="btn inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-700 px-4 py-3 text-sm font-medium text-white hover:bg-primary-800"
         >
           <ExternalLink size={18} />
           Paste &amp; go
@@ -151,7 +151,7 @@
             type="button"
             onclick={handleClear}
             aria-label="Clear"
-            class="absolute top-2 right-2 rounded p-1 text-surface-600-400 hover:bg-surface-200-800"
+            class="absolute top-2 right-2 rounded p-1 text-surface-700-300 hover:bg-surface-200-800"
           >
             <X size={16} />
           </button>
@@ -164,7 +164,7 @@
 
       {#if cleaned}
         <div class="rounded-lg border border-surface-200-800 bg-surface-100-900 p-3">
-          <div class="mb-2 text-xs font-medium tracking-wide text-surface-600-400 uppercase">
+          <div class="mb-2 text-xs font-medium tracking-wide text-surface-700-300 uppercase">
             {safeUrl ? 'Cleaned URL' : 'Cleaned (not a valid http URL)'}
           </div>
           <div class="mb-3 font-mono text-sm break-all">
@@ -194,7 +194,7 @@
               type="button"
               onclick={handleGo}
               disabled={!safeUrl}
-              class="btn inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-500 px-3 py-2 text-sm font-medium text-white hover:bg-primary-600 disabled:opacity-50"
+              class="btn inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary-700 px-3 py-2 text-sm font-medium text-white hover:bg-primary-800 disabled:opacity-50"
             >
               <ExternalLink size={16} />
               Go

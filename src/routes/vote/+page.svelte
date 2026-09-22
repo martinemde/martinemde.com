@@ -89,7 +89,7 @@
           max="100"
           class="input rounded-md border border-surface-300-700 bg-surface-50-950 px-4 py-2 text-surface-950-50"
         />
-        <span class="text-xs text-surface-600-400">Total number of committee members</span>
+        <span class="text-xs text-surface-800-200">Total number of committee members</span>
       </label>
 
       <label class="space-y-2">
@@ -101,7 +101,7 @@
           max={committeeSize}
           class="input rounded-md border border-surface-300-700 bg-surface-50-950 px-4 py-2 text-surface-950-50"
         />
-        <span class="text-xs text-surface-600-400">Minimum members required to hold a vote</span>
+        <span class="text-xs text-surface-800-200">Minimum members required to hold a vote</span>
       </label>
     </div>
   </div>
@@ -119,7 +119,7 @@
             {#each thresholds as threshold (threshold.key)}
               <th class="px-4 py-3 text-center text-sm font-semibold text-surface-900-100">
                 {threshold.label}<br />
-                <span class="text-xs font-normal text-surface-600-400">{threshold.description}</span
+                <span class="text-xs font-normal text-surface-800-200">{threshold.description}</span
                 >
               </th>
             {/each}
@@ -131,9 +131,9 @@
               <td class="px-4 py-3 font-medium text-surface-950-50">
                 {row.attendance}
                 {#if row.attendance === committeeSize}
-                  <span class="text-xs text-surface-600-400">(full)</span>
+                  <span class="text-xs text-surface-800-200">(full)</span>
                 {:else if row.attendance === effectiveQuorum}
-                  <span class="text-xs text-surface-600-400">(quorum)</span>
+                  <span class="text-xs text-surface-800-200">(quorum)</span>
                 {/if}
               </td>
               {#each thresholds as threshold (threshold.key)}

@@ -72,7 +72,7 @@
       />
     {:else}
       <div class="flex h-150 w-200 items-center justify-center rounded-lg bg-surface-100-900">
-        <p class="text-surface-600-400">Loading shaders...</p>
+        <p class="text-surface-800-200">Loading shaders...</p>
       </div>
     {/if}
   </div>

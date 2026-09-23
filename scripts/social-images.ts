@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import sharp from 'sharp';
 import YAML from 'yaml';
 import { normalizePostMetadata, postDisplayTitle } from '../src/lib/utils/post-model';
@@ -65,5 +65,7 @@ for (const file of await readdir('src/content/blog')) {
       <text x="1090" y="550" text-anchor="end" font-size="23" fill="#b2bbc5">martinemde.com</text>
     </g>
   </svg>`;
-  await sharp(Buffer.from(svg)).png().toFile(`${output}/${post.slug}.png`);
+  const image = `${output}${post.permalink}.png`;
+  await mkdir(dirname(image), { recursive: true });
+  await sharp(Buffer.from(svg)).png().toFile(image);
 }

@@ -5,24 +5,24 @@
 
 import type { Component } from 'svelte';
 
-import { normalizePostMetadata } from './post-model';
+import { dayPath, normalizePostMetadata } from './post-model';
 import type { PostMetadata } from './post-model';
 export type { PostMetadata } from './post-model';
-export { postDisplayTitle } from './post-model';
+export { dayPath, postDisplayTitle } from './post-model';
 
 export interface Post extends PostMetadata {
   path: string;
 }
 
 /**
- * Error thrown when duplicate slugs are detected
+ * Error thrown when two posts would share a permalink
  */
-export class DuplicateSlugError extends Error {
-  constructor(slug: string, path1: string, path2: string) {
+export class DuplicatePermalinkError extends Error {
+  constructor(permalink: string, path1: string, path2: string) {
     super(
-      `Duplicate slug "${slug}" found in:\n  - ${path1}\n  - ${path2}\n\nEach blog post must have a unique slug.`
+      `Duplicate permalink "${permalink}" found in:\n  - ${path1}\n  - ${path2}\n\nSlugs must be unique within a day.`
     );
-    this.name = 'DuplicateSlugError';
+    this.name = 'DuplicatePermalinkError';
   }
 }
 
@@ -47,8 +47,8 @@ interface PostIndexEntry {
 }
 
 /**
- * Build and validate the slug-to-path mapping
- * Throws DuplicateSlugError if duplicate slugs are found
+ * Build and validate the permalink-to-path mapping
+ * Throws DuplicatePermalinkError if two posts share a permalink
  * Auto-fills missing frontmatter with defaults (marking as drafts)
  */
 function buildPostIndex(): Map<string, PostIndexEntry> {
@@ -63,16 +63,12 @@ function buildPostIndex(): Map<string, PostIndexEntry> {
       path,
       (rawPosts[path] as string | undefined) ?? ''
     );
-    const slug = metadata.slug;
-
-    // Check for duplicate slugs
-    const existing = postIndex.get(slug);
+    const existing = postIndex.get(metadata.permalink);
     if (existing) {
-      throw new DuplicateSlugError(slug, existing.path, path);
+      throw new DuplicatePermalinkError(metadata.permalink, existing.path, path);
     }
 
-    // Store the path, metadata, and component
-    postIndex.set(slug, {
+    postIndex.set(metadata.permalink, {
       path,
       metadata,
       component
@@ -89,7 +85,7 @@ const postIndex = buildPostIndex();
  * Load all published blog posts, sorted by date (newest first)
  */
 export async function getAllPosts(): Promise<Post[]> {
-  // Convert the slug index to an array of posts
+  // Convert the permalink index to an array of posts
   const allPosts = Array.from(postIndex.values()).map((entry): Post => ({
     ...entry.metadata,
     path: entry.path
@@ -110,67 +106,30 @@ export async function getRecentPosts(limit: number): Promise<Post[]> {
 }
 
 /**
- * Load a single post by slug
- * Uses the slug index to find the correct file regardless of filename
+ * Load a single post by its permalink, e.g. /2026/07/21/134309
  */
-export async function getPostBySlug(
-  slug: string
+export async function getPost(
+  permalink: string
 ): Promise<{ content: Component; metadata: PostMetadata } | null> {
-  const entry = postIndex.get(slug);
-
-  if (!entry) {
-    return null;
-  }
-
-  return {
-    content: entry.component,
-    metadata: entry.metadata
-  };
+  const entry = postIndex.get(permalink);
+  return entry ? { content: entry.component, metadata: entry.metadata } : null;
 }
 
 /**
- * Validate that a post matches the expected date components
+ * Find a post from a legacy /blog/slug URL. Slugs only need to be unique
+ * within a day, so an ambiguous slug finds nothing.
  */
-export function validatePostDate(
-  metadata: Pick<PostMetadata, 'date'>,
-  year: string,
-  month: string,
-  day: string
-): boolean {
-  const postYear = metadata.date.getFullYear().toString();
-  const postMonth = (metadata.date.getMonth() + 1).toString().padStart(2, '0');
-  const postDay = metadata.date.getDate().toString().padStart(2, '0');
-
-  return postYear === year && postMonth === month && postDay === day;
+export function getPostBySlug(slug: string): PostMetadata | null {
+  const matches = [...postIndex.values()].filter((entry) => entry.metadata.slug === slug);
+  return matches.length === 1 ? matches[0].metadata : null;
 }
 
 /**
- * Get raw content of a post by slug (for text/plain endpoints)
- * Uses Vite's glob import with ?raw query
+ * Raw source of a post (for text/plain endpoints)
  */
-
-/**
- * Build a mapping from slug to raw content
- */
-function buildRawContentIndex(): Map<string, string> {
-  const rawIndex = new Map<string, string>();
-
-  // Map each slug to its raw content using the path from the slug index
-  for (const [slug, entry] of postIndex.entries()) {
-    const rawContent = rawPosts[entry.path] as string | undefined;
-    if (rawContent) {
-      rawIndex.set(slug, rawContent);
-    }
-  }
-
-  return rawIndex;
-}
-
-// Build the raw content index once at module initialization
-const rawContentIndex = buildRawContentIndex();
-
-export function getRawPostBySlug(slug: string): string | null {
-  return rawContentIndex.get(slug) ?? null;
+export function getRawPost(permalink: string): string | null {
+  const entry = postIndex.get(permalink);
+  return (entry && (rawPosts[entry.path] as string | undefined)) ?? null;
 }
 
 /**
@@ -216,31 +175,37 @@ export function calculateReadingTime(rawContent: string): string {
 }
 
 /**
- * Get reading time for a post by slug
+ * Get reading time for a post by permalink
  */
-export function getReadingTime(slug: string): string {
-  const rawContent = getRawPostBySlug(slug);
+export function getReadingTime(permalink: string): string {
+  const rawContent = getRawPost(permalink);
   if (!rawContent) {
     return '1 min read';
   }
   return calculateReadingTime(rawContent);
 }
 
+const streamEntry = (post: Post) => ({
+  metadata: post,
+  content: postIndex.get(post.permalink)!.component
+});
+
 /** Renderable public entries shared by the stream and homepage. */
 export async function getStreamEntries(limit?: number) {
-  const posts = await getAllPosts();
-  return posts.slice(0, limit).map((post) => ({
-    metadata: post,
-    content: postIndex.get(post.slug)!.component
-  }));
+  return (await getAllPosts()).slice(0, limit).map(streamEntry);
+}
+
+/** Published entries for one day page, e.g. /2026/07/21 */
+export async function getDayEntries(day: string) {
+  return (await getAllPosts()).filter((post) => dayPath(post) === day).map(streamEntry);
 }
 
 export async function getArticles() {
   return (await getAllPosts()).filter((post) => post.type === 'article');
 }
 
-export function getPublishedSlugs(): string[] {
+export function getPublishedPermalinks(): string[] {
   return [...postIndex.values()]
     .filter((entry) => entry.metadata.published)
-    .map((entry) => entry.metadata.slug);
+    .map((entry) => entry.metadata.permalink);
 }

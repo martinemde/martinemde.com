@@ -4,7 +4,7 @@
 
   interface Crumb {
     label: string;
-    href?: `/${string}`;
+    href?: '/' | '/projects';
   }
 
   let { crumbs }: { crumbs: Crumb[] } = $props();

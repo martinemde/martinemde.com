@@ -1,6 +1,9 @@
 /** The stored Markdown body is the published content; Micropub supplies its semantics. */
 export type PostType = 'article' | 'note' | 'bookmark' | 'photo';
 
+/** Permalinks and day pages follow the author's Pacific calendar. */
+export const SITE_TIME_ZONE = 'America/Los_Angeles';
+
 export interface PostMetadata {
   title: string;
   date: Date;
@@ -10,6 +13,8 @@ export interface PostMetadata {
   description?: string;
   published: boolean;
   slug: string;
+  /** /YYYY/MM/DD/slug, dated by the filename prefix the publisher writes. */
+  permalink: `/${string}/${string}/${string}/${string}`;
   image?: string;
   tags: string[];
   type: PostType;
@@ -70,6 +75,10 @@ function httpUrl(value: unknown): string | undefined {
   }
 }
 
+function siteDay(date: Date): string[] {
+  return date.toLocaleDateString('en-CA', { timeZone: SITE_TIME_ZONE }).split('-');
+}
+
 export function normalizePostMetadata(
   metadata: unknown,
   path: string,
@@ -90,6 +99,10 @@ export function normalizePostMetadata(
     return value ? [{ value, alt: text(object.alt) ?? '' }] : [];
   });
   const bookmarkOf = httpUrl(props['bookmark-of']);
+  const filename = path.split('/').pop()!;
+  const slug = text(meta.slug) ?? filename.replace(/\.(md|svx)$/, '');
+  const day =
+    filename.match(/^(\d{4})-(\d{2})-(\d{2})-/)?.slice(1) ?? siteDay(publishedAt ?? new Date(0));
   const body = markdownBody(source);
   const originalContent = values(props.content)[0];
   const originalText =
@@ -119,12 +132,8 @@ export function normalizePostMetadata(
     date: publishedAt ?? new Date(0),
     dateOnly: /^\d{4}-\d{2}-\d{2}$/.test(String(values(publicationValue)[0])),
     updated: date(props.updated ?? meta.updated),
-    slug:
-      text(meta.slug) ??
-      path
-        .split('/')
-        .pop()!
-        .replace(/\.(md|svx)$/, ''),
+    slug,
+    permalink: `/${day[0]}/${day[1]}/${day[2]}/${slug}`,
     author: text(meta.author) ?? 'Martin Emde',
     description: text(props.summary) ?? text(meta.description),
     published:
@@ -139,6 +148,14 @@ export function normalizePostMetadata(
     bookmarkOf,
     excerpt: content.length > 240 ? `${content.slice(0, 240)}…` : content
   };
+}
+
+/** The day page containing a post, e.g. /2026/07/21 */
+export function dayPath(post: Pick<PostMetadata, 'permalink'>): `/${string}/${string}/${string}` {
+  return post.permalink.slice(
+    0,
+    post.permalink.lastIndexOf('/')
+  ) as `/${string}/${string}/${string}`;
 }
 
 export function postDisplayTitle(post: PostMetadata): string {

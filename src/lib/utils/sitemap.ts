@@ -92,7 +92,7 @@ export async function getSitemapEntries(): Promise<SitemapEntry[]> {
   }));
 
   const postEntries: SitemapEntry[] = posts.map((post) => ({
-    path: `/blog/${post.slug}`,
+    path: post.permalink,
     lastmod: getPostLastModified(post)
   }));
 

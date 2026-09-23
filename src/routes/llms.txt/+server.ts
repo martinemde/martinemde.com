@@ -14,7 +14,7 @@ export const GET: RequestHandler = async () => {
   let content = '# Martin Emde\n\n';
 
   for (const post of posts) {
-    const url = `${baseUrl}/blog/${post.slug}.txt`;
+    const url = `${baseUrl}${post.permalink}.txt`;
     content += `- [${postDisplayTitle(post)}](${url})\n`;
   }
 

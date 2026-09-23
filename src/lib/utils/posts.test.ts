@@ -1,13 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
+  dayPath,
   getAllPosts,
+  getDayEntries,
   getRecentPosts,
+  getPost,
   getPostBySlug,
-  validatePostDate,
   formatPostDate,
   formatPostDateShort,
-  getRawPostBySlug,
-  DuplicateSlugError
+  getRawPost,
+  DuplicatePermalinkError
 } from './posts';
 
 describe('Blog Post Utilities', () => {
@@ -73,90 +75,51 @@ describe('Blog Post Utilities', () => {
     });
   });
 
-  describe('getPostBySlug', () => {
-    it('should return a post with the given slug', async () => {
-      const allPosts = await getAllPosts();
-      if (allPosts.length === 0) return;
+  describe('getPost', () => {
+    it('loads a post and its component by permalink', async () => {
+      const [first] = await getAllPosts();
+      const post = await getPost(first.permalink);
 
-      const testSlug = allPosts[0].slug;
-      const post = await getPostBySlug(testSlug);
-
-      expect(post).toBeDefined();
-      expect(post?.metadata.slug).toBe(testSlug);
-    });
-
-    it('should return post with content component', async () => {
-      const allPosts = await getAllPosts();
-      if (allPosts.length === 0) return;
-
-      const testSlug = allPosts[0].slug;
-      const post = await getPostBySlug(testSlug);
-
-      expect(post?.content).toBeDefined();
+      expect(post?.metadata.slug).toBe(first.slug);
+      expect(post?.metadata.title).toBe(first.title);
       expect(typeof post?.content).toBe('function');
     });
 
-    it('should return null for non-existent slug', async () => {
-      const post = await getPostBySlug('this-slug-definitely-does-not-exist-12345');
-
-      expect(post).toBeNull();
-    });
-
-    it('should have matching metadata between getAllPosts and getPostBySlug', async () => {
-      const allPosts = await getAllPosts();
-      if (allPosts.length === 0) return;
-
-      const testSlug = allPosts[0].slug;
-      const post = await getPostBySlug(testSlug);
-
-      expect(post?.metadata.title).toBe(allPosts[0].title);
-      expect(post?.metadata.slug).toBe(allPosts[0].slug);
+    it('returns null for an unknown permalink', async () => {
+      expect(await getPost('/2020/01/01/this-slug-definitely-does-not-exist')).toBeNull();
     });
   });
 
-  describe('validatePostDate', () => {
-    it('should validate matching date components', () => {
-      const metadata = {
-        title: 'Test',
-        date: new Date(2025, 9, 5, 12, 0, 0), // October 5, 2025
-        slug: 'test'
-      };
-
-      const result = validatePostDate(metadata, '2025', '10', '05');
-      expect(result).toBe(true);
+  describe('permalinks', () => {
+    it('dates every post by its filename prefix', async () => {
+      for (const post of await getAllPosts()) {
+        const [, year, month, day] = post.path.match(/(\d{4})-(\d{2})-(\d{2})-/)!;
+        expect(post.permalink).toBe(`/${year}/${month}/${day}/${post.slug}`);
+      }
     });
 
-    it('should reject non-matching year', () => {
-      const metadata = {
-        title: 'Test',
-        date: new Date(2025, 9, 5, 12, 0, 0),
-        slug: 'test'
-      };
-
-      const result = validatePostDate(metadata, '2024', '10', '05');
-      expect(result).toBe(false);
+    it('agrees with the Pacific publish date for timestamped posts', async () => {
+      for (const post of await getAllPosts()) {
+        // Unquoted YAML dates parse as UTC midnight and carry no time of day.
+        if (post.dateOnly || post.date.getTime() % 86_400_000 === 0) continue;
+        const day = post.date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+        expect(dayPath(post), post.path).toBe(`/${day.replaceAll('-', '/')}`);
+      }
     });
 
-    it('should reject non-matching month', () => {
-      const metadata = {
-        title: 'Test',
-        date: new Date(2025, 9, 5, 12, 0, 0),
-        slug: 'test'
-      };
-
-      const result = validatePostDate(metadata, '2025', '09', '05');
-      expect(result).toBe(false);
+    it('finds legacy /blog/slug posts by unique slug', async () => {
+      const [first] = await getAllPosts();
+      expect(getPostBySlug(first.slug)?.permalink).toBe(first.permalink);
+      expect(getPostBySlug('this-slug-definitely-does-not-exist')).toBeNull();
     });
+  });
 
-    it('should reject non-matching day', () => {
-      const metadata = {
-        title: 'Test',
-        date: new Date(2025, 9, 5, 12, 0, 0),
-        slug: 'test'
-      };
-
-      const result = validatePostDate(metadata, '2025', '10', '04');
-      expect(result).toBe(false);
+  describe('getDayEntries', () => {
+    it('returns only the entries published on that day', async () => {
+      const [first] = await getAllPosts();
+      const entries = await getDayEntries(dayPath(first));
+      expect(entries.map((entry) => entry.metadata.permalink)).toContain(first.permalink);
+      expect(entries.every((entry) => dayPath(entry.metadata) === dayPath(first))).toBe(true);
     });
   });
 
@@ -187,45 +150,31 @@ describe('Blog Post Utilities', () => {
     });
   });
 
-  describe('getRawPostBySlug', () => {
-    it('should return raw markdown content', async () => {
-      const allPosts = await getAllPosts();
-      if (allPosts.length === 0) return;
-
-      const testSlug = allPosts[0].slug;
-      const rawContent = getRawPostBySlug(testSlug);
-
-      expect(rawContent).toBeDefined();
-      expect(typeof rawContent).toBe('string');
-      expect(rawContent!.length).toBeGreaterThan(0);
-    });
-
-    it('should include frontmatter in raw content', async () => {
-      const allPosts = await getAllPosts();
-      if (allPosts.length === 0) return;
-
-      const testSlug = allPosts[0].slug;
-      const rawContent = getRawPostBySlug(testSlug);
+  describe('getRawPost', () => {
+    it('returns raw markdown including frontmatter', async () => {
+      const [first] = await getAllPosts();
+      const rawContent = getRawPost(first.permalink);
 
       expect(rawContent).toContain('---');
-      expect(rawContent).toContain('title:');
       expect(rawContent).toContain('slug:');
     });
 
-    it('should return null for non-existent slug', () => {
-      const rawContent = getRawPostBySlug('this-slug-definitely-does-not-exist-12345');
-
-      expect(rawContent).toBeNull();
+    it('returns null for an unknown permalink', () => {
+      expect(getRawPost('/2020/01/01/this-slug-definitely-does-not-exist')).toBeNull();
     });
   });
 
-  describe('DuplicateSlugError', () => {
+  describe('DuplicatePermalinkError', () => {
     it('should create error with correct message', () => {
-      const error = new DuplicateSlugError('test-slug', '/path/one.md', '/path/two.md');
+      const error = new DuplicatePermalinkError(
+        '/2026/07/21/test-slug',
+        '/path/one.md',
+        '/path/two.md'
+      );
 
       expect(error).toBeInstanceOf(Error);
-      expect(error.name).toBe('DuplicateSlugError');
-      expect(error.message).toContain('test-slug');
+      expect(error.name).toBe('DuplicatePermalinkError');
+      expect(error.message).toContain('/2026/07/21/test-slug');
       expect(error.message).toContain('/path/one.md');
       expect(error.message).toContain('/path/two.md');
     });

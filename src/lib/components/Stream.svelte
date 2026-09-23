@@ -1,10 +1,14 @@
 <script lang="ts">
   import { SvelteMap } from 'svelte/reactivity';
   import type { Component } from 'svelte';
-  import type { PostMetadata } from '$lib/utils/posts';
+  import { resolve } from '$app/paths';
+  import { dayPath, type PostMetadata } from '$lib/utils/posts';
   import StreamEntry from './StreamEntry.svelte';
 
-  let { entries }: { entries: { metadata: PostMetadata; content: Component }[] } = $props();
+  let {
+    entries,
+    showDays = true
+  }: { entries: { metadata: PostMetadata; content: Component }[]; showDays?: boolean } = $props();
   let container: HTMLElement;
   const groups = $derived.by(() => {
     const result = new SvelteMap<string, typeof entries>();
@@ -81,8 +85,10 @@
 <div class="h-feed" bind:this={container}>
   {#each groups as [day, posts] (day)}
     <section class="day" aria-label={day}>
-      <h2>{day}</h2>
-      {#each posts as entry (entry.metadata.slug)}
+      {#if showDays}
+        <h2><a href={resolve(dayPath(posts[0].metadata))}>{day}</a></h2>
+      {/if}
+      {#each posts as entry (entry.metadata.permalink)}
         <StreamEntry {...entry} />
       {/each}
     </section>
@@ -99,5 +105,14 @@
     font-weight: 500;
     color: var(--muted);
     padding-bottom: 12px;
+  }
+  h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  h2 a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 </style>

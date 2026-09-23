@@ -21,8 +21,8 @@ micropub:
       - '2026-09-20T10:15:00-07:00'
 ---
 
-Two views of the same place.
-
 <img src="https://example.org/one.png" alt="Morning light" />
 
 <img src="https://example.org/two.png" alt="Evening light" />
+
+Two views of the same place.

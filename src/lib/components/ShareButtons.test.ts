@@ -37,7 +37,7 @@ describe('ShareButtons', () => {
   it('should render both LLM and Share buttons', () => {
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post'
       }
     });
@@ -54,7 +54,7 @@ describe('ShareButtons', () => {
 
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post'
       }
     });
@@ -80,7 +80,7 @@ describe('ShareButtons', () => {
 
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post',
         description: 'Test description'
       }
@@ -107,7 +107,7 @@ describe('ShareButtons', () => {
 
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post'
       }
     });
@@ -134,7 +134,7 @@ describe('ShareButtons', () => {
 
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post'
       }
     });
@@ -161,7 +161,7 @@ describe('ShareButtons', () => {
 
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post'
       }
     });
@@ -176,7 +176,7 @@ describe('ShareButtons', () => {
   it('should have correct aria-label on LLM button', () => {
     render(ShareButtons, {
       props: {
-        slug: 'test-post',
+        permalink: '/2026/07/21/test-post',
         title: 'Test Post'
       }
     });

@@ -1,4 +1,4 @@
-import { getRecentPosts, getRawPostBySlug, type Post } from '$lib/utils/posts';
+import { getRecentPosts, getRawPost, type Post } from '$lib/utils/posts';
 import { renderFeedItem } from '$lib/utils/feed';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
@@ -39,5 +39,5 @@ async function feedItems(posts: Post[]): Promise<string> {
 }
 
 async function createFeedItem(post: Post): Promise<string> {
-  return renderFeedItem(post, getRawPostBySlug(post.slug) ?? '', siteUrl);
+  return renderFeedItem(post, getRawPost(post.permalink) ?? '', siteUrl);
 }

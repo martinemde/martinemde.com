@@ -75,13 +75,11 @@ describe('RSS Feed', () => {
       if (itemMatch) {
         const item = itemMatch[0];
 
-        // Required fields
-        expect(item).toContain('<title>');
-        expect(item).toContain('</title>');
+        // Required fields (untitled notes have no <title>)
         expect(item).toContain('<description>');
         expect(item).toContain('</description>');
-        expect(item).toContain('<link>https://example.com/blog/');
-        expect(item).toContain('<guid isPermaLink="true">https://example.com/blog/');
+        expect(item).toMatch(/<link>https:\/\/example\.com\/\d{4}\/\d{2}\/\d{2}\//);
+        expect(item).toContain('<guid isPermaLink="true">https://example.com/');
         expect(item).toContain('<pubDate>');
         expect(item).toContain('</pubDate>');
         expect(item).toContain('<content:encoded>');
@@ -191,15 +189,12 @@ describe('RSS Feed', () => {
         expect(linkMatch).toBeTruthy();
         expect(guidMatch).toBeTruthy();
 
-        // Link and GUID should match
-        if (linkMatch && guidMatch) {
-          expect(linkMatch[1]).toBe(guidMatch[1]);
-        }
-
-        // Should follow pattern: https://example.com/blog/{slug}
-        if (linkMatch) {
-          expect(linkMatch[1]).toMatch(/^https:\/\/example\.com\/blog\/[a-z0-9-]+$/);
-        }
+        // Links are dated permalinks; GUIDs are the permalink, or the
+        // original /blog/slug URL for posts from before dated permalinks.
+        const [, slug] = linkMatch![1].match(
+          /^https:\/\/example\.com\/\d{4}\/\d{2}\/\d{2}\/([a-z0-9-]+)$/
+        )!;
+        expect([linkMatch![1], `https://example.com/blog/${slug}`]).toContain(guidMatch![1]);
       }
     });
 

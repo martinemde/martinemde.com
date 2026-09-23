@@ -15,6 +15,10 @@ export const escapeXml = (value: string): string =>
         "'": '&apos;'
       })[char]!
   );
+// Posts from before dated permalinks keep their /blog/slug GUIDs so feed
+// readers don't show them again as new items.
+const DATED_GUIDS_SINCE = new Date('2026-09-23T00:00:00-07:00');
+
 const cdata = (value: string) => value.replace(/\]\]>/g, ']]]]><![CDATA[>');
 
 export async function renderFeedItem(
@@ -22,7 +26,8 @@ export async function renderFeedItem(
   source: string,
   siteUrl: string
 ): Promise<string> {
-  const url = new URL(`/blog/${post.slug}`, siteUrl).href;
+  const url = new URL(post.permalink, siteUrl).href;
+  const guid = post.date < DATED_GUIDS_SINCE ? new URL(`/blog/${post.slug}`, siteUrl).href : url;
   const body = markdownBody(source)
     .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
     .trim();
@@ -44,7 +49,7 @@ export async function renderFeedItem(
     ${post.title ? `<title>${escapeXml(post.title)}</title>` : ''}
     <description>${escapeXml(html)}</description>
     <link>${escapeXml(url)}</link>
-    <guid isPermaLink="true">${escapeXml(url)}</guid>
+    <guid isPermaLink="true">${escapeXml(guid)}</guid>
     <pubDate>${post.date.toUTCString()}</pubDate>
     ${post.tags.map((tag) => `<category>${escapeXml(tag)}</category>`).join('')}
     <content:encoded><![CDATA[${cdata(html)}]]></content:encoded>

@@ -21,8 +21,11 @@
 
   // Active-section + status-line path for the redesigned chrome
   const path = $derived(page.url.pathname);
-  const isBlog = $derived(path === '/blog' || path.startsWith('/blog/'));
-  const isStream = $derived(path === '/stream');
+  // Dated permalinks hold both articles (blog) and everything else (stream).
+  const isDated = $derived(/^\/\d{4}\//.test(path));
+  const isArticle = $derived(page.data.metadata?.type === 'article');
+  const isBlog = $derived(path === '/blog' || path.startsWith('/blog/') || (isDated && isArticle));
+  const isStream = $derived(path === '/stream' || (isDated && !isArticle));
   const isProjects = $derived(path.startsWith('/projects'));
   const isAbout = $derived(path.startsWith('/about'));
   const pathDisplay = $derived('martinemde.com' + (path === '/' ? '' : path));

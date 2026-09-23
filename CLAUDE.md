@@ -68,12 +68,10 @@ martinemde.com/
 │   │   ├── blog/                 # Blog routes
 │   │   │   ├── +page.svelte      # Blog listing page
 │   │   │   ├── +page.ts          # Load all posts
-│   │   │   ├── [slug]/           # Dynamic blog post route
-│   │   │   │   ├── +page.svelte  # Individual post display
-│   │   │   │   └── +page.ts      # Load single post
-│   │   │   └── [slug].txt/       # Raw markdown endpoint
-│   │   │       └── +server.ts    # Serve post as plain text
-│   │   ├── [...segments]/        # Catch-all for old URL redirects
+│   │   │   └── [slug]/, [slug].txt/, [slug].md/  # 301s from legacy /blog/slug URLs
+│   │   ├── [year=year]/[month=month]/[day=day]/  # Day page listing that day's entries
+│   │   │   ├── [slug]/           # Post permalink /YYYY/MM/DD/slug
+│   │   │   └── [slug].txt/, [slug].md/  # Raw markdown endpoints
 │   │   ├── rss.xml/              # RSS feed endpoint
 │   │   │   └── +server.ts        # Generate RSS XML
 │   │   ├── sitemap.xml/          # XML sitemap endpoint
@@ -161,7 +159,7 @@ image: /images/blog/header.jpg
 - `title` (required): Post title displayed in listings and on the post page
 - `date` (required): Publication date in YYYY-MM-DD format or ISO8601 datetime (e.g., `2025-10-25T14:30:00`). If only a date is provided, defaults to 12:00 noon local time.
 - `updated` (optional): Date of the last substantive revision, same format as `date`. Set it when editing a published post so `/sitemap.xml` reports an accurate `lastmod`; leave it off and `date` is used.
-- `slug` (required): URL-friendly identifier used in `/blog/[slug]`
+- `slug` (required): URL-friendly identifier, unique within its day. The permalink is `/YYYY/MM/DD/slug`, dated by the filename's `YYYY-MM-DD-` prefix (a test checks the prefix matches the Pacific publish date).
 - `published` (optional, default: true): Set to false to hide drafts
 - `description` (optional): Preview text shown on listing pages and in RSS
 - `author` (optional): Author name
@@ -194,8 +192,9 @@ as it already is for MDsveX; do not fetch and insert arbitrary remote page HTML.
 
 A bookmark with a quotation is `bookmark-of` plus content containing a blockquote
 with source attribution and optional commentary. It needs no invented quote type.
-Use ordinary links to `/blog/<slug>` to cross-link entries. Preserve canonical
-slugs across edits. An article illustration uses legacy `image` (or `featured`);
+Use ordinary links to `/YYYY/MM/DD/<slug>` to cross-link entries. Preserve canonical
+slugs across edits. Untitled publisher posts are named by Pacific publish time
+(`HHMMSS`), like scripting.com. An article illustration uses legacy `image` (or `featured`);
 `photo` identifies primary photographic content and retains supplied alt text.
 
 `/blog` lists articles. `/stream` includes all published entries, grouped by
@@ -255,8 +254,10 @@ Located in `src/lib/utils/posts.ts`:
 ```typescript
 getAllPosts(); // Load all published posts, sorted newest first
 getRecentPosts(limit); // Get N most recent posts
-getPostBySlug(slug); // Load single post with content + metadata
-getRawPostBySlug(slug); // Get raw markdown (for RSS/text endpoints)
+getPost(permalink); // Load single post with content + metadata
+getDayEntries(dayPath); // Published entries for one /YYYY/MM/DD day page
+getPostBySlug(slug); // Metadata for a legacy /blog/slug URL, null if ambiguous
+getRawPost(permalink); // Get raw markdown (for RSS/text endpoints)
 ```
 
 ## Routing and Pages
@@ -266,17 +267,15 @@ getRawPostBySlug(slug); // Get raw markdown (for RSS/text endpoints)
 - **Most pages are prerendered** to static HTML at build time
 - Root layout sets `prerender = true` in `+layout.ts`
 - Homepage, about page, and blog listing are all static
-- Catch-all redirect route uses `prerender = false` for dynamic redirects
+- Legacy `/blog/[slug]` routes are `+server.ts` redirects so they return real 301s
 - Some pages use `csr = dev` to avoid JavaScript in production builds
 
 ### URL Redirects
 
-The catch-all route (`/[...segments]/+page.ts`) handles old date-based URL patterns:
-
-- Old format: `/YYYY/MM/DD/slug`
-- Redirects to: `/blog/slug`
-- Validates that the date in URL matches the post's frontmatter date
-- Returns 301 permanent redirects
+Permalinks are `/YYYY/MM/DD/slug`. Legacy `/blog/slug` (and `.txt`/`.md`) URLs
+301 to the permalink when the slug is unique across all days. RSS GUIDs for
+posts published before 2026-09-23 stay `/blog/slug` so readers don't re-show
+them; newer GUIDs are the permalink.
 
 ## Component Patterns (Svelte 5)
 
@@ -368,7 +367,7 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 
 The site provides special endpoints for LLM consumption:
 
-- **`/blog/[slug].txt`**: Individual posts as plain text markdown
+- **`/YYYY/MM/DD/[slug].txt`**: Individual posts as plain text markdown
 - **`/llms.txt`**: Index of all posts with links to `.txt` versions
 - **ShareButtons**: Include "LLM" button to copy `.txt` URL
 
@@ -380,11 +379,9 @@ The site provides special endpoints for LLM consumption:
 - Proper XML escaping
 - Cache control: 1 hour (`max-age=3600`)
 
-### 3. Date-Based URL Redirects
+### 3. Legacy URL Redirects
 
-- Catch-all route handles legacy URLs: `/YYYY/MM/DD/slug`
-- Validates date matches post metadata
-- Returns 301 permanent redirects to `/blog/slug`
+- `/blog/slug` returns a 301 to `/YYYY/MM/DD/slug`
 
 ### 4. XML Sitemap (`/sitemap.xml`)
 

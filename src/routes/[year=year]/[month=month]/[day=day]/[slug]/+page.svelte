@@ -1,12 +1,12 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import ShareButtons from '$lib/components/ShareButtons.svelte';
-  import { formatPostDateShort, getReadingTime, postDisplayTitle } from '$lib/utils/posts';
+  import { dayPath, formatPostDateShort, getReadingTime, postDisplayTitle } from '$lib/utils/posts';
   import { resolve } from '$app/paths';
 
   let { data }: { data: PageData } = $props();
 
-  const readingTime = $derived(getReadingTime(data.metadata.slug));
+  const readingTime = $derived(getReadingTime(data.metadata.permalink));
 </script>
 
 <svelte:head
@@ -14,14 +14,14 @@
 >
 <article class="post h-entry">
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
-  <a class="back" href={resolve('/blog')}>
-    <span class="back-path">~/blog/</span>{data.metadata.slug}
+  <a class="back" href={resolve(dayPath(data.metadata))}>
+    <span class="back-path">~{dayPath(data.metadata)}/</span>{data.metadata.slug}
   </a>
 
   {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>{/if}
 
   <div class="meta">
-    <a class="u-url" href={resolve(`/blog/${data.metadata.slug}`)}
+    <a class="u-url" href={resolve(data.metadata.permalink)}
       ><time class="meta-date dt-published" datetime={data.metadata.date.toISOString()}
         >{formatPostDateShort(data.metadata.date)}</time
       ></a
@@ -46,7 +46,7 @@
   <footer class="post-footer">
     <span class="share-label">Share this {data.metadata.type}</span>
     <ShareButtons
-      slug={data.metadata.slug}
+      permalink={data.metadata.permalink}
       title={postDisplayTitle(data.metadata)}
       description={data.metadata.description || data.metadata.excerpt}
     />

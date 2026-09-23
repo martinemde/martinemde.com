@@ -87,7 +87,7 @@ describe('Sitemap', () => {
 
       expect(posts.length).toBeGreaterThan(0);
       posts.forEach((post) => {
-        expect(locs).toContain(`https://example.com/blog/${post.slug}`);
+        expect(locs).toContain(`https://example.com${post.permalink}`);
       });
     });
 
@@ -137,7 +137,7 @@ describe('Sitemap', () => {
       const expected = (post.updated ?? post.date).toLocaleDateString('en-CA');
 
       const entry = xml.match(
-        new RegExp(`<url>\\s*<loc>https://example\\.com/blog/${post.slug}</loc>[\\s\\S]*?</url>`)
+        new RegExp(`<url>\\s*<loc>https://example\\.com${post.permalink}</loc>[\\s\\S]*?</url>`)
       );
 
       expect(entry).toBeTruthy();
@@ -178,6 +178,7 @@ describe('Sitemap', () => {
       photo: [],
       excerpt: '',
       slug: 'test',
+      permalink: '/2025/01/15/test',
       date: new Date(2025, 0, 15, 12, 0, 0),
       ...extra
     });

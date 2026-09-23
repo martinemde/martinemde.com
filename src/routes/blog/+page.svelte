@@ -22,11 +22,11 @@
 
 <section class="list-wrap">
   <div class="post-list">
-    {#each data.posts as post (post.slug)}
-      <a class="post-row" href={resolve(`/blog/${post.slug}`)}>
+    {#each data.posts as post (post.permalink)}
+      <a class="post-row" href={resolve(post.permalink)}>
         <div class="post-meta">
           <span class="post-date">{formatPostDateShort(post.date)}</span>
-          <span class="post-read">{getReadingTime(post.slug)}</span>
+          <span class="post-read">{getReadingTime(post.permalink)}</span>
         </div>
         <div>
           <div class="post-title">{post.title}</div>

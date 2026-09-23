@@ -55,7 +55,7 @@ describe('publisher files through the stream and feed', () => {
     expect(screen.queryByText('Not ready to share')).toBeNull();
     expect(container.querySelector('details')?.open).toBe(false);
     expect(screen.getByRole('link', { name: 'Giving a thought a home' }).getAttribute('href')).toBe(
-      '/blog/article'
+      '/2026/09/20/article'
     );
   });
 
@@ -153,7 +153,13 @@ describe('publisher files through the stream and feed', () => {
     );
     expect(doc.querySelector('parsererror')).toBeNull();
     for (const item of doc.querySelectorAll('item')) {
-      expect(item.querySelector('guid')?.textContent).toBe(item.querySelector('link')?.textContent);
+      // Entries from before dated permalinks keep their original /blog/slug GUIDs.
+      expect(item.querySelector('link')?.textContent).toMatch(
+        /^https:\/\/martinemde\.com\/2026\/09\/20\/[a-z]+$/
+      );
+      expect(item.querySelector('guid')?.textContent).toBe(
+        item.querySelector('link')!.textContent!.replace('/2026/09/20/', '/blog/')
+      );
       expect(item.querySelector('pubDate')?.textContent).toBe('Sun, 20 Sep 2026 17:15:00 GMT');
       const html = new DOMParser().parseFromString(
         item.querySelector('description')!.textContent!,
@@ -212,9 +218,9 @@ describe('publisher files through the stream and feed', () => {
   it('produces share metadata for untitled and media entries', () => {
     const note = entries.find((entry) => entry.metadata.slug === 'note')!.metadata;
     const card = socialMetadata(note, 'https://martinemde.com');
-    expect(card.url).toBe('https://martinemde.com/blog/note');
+    expect(card.url).toBe('https://martinemde.com/2026/09/20/note');
     expect(card.title).toBe('Small thoughts deserve their own address. See my longer explanation.');
-    expect(card.image).toBe('https://martinemde.com/social/note.png');
+    expect(card.image).toBe('https://martinemde.com/social/2026/09/20/note.png');
     const photo = socialMetadata(
       entries.find((entry) => entry.metadata.slug === 'photos')!.metadata,
       'https://martinemde.com'

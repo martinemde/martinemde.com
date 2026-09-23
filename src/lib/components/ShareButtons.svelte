@@ -3,14 +3,14 @@
   import CopyButton from './CopyButton.svelte';
 
   interface Props {
-    slug: string;
+    permalink: string;
     title: string;
     description?: string;
   }
 
-  let { slug, title, description }: Props = $props();
+  let { permalink, title, description }: Props = $props();
 
-  const getLlmUrl = () => `${window.location.origin}/blog/${slug}.txt`;
+  const getLlmUrl = () => `${window.location.origin}${permalink}.txt`;
 
   async function shareArticle() {
     if (navigator.share) {

@@ -36,6 +36,12 @@ micropub:
       - '2026-09-23T00:48:33.714Z'
     post-status:
       - published
+    slug:
+      - '20260922174833'
+    summary: []
+    featured: []
+    visibility: []
+    description: []
 ---
 What would it look like if we viewed agent sessions through RSS? I think a lot of the primitives transfer, and if you use <https://rss.chat> for the feed primitives, with threaded replies and `source:markdown`, you get a conversation with the agent that is readable in any feed reader and easy to extend. So far, it feels a lot better than all the transcript webpage creators I've used.
 

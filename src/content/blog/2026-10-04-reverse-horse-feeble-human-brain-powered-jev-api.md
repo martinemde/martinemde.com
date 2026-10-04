@@ -4,7 +4,8 @@ date: '2026-10-04T16:20:42.174Z'
 author: martinemde
 published: true
 slug: reverse-horse-feeble-human-brain-powered-jev-api
-categories: []
+categories:
+  - jev
 micropub:
   type:
     - h-entry
@@ -29,7 +30,8 @@ micropub:
       - published
     featured: []
     description: []
-    category: []
+    category:
+      - jev
 ---
 [Reverse.horse](https://reverse.horse) is my newest project, an attempt to understand and explain the new AI model [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev), _by using your feeble human brain as the model_. Place yourself in-request and respond as best as you can to incoming questions.
 

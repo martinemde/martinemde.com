@@ -47,7 +47,7 @@
   /** Plot height in px, shared with the per-month bar pieces so they agree. */
   let chartPx = $state(112);
 
-  let blockEls: HTMLElement[] = [];
+  let blockEls = $state<(HTMLElement | undefined)[]>([]);
   let sentinel: HTMLElement;
   let panelWrap: HTMLElement;
   let panelPx = $state(0);

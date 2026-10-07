@@ -6,11 +6,11 @@ import {
   getRecentPosts,
   getPost,
   getPostBySlug,
-  formatPostDate,
-  formatPostDateShort,
+  getReadingTime,
   getRawPost,
   DuplicatePermalinkError
 } from './posts';
+import { calculateReadingTime } from './post-format';
 
 describe('Blog Post Utilities', () => {
   describe('getAllPosts', () => {
@@ -123,30 +123,26 @@ describe('Blog Post Utilities', () => {
     });
   });
 
-  describe('formatPostDate', () => {
-    it('should format Date object', () => {
-      const date = new Date(2025, 9, 5, 12, 0, 0); // October 5, 2025
-      const formatted = formatPostDate(date);
-      expect(formatted).toMatch(/October 5, 2025/);
+  describe('reading times', () => {
+    it('loads cached reading times from the canonical raw source', async () => {
+      for (const post of await getAllPosts()) {
+        const raw = getRawPost(post.permalink)!;
+        expect(post.readingTime).toBe(calculateReadingTime(raw));
+        expect(getReadingTime(post.permalink)).toBe(post.readingTime);
+        expect((await getPost(post.permalink))?.metadata.readingTime).toBe(post.readingTime);
+      }
     });
 
-    it('should format dates consistently', () => {
-      const date1 = new Date(2025, 9, 5, 12, 0, 0);
-      const date2 = new Date(2025, 9, 5, 12, 0, 0);
-
-      expect(formatPostDate(date1)).toBe(formatPostDate(date2));
-    });
-  });
-
-  describe('formatPostDateShort', () => {
-    it('formats a date as short month, day, year', () => {
-      const date = new Date(2026, 0, 22, 12, 0, 0); // January 22, 2026
-      expect(formatPostDateShort(date)).toBe('Jan 22, 2026');
+    it('retains the fallback for an unknown permalink', () => {
+      expect(getReadingTime('/2020/01/01/missing')).toBe('1 min read');
     });
 
-    it('formats a two-digit day without leading zero', () => {
-      const date = new Date(2025, 10, 30, 12, 0, 0); // November 30, 2025
-      expect(formatPostDateShort(date)).toBe('Nov 30, 2025');
+    it('includes reading time in stream and day entry metadata', async () => {
+      const [post] = await getAllPosts();
+      const entries = await getDayEntries(dayPath(post));
+      expect(
+        entries.find((entry) => entry.metadata.permalink === post.permalink)?.metadata.readingTime
+      ).toBe(post.readingTime);
     });
   });
 

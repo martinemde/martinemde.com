@@ -249,6 +249,13 @@ when that causes existing tests to fail at `localStorage.clear()`.
 
 ### Blog Post Utilities
 
+Loading lives in `src/lib/utils/posts.ts`. Display components use the lightweight
+`post-format.ts` date helpers and `post-model.ts` metadata helpers/types instead.
+The loader caches `readingTime` on `LoadedPostMetadata` from the canonical raw body.
+`/blog` uses a server loader because it returns only serializable metadata; stream
+and permalink universal loaders still return compiled Svelte content components.
+Do not import the eager loader into display components.
+
 Located in `src/lib/utils/posts.ts`:
 
 ```typescript

@@ -6,11 +6,13 @@
 import type { Component } from 'svelte';
 
 import { dayPath, normalizePostMetadata } from './post-model';
-import type { PostMetadata } from './post-model';
+import type { LoadedPostMetadata } from './post-model';
+import { calculateReadingTime } from './post-format';
 export type { PostMetadata } from './post-model';
 export { dayPath, postDisplayTitle } from './post-model';
+export { formatPostDate, formatPostDateShort, calculateReadingTime } from './post-format';
 
-export interface Post extends PostMetadata {
+export interface Post extends LoadedPostMetadata {
   path: string;
 }
 
@@ -42,7 +44,7 @@ const rawPosts = import.meta.glob('../../content/blog/*.{md,svx}', {
 
 interface PostIndexEntry {
   path: string;
-  metadata: PostMetadata;
+  metadata: LoadedPostMetadata;
   component: Component;
 }
 
@@ -58,11 +60,11 @@ function buildPostIndex(): Map<string, PostIndexEntry> {
     const typedModule = module as { default: Component; metadata?: unknown };
     const { metadata: rawMetadata, default: component } = typedModule;
 
-    const metadata = normalizePostMetadata(
-      rawMetadata,
-      path,
-      (rawPosts[path] as string | undefined) ?? ''
-    );
+    const source = (rawPosts[path] as string | undefined) ?? '';
+    const metadata: LoadedPostMetadata = {
+      ...normalizePostMetadata(rawMetadata, path, source),
+      readingTime: source ? calculateReadingTime(source) : '1 min read'
+    };
     const existing = postIndex.get(metadata.permalink);
     if (existing) {
       throw new DuplicatePermalinkError(metadata.permalink, existing.path, path);
@@ -110,7 +112,7 @@ export async function getRecentPosts(limit: number): Promise<Post[]> {
  */
 export async function getPost(
   permalink: string
-): Promise<{ content: Component; metadata: PostMetadata } | null> {
+): Promise<{ content: Component; metadata: LoadedPostMetadata } | null> {
   const entry = postIndex.get(permalink);
   return entry ? { content: entry.component, metadata: entry.metadata } : null;
 }
@@ -119,7 +121,7 @@ export async function getPost(
  * Find a post from a legacy /blog/slug URL. Slugs only need to be unique
  * within a day, so an ambiguous slug finds nothing.
  */
-export function getPostBySlug(slug: string): PostMetadata | null {
+export function getPostBySlug(slug: string): LoadedPostMetadata | null {
   const matches = [...postIndex.values()].filter((entry) => entry.metadata.slug === slug);
   return matches.length === 1 ? matches[0].metadata : null;
 }
@@ -132,57 +134,9 @@ export function getRawPost(permalink: string): string | null {
   return (entry && (rawPosts[entry.path] as string | undefined)) ?? null;
 }
 
-/**
- * Format a date from post frontmatter consistently
- * Full timestamps retain their instant; date-only legacy values use a stable UTC anchor.
- */
-export function formatPostDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-}
-
-/**
- * Format a post date compactly, e.g. "Jan 22, 2026" (for list/meta rows).
- */
-export function formatPostDateShort(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
-}
-
-/**
- * Calculate estimated reading time for a blog post
- * Uses 200 words per minute as the baseline reading speed
- * Strips frontmatter and counts remaining words
- */
-export function calculateReadingTime(rawContent: string): string {
-  // Remove frontmatter (everything between --- delimiters)
-  const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---/, '');
-
-  // Count words (split by whitespace and filter empty strings)
-  const words = contentWithoutFrontmatter.trim().split(/\s+/).filter(Boolean);
-  const wordCount = words.length;
-
-  // Calculate reading time (200 words per minute)
-  const minutes = Math.ceil(wordCount / 200);
-
-  return `${minutes} min read`;
-}
-
-/**
- * Get reading time for a post by permalink
- */
+/** Get the cached reading time, retaining the unknown-permalink fallback. */
 export function getReadingTime(permalink: string): string {
-  const rawContent = getRawPost(permalink);
-  if (!rawContent) {
-    return '1 min read';
-  }
-  return calculateReadingTime(rawContent);
+  return postIndex.get(permalink)?.metadata.readingTime ?? '1 min read';
 }
 
 const streamEntry = (post: Post) => ({

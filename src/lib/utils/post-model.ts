@@ -23,6 +23,11 @@ export interface PostMetadata {
   excerpt: string;
 }
 
+/** Metadata enriched once by the post loader, not by display components. */
+export interface LoadedPostMetadata extends PostMetadata {
+  readingTime: string;
+}
+
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)

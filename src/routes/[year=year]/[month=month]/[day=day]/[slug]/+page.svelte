@@ -1,18 +1,12 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import ShareButtons from '#lib/components/ShareButtons.svelte';
-  import {
-    dayPath,
-    formatPostDateShort,
-    getReadingTime,
-    postDisplayTitle
-  } from '#lib/utils/posts.ts';
+  import { dayPath, postDisplayTitle } from '#lib/utils/post-model.ts';
+  import { formatPostDateShort } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
 
   let { data }: { data: PageData } = $props();
-
-  const readingTime = $derived(getReadingTime(data.metadata.permalink));
 </script>
 
 <svelte:head
@@ -38,7 +32,7 @@
       ></a
     >
     {#if data.metadata.type === 'article'}<span class="meta-dot"></span><span class="meta-read"
-        >{readingTime}</span
+        >{data.metadata.readingTime}</span
       >{/if}
     <span class="meta-spacer"></span>
     {#if data.metadata.tags && data.metadata.tags.length}

@@ -2,7 +2,7 @@
   import { SvelteMap } from 'svelte/reactivity';
   import type { Component } from 'svelte';
   import { resolve } from '$app/paths';
-  import type { PostMetadata } from '#lib/utils/posts.ts';
+  import type { PostMetadata } from '#lib/utils/post-model.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
   import StreamEntry from './StreamEntry.svelte';
 

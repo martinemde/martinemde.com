@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import { formatPostDateShort, getReadingTime } from '#lib/utils/posts.ts';
+  import { formatPostDateShort } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
 
@@ -30,7 +30,7 @@
       >
         <div class="post-meta">
           <span class="post-date">{formatPostDateShort(post.date)}</span>
-          <span class="post-read">{getReadingTime(post.permalink)}</span>
+          <span class="post-read">{post.readingTime}</span>
         </div>
         <div>
           <div class="post-title">{post.title}</div>

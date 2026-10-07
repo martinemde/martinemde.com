@@ -1,5 +1,6 @@
 import type { RequestHandler } from './$types';
-import { getAllPosts, postDisplayTitle } from '#lib/utils/posts.ts';
+import { getAllPosts } from '#lib/utils/posts.ts';
+import { postDisplayTitle } from '#lib/utils/post-model.ts';
 import { PUBLIC_APP_URL } from '$app/env/public';
 
 /**

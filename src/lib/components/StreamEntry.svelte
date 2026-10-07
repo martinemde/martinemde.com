@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Component } from 'svelte';
   import { resolve } from '$app/paths';
-  import { postDisplayTitle, type PostMetadata } from '#lib/utils/posts.ts';
+  import { postDisplayTitle, type PostMetadata } from '#lib/utils/post-model.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
 
   let { metadata, content: Content }: { metadata: PostMetadata; content: Component } = $props();

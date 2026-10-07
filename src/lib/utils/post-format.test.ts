@@ -39,6 +39,21 @@ A short body.`)
       ).toBe('1 min read');
     });
 
+    it.each(['\n', '\r\n'])('only strips complete frontmatter lines (%j)', (newline) => {
+      const source = [
+        '---',
+        'title: "A --- separator"',
+        `description: ${'metadata '.repeat(500)}`,
+        '---',
+        'A short body.'
+      ].join(newline);
+      expect(calculateReadingTime(source)).toBe('1 min read');
+    });
+
+    it('does not strip a body that starts with inline dashes', () => {
+      expect(calculateReadingTime(`--- inline ${'word '.repeat(201)}---`)).toBe('2 min read');
+    });
+
     it('rounds up at the 200-word boundary', () => {
       expect(calculateReadingTime('word '.repeat(200))).toBe('1 min read');
       expect(calculateReadingTime('word '.repeat(201))).toBe('2 min read');

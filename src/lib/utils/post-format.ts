@@ -1,5 +1,5 @@
 /** Lightweight display helpers. This module must not import the post loader. */
-import { SITE_TIME_ZONE } from './post-model.ts';
+import { SITE_TIME_ZONE, markdownBody } from './post-model.ts';
 
 // Date-only entries have a stable UTC anchor, not a known publication instant.
 const dateTimeZone = (dateOnly: boolean) => (dateOnly ? 'UTC' : SITE_TIME_ZONE);
@@ -57,8 +57,8 @@ export function postDateTime(date: Date, dateOnly = false): string {
  * Strips frontmatter and counts remaining words
  */
 export function calculateReadingTime(rawContent: string): string {
-  // Remove frontmatter (everything between --- delimiters)
-  const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---/, '');
+  // Share the line-aware body parser used by metadata and the feed.
+  const contentWithoutFrontmatter = markdownBody(rawContent);
 
   // Count words (split by whitespace and filter empty strings)
   const words = contentWithoutFrontmatter.trim().split(/\s+/).filter(Boolean);

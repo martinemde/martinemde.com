@@ -2,28 +2,32 @@
   import type { PageData } from './$types';
   import Stream from '#lib/components/Stream.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
-  import { formatPostDay } from '#lib/utils/post-format.ts';
+  import { SITE_TIME_ZONE } from '#lib/utils/post-model.ts';
   let { data }: { data: PageData } = $props();
 
-  const day = $derived(
-    formatPostDay(data.entries[0].metadata.date, data.entries[0].metadata.dateOnly)
+  const month = $derived(
+    data.entries[0].metadata.date.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: SITE_TIME_ZONE
+    })
   );
 </script>
 
 <svelte:head>
-  <title>{day} - Martin Emde</title>
+  <title>{month} - Martin Emde</title>
 </svelte:head>
 
-<div class="day-page">
-  <PostBreadcrumbs post={data.entries[0].metadata} depth="day" />
+<div class="archive-page">
+  <PostBreadcrumbs post={data.entries[0].metadata} depth="month" />
   <header>
-    <h1>{day}</h1>
+    <h1>{month}</h1>
   </header>
-  <Stream entries={data.entries} showDays={false} />
+  <Stream entries={data.entries} />
 </div>
 
 <style>
-  .day-page {
+  .archive-page {
     max-width: 680px;
     margin: 0 auto;
     padding: 64px 0;

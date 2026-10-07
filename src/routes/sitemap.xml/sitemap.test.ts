@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { GET } from './+server';
-import { getAllPosts, type PostMetadata } from '$lib/utils/posts';
-import { getPostLastModified, getStaticPaths } from '$lib/utils/sitemap';
+import { getAllPosts, type PostMetadata } from '#lib/utils/posts.ts';
+import { getPostLastModified, getStaticPaths } from '#lib/utils/sitemap.ts';
 
-vi.mock('$env/static/public', () => ({
+vi.mock('$app/env/public', () => ({
   PUBLIC_APP_URL: 'https://example.com'
 }));
 

@@ -44,7 +44,7 @@ If you need to install packages and bun is not available in your environment:
 
 ## Technology Stack
 
-- **Framework**: SvelteKit 2.x with Svelte 5.x (using runes syntax)
+- **Framework**: SvelteKit 3.x with Svelte 5.x (using runes syntax)
 - **Styling**: Tailwind CSS 4.x (via Vite plugin)
 - **UI Framework**: Skeleton 4.x
 - **Content**: MDsveX for markdown blog posts
@@ -277,6 +277,15 @@ Permalinks are `/YYYY/MM/DD/slug`. Legacy `/blog/slug` (and `.txt`/`.md`) URLs
 posts published before 2026-09-23 stay `/blog/slug` so readers don't re-show
 them; newer GUIDs are the permalink.
 
+## SvelteKit Configuration
+
+SvelteKit 3 configuration is passed to `sveltekit(...)` in `vite.config.ts`.
+Shared preprocessors and extensions live in `svelte-options.js`, also used by ESLint.
+Use `#lib/*` imports with explicit file extensions, mapped in `package.json`.
+TypeScript extends `$app/tsconfig`. Environment variables are declared in
+`src/env.ts` and read through `$app/env` or `$app/env/public`. Route parameter
+matchers are declared together in `src/params.ts` with `defineParams`.
+
 ## Component Patterns (Svelte 5)
 
 ### Runes Syntax
@@ -328,7 +337,7 @@ This project uses Svelte 5's **runes syntax**:
 // +page.ts
 import type { PageLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { getPostBySlug } from '$lib/utils/posts';
+import { getPostBySlug } from '#lib/utils/posts.ts';
 
 export const load: PageLoad = async ({ params }) => {
   const post = await getPostBySlug(params.slug);
@@ -442,7 +451,7 @@ trade-in against a replacement lease. AppleCare is billed separately on every pa
 
 ### Environment Requirements
 
-- Node.js 20+ (for Cloudflare Pages)
+- Node.js 22.17+ (required by SvelteKit 3)
 - Bun for local development
 - TypeScript 6.x (plus `@typescript/native` 7.x, used by `bun run check`)
 
@@ -514,7 +523,7 @@ Do not remove either package, and do not bump `typescript` to 7.x until `typescr
 3. Use runes syntax for props and state
 4. Use theme-aware Skeleton classes
 5. Export props via `let { prop } = $props()`
-6. Import and use: `import MyComponent from '$lib/components/MyComponent.svelte'`
+6. Import and use: `import MyComponent from '#lib/components/MyComponent.svelte'`
 
 ### Modifying Styles
 

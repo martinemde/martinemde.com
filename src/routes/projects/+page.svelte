@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { projects } from '$lib/data/projects';
+  import { projects } from '#lib/data/projects.ts';
 
   const linkLabel = (p: (typeof projects)[number]) => p.linktext ?? p.name;
 </script>

@@ -1,6 +1,6 @@
-import { getRecentPosts, getRawPost, type Post } from '$lib/utils/posts';
-import { renderFeedItem } from '$lib/utils/feed';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { getRecentPosts, getRawPost, type Post } from '#lib/utils/posts.ts';
+import { renderFeedItem } from '#lib/utils/feed.ts';
+import { PUBLIC_APP_URL } from '$app/env/public';
 
 const siteUrl = PUBLIC_APP_URL;
 const siteTitle = 'Martin Emde';

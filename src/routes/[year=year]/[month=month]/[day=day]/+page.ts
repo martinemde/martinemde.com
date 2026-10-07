@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { EntryGenerator, PageLoad } from './$types';
-import { dayPath, getAllPosts, getDayEntries } from '$lib/utils/posts';
+import { dayPath, getAllPosts, getDayEntries } from '#lib/utils/posts.ts';
 
 export const entries: EntryGenerator = async () =>
   [...new Set((await getAllPosts()).map(dayPath))].map((path) => {

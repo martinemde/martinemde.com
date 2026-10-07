@@ -9,7 +9,7 @@ image: /images/blog/ghostty-focus-shaders.png
 ---
 
 <script lang="ts">
-  import ShaderCanvas, { type ShaderInfo } from '$lib/components/ShaderCanvas.svelte';
+  import ShaderCanvas, { type ShaderInfo } from '#lib/components/ShaderCanvas.svelte';
   import { onMount } from 'svelte';
 
   let cursorColor = $state<[number, number, number, number]>([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach

@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getPostBySlug } from '$lib/utils/posts';
+import { getPostBySlug } from '#lib/utils/posts.ts';
 
 /** Legacy /blog/slug URL; the post now lives at its dated permalink. */
 export const GET: RequestHandler = async ({ params }) => {

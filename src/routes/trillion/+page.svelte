@@ -1,8 +1,8 @@
 <script lang="ts">
   import { replaceState } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
-  import { allItems, bankrolls, tierColors, tiers } from '$lib/trillion/items';
+  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
+  import { allItems, bankrolls, tierColors, tiers } from '#lib/trillion/items.ts';
   import {
     allocations,
     bankrollAt,
@@ -29,7 +29,7 @@
     totalSpent,
     type Item,
     type Tier
-  } from '$lib/trillion/game';
+  } from '#lib/trillion/game.ts';
 
   const STORAGE_KEY = 'trillion-game';
 

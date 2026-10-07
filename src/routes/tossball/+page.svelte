@@ -1,5 +1,5 @@
 <script lang="ts">
-  import CopyButton from '$lib/components/CopyButton.svelte';
+  import CopyButton from '#lib/components/CopyButton.svelte';
   import ToggleButton from './ToggleButton.svelte';
   import { generateCardsMarkdown } from './markdown';
   import untypedCards from './cards.json';

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { GET } from './+server';
 
-vi.mock('$env/static/public', () => ({
+vi.mock('$app/env/public', () => ({
   PUBLIC_APP_URL: 'https://example.com'
 }));
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import { formatPostDateShort, getReadingTime } from '$lib/utils/posts';
+  import { formatPostDateShort, getReadingTime } from '#lib/utils/posts.ts';
   import { resolve } from '$app/paths';
 
   let { data }: { data: PageData } = $props();
@@ -23,7 +23,10 @@
 <section class="list-wrap">
   <div class="post-list">
     {#each data.posts as post (post.permalink)}
-      <a class="post-row" href={resolve(post.permalink)}>
+      <a
+        class="post-row"
+        href={resolve(post.permalink.slice(1) as `${string}/${string}/${string}/${string}`)}
+      >
         <div class="post-meta">
           <span class="post-date">{formatPostDateShort(post.date)}</span>
           <span class="post-read">{getReadingTime(post.permalink)}</span>

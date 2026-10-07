@@ -3,7 +3,7 @@
   import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
   import { Sparkles, Home, ArrowLeft } from 'lucide-svelte';
-  import { authStore } from '$lib/auth/state.svelte';
+  import { authStore } from '#lib/auth/state.svelte.ts';
 
   const { state: authState, isLoggedIn } = authStore;
 

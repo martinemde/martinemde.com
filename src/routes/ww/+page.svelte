@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ClipboardPaste, ExternalLink, Copy, CopyCheck, X } from 'lucide-svelte';
-  import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
 
   let input = $state('');
   let error = $state('');

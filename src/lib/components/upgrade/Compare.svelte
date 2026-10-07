@@ -1,7 +1,7 @@
 <script lang="ts">
   import { PhoneOff, Smartphone } from 'lucide-svelte';
-  import { HORIZON, money0, type Scenario } from '$lib/apple-upgrade/model';
-  import { careAndRepairPaid } from '$lib/apple-upgrade/presentation';
+  import { HORIZON, money0, type Scenario } from '#lib/apple-upgrade/model.ts';
+  import { careAndRepairPaid } from '#lib/apple-upgrade/presentation.ts';
 
   interface Props {
     scenarios: Scenario[];

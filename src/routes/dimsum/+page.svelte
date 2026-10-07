@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Breadcrumbs from '$lib/components/Breadcrumbs.svelte';
+  import Breadcrumbs from '#lib/components/Breadcrumbs.svelte';
 
   const MIN_PLAYERS = 2;
   const MAX_PLAYERS = 6;

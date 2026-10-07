@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
-  import { createProgram, wrapFragmentShader } from '$lib/webgl/shader-compiler';
-  import { UniformManager } from '$lib/webgl/uniform-manager';
+  import { createProgram, wrapFragmentShader } from '#lib/webgl/shader-compiler.ts';
+  import { UniformManager } from '#lib/webgl/uniform-manager.ts';
   import ShaderDebugWindow from './ShaderDebugWindow.svelte';
   import ShaderSelectionMenu from './ShaderSelectionMenu.svelte';
 

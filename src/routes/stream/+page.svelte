@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import Stream from '$lib/components/Stream.svelte';
+  import Stream from '#lib/components/Stream.svelte';
   import { resolve } from '$app/paths';
   let { data }: { data: PageData } = $props();
 </script>

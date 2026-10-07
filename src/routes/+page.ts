@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { getStreamEntries } from '$lib/utils/posts';
+import { getStreamEntries } from '#lib/utils/posts.ts';
 
 export const prerender = true;
 

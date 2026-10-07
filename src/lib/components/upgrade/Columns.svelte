@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { CATEGORIES, CATEGORY_LABELS, money0, type Scenario } from '$lib/apple-upgrade/model';
-  import { ADJUSTMENTS_LABEL, ledgerTotals } from '$lib/apple-upgrade/presentation';
+  import { CATEGORIES, CATEGORY_LABELS, money0, type Scenario } from '#lib/apple-upgrade/model.ts';
+  import { ADJUSTMENTS_LABEL, ledgerTotals } from '#lib/apple-upgrade/presentation.ts';
 
   const labels = { ...CATEGORY_LABELS, fees: ADJUSTMENTS_LABEL };
 

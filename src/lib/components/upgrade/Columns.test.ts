@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import Columns from './Columns.svelte';
-import { allScenarios, CATEGORIES, HORIZON, money0, type Inputs } from '$lib/apple-upgrade/model';
+import {
+  allScenarios,
+  CATEGORIES,
+  HORIZON,
+  money0,
+  type Inputs
+} from '#lib/apple-upgrade/model.ts';
 
 function inputs(overrides: Partial<Inputs> = {}): Inputs {
   return {

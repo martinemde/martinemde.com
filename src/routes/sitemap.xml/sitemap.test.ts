@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { GET } from './+server';
+import { routes } from '$app/manifest';
 import { getAllPosts, type PostMetadata } from '#lib/utils/posts.ts';
 import { getPostLastModified, getStaticPaths } from '#lib/utils/sitemap.ts';
 
@@ -89,6 +90,21 @@ describe('Sitemap', () => {
       posts.forEach((post) => {
         expect(locs).toContain(`https://example.com${post.permalink}`);
       });
+    });
+
+    it('should discover exactly the indexable static pages in the Kit manifest', () => {
+      // Use Kit's independent route inventory, not the same glob as the utility.
+      const expected = routes
+        .filter((route) => route.page && !route.id.includes('['))
+        .map((route) => route.id.replace(/\/\([^/]*\)/g, '') || '/')
+        .filter((path) => path !== '/auth' && !path.startsWith('/auth/'))
+        .sort();
+
+      expect(expected).toContain('/');
+      expect(routes.some((route) => !route.page && route.endpoint)).toBe(true);
+      expect(routes.some((route) => route.page && route.id.includes('['))).toBe(true);
+      expect(routes.some((route) => route.page && route.id.startsWith('/auth/'))).toBe(true);
+      expect(getStaticPaths()).toEqual(expected);
     });
 
     it('should list every discovered static page', async () => {

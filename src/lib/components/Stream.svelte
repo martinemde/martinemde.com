@@ -2,7 +2,8 @@
   import { SvelteMap } from 'svelte/reactivity';
   import type { Component } from 'svelte';
   import { resolve } from '$app/paths';
-  import { dayPath, type PostMetadata } from '#lib/utils/posts.ts';
+  import type { PostMetadata } from '#lib/utils/posts.ts';
+  import { postRouteParams } from '#lib/utils/post-routing.ts';
   import StreamEntry from './StreamEntry.svelte';
 
   let {
@@ -87,8 +88,11 @@
     <section class="day" aria-label={day}>
       {#if showDays}
         <h2>
-          <a href={resolve(dayPath(posts[0].metadata).slice(1) as `${string}/${string}/${string}`)}
-            >{day}</a
+          <a
+            href={resolve(
+              '/[year=year]/[month=month]/[day=day]',
+              postRouteParams(posts[0].metadata)
+            )}>{day}</a
           >
         </h2>
       {/if}

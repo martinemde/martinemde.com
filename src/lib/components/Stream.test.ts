@@ -30,6 +30,21 @@ const published = entries.filter((entry) => entry.metadata.published);
 afterEach(cleanup);
 
 describe('publisher files through the stream and feed', () => {
+  it('links day headings and entries with canonical dated route parameters', () => {
+    const entry = published[0];
+    const metadata = {
+      ...entry.metadata,
+      permalink: '/2026/01/02/canonical-slug' as const,
+      date: new Date('2026-01-03T12:00:00Z'),
+      slug: 'other-slug'
+    };
+    const { container } = render(Stream, { entries: [{ ...entry, metadata }] });
+    expect(container.querySelector('h2 a')?.getAttribute('href')).toBe('/2026/01/02');
+    expect(container.querySelector('a.permalink')?.getAttribute('href')).toBe(
+      '/2026/01/02/canonical-slug'
+    );
+  });
+
   it('recognizes every advertised type without inventing a title', () => {
     expect(new Set(published.map((entry) => entry.metadata.type))).toEqual(
       new Set(publishing['post-types'].map((post) => post.type))

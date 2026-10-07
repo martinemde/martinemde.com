@@ -8,6 +8,7 @@
     postDisplayTitle
   } from '#lib/utils/posts.ts';
   import { resolve } from '$app/paths';
+  import { postRouteParams } from '#lib/utils/post-routing.ts';
 
   let { data }: { data: PageData } = $props();
 
@@ -21,7 +22,7 @@
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
   <a
     class="back"
-    href={resolve(dayPath(data.metadata).slice(1) as `${string}/${string}/${string}`)}
+    href={resolve('/[year=year]/[month=month]/[day=day]', postRouteParams(data.metadata))}
   >
     <span class="back-path">~{dayPath(data.metadata)}/</span>{data.metadata.slug}
   </a>
@@ -31,7 +32,7 @@
   <div class="meta">
     <a
       class="u-url"
-      href={resolve(data.metadata.permalink.slice(1) as `${string}/${string}/${string}/${string}`)}
+      href={resolve('/[year=year]/[month=month]/[day=day]/[slug]', postRouteParams(data.metadata))}
       ><time class="meta-date dt-published" datetime={data.metadata.date.toISOString()}
         >{formatPostDateShort(data.metadata.date)}</time
       ></a

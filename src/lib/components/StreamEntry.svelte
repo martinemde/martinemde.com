@@ -2,10 +2,11 @@
   import type { Component } from 'svelte';
   import { resolve } from '$app/paths';
   import { postDisplayTitle, type PostMetadata } from '#lib/utils/posts.ts';
+  import { postRouteParams } from '#lib/utils/post-routing.ts';
 
   let { metadata, content: Content }: { metadata: PostMetadata; content: Component } = $props();
   const url = $derived(
-    resolve(metadata.permalink.slice(1) as `${string}/${string}/${string}/${string}`)
+    resolve('/[year=year]/[month=month]/[day=day]/[slug]', postRouteParams(metadata))
   );
 </script>
 

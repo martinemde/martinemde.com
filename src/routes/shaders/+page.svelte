@@ -1,6 +1,7 @@
 <script lang="ts">
   import ShaderCanvas, { type ShaderInfo } from '../../lib/components/ShaderCanvas.svelte';
   import { onMount } from 'svelte';
+  import { asset } from '$app/paths';
 
   // Shader configurations with filenames
   const shaderConfigs = [
@@ -11,16 +12,18 @@
     { name: 'Blur CRT', filename: 'blur_crt.glsl', enabled: true },
     { name: 'Blur Vignette', filename: 'blur_vignette.glsl', enabled: false },
     { name: 'Blur Bloom', filename: 'blur_bloom.glsl', enabled: false }
-  ];
+  ] as const;
 
   let shaders = $state<ShaderInfo[]>([]);
   let cursorColor = $state<[number, number, number, number]>([0.953, 0.722, 0.529, 1.0]); // Catppuccin Peach
   let prevCursorColor = $state<[number, number, number, number]>([0.71, 0.733, 0.98, 1.0]); // Catppuccin Lavender
 
   // Load shader from file
-  async function loadShader(filename: string): Promise<string | null> {
+  async function loadShader(
+    filename: (typeof shaderConfigs)[number]['filename']
+  ): Promise<string | null> {
     try {
-      const response = await fetch(`/shaders/${filename}`);
+      const response = await fetch(asset(`shaders/${filename}`));
       if (!response.ok) {
         console.error(`Failed to load shader: ${filename} (${response.status})`);
         return null;

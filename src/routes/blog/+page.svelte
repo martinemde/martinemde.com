@@ -2,6 +2,7 @@
   import type { PageData } from './$types';
   import { formatPostDateShort, getReadingTime } from '#lib/utils/posts.ts';
   import { resolve } from '$app/paths';
+  import { postRouteParams } from '#lib/utils/post-routing.ts';
 
   let { data }: { data: PageData } = $props();
 </script>
@@ -25,7 +26,7 @@
     {#each data.posts as post (post.permalink)}
       <a
         class="post-row"
-        href={resolve(post.permalink.slice(1) as `${string}/${string}/${string}/${string}`)}
+        href={resolve('/[year=year]/[month=month]/[day=day]/[slug]', postRouteParams(post))}
       >
         <div class="post-meta">
           <span class="post-date">{formatPostDateShort(post.date)}</span>

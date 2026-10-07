@@ -1,6 +1,6 @@
 # Instructions for LLMs Working on This Project
 
-This is Martin Emde's personal technical blog and portfolio site built with SvelteKit and deployed to Cloudflare Pages.
+This is Martin Emde's personal technical blog and portfolio site built with SvelteKit and deployed to Cloudflare Workers.
 
 ## Package Manager
 
@@ -19,7 +19,7 @@ This is Martin Emde's personal technical blog and portfolio site built with Svel
 - The project uses `bun.lock` for dependency locking
 - **Never** commit `package-lock.json` or `yarn.lock` files
 - Always use `bun install` after adding or removing dependencies to update `bun.lock`
-- The build environment (Cloudflare Pages) uses `bun install --frozen-lockfile`
+- The build environment (Cloudflare Workers) uses `bun install --frozen-lockfile`
 
 ### If Bun is Not Available Locally
 
@@ -51,7 +51,7 @@ If you need to install packages and bun is not available in your environment:
 - **Syntax Highlighting**: Shiki with dual-themes
 - **Icons**: Lucide Svelte
 - **Testing**: Vitest with @testing-library/svelte and jsdom
-- **Deployment**: Cloudflare Pages with Workers adapter
+- **Deployment**: Cloudflare Workers with Static Assets
 - **Package Manager**: Bun
 - **TypeScript**: 6.x with strict mode (type checking runs on the TypeScript 7 native compiler via `--tsgo`)
 
@@ -432,7 +432,7 @@ trade-in against a replacement lease. AppleCare is billed separately on every pa
 
 ## Build and Deployment
 
-### Cloudflare Pages Configuration
+### Cloudflare Workers Configuration
 
 - **Adapter**: `@sveltejs/adapter-cloudflare` (for Workers)
 - **Build command**: `bun run build`
@@ -571,12 +571,12 @@ Do not remove either package, and do not bump `typescript` to 7.x until `typescr
 - [Skeleton UI Docs](https://www.skeleton.dev/llms-svelte.txt)
 - [Tailwind CSS Docs](https://tailwindcss.com/docs)
 - [MDsveX Docs](https://mdsvex.pngwn.io/)
-- [Cloudflare Pages Docs](https://developers.cloudflare.com/workers/index.md)
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/index.md)
 
 ## Project Metadata
 
 - **Repository**: martinemde.github.io
 - **Owner**: Martin Emde
 - **Primary Language**: TypeScript, Svelte
-- **Deployment**: Cloudflare Pages
+- **Deployment**: Cloudflare Workers
 - **License**: (check repository)

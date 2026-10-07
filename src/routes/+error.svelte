@@ -5,6 +5,15 @@
   import { Sparkles, Home, ArrowLeft } from 'lucide-svelte';
   import { authStore } from '#lib/auth/state.svelte.ts';
 
+  // Kit passes the framework error both here and in page.error. A boundary
+  // render failure is passed only as this prop, without changing page.status.
+  let { error: renderError }: { error?: unknown } = $props();
+  const renderFailed = $derived(renderError !== undefined && renderError !== page.error);
+  const status = $derived(renderFailed ? 500 : page.status || 404);
+  const message = $derived(
+    renderFailed ? 'Internal Server Error' : page.error?.message || 'Page Not Found'
+  );
+
   const { state: authState, isLoggedIn } = authStore;
 
   let limerick = $state('');
@@ -16,7 +25,7 @@
     authStore.loadFromStorage();
 
     // If logged in, generate limerick
-    if (authStore.isLoggedIn && page.status === 404) {
+    if (authStore.isLoggedIn && status === 404) {
       generateLimerick();
     }
   });
@@ -74,15 +83,19 @@
 <div class="flex min-h-[60vh] flex-col items-center justify-center text-center">
   <div class="mb-8">
     <h1 class="mb-4 text-9xl font-bold text-primary-500">
-      {page.status || 404}
+      {status}
     </h1>
     <h2 class="preset-typo-display mb-2">
-      {page.error?.message || 'Page Not Found'}
+      {message}
     </h2>
-    <p class="text-surface-700-300">The page you're looking for doesn't exist.</p>
+    <p class="text-surface-700-300">
+      {status === 404
+        ? "The page you're looking for doesn't exist."
+        : 'Something went wrong. Please try again later.'}
+    </p>
   </div>
 
-  {#if page.status === 404}
+  {#if status === 404}
     {#if !isLoggedIn}
       <!-- Not logged in: Show login prompt -->
       <div class="mb-8 max-w-md rounded-lg border border-tertiary-300-700 bg-surface-100-900 p-6">

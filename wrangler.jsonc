@@ -2,6 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "martinemde-com",
   "account_id": "9c275e0c035e53370143e8cf240dfb3f",
+  // Deploy the SvelteKit Worker and its prerendered static assets (not Cloudflare Pages).
   "main": "./.cloudflare/worker.js",
   "assets": {
     "directory": "./.cloudflare/public",

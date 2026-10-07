@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
+  import { asset } from '$app/paths';
   import { createProgram, wrapFragmentShader } from '#lib/webgl/shader-compiler.ts';
   import { UniformManager } from '#lib/webgl/uniform-manager.ts';
   import ShaderDebugWindow from './ShaderDebugWindow.svelte';
@@ -14,7 +15,7 @@
   // Props
   let {
     shaders = $bindable<ShaderInfo[]>([]),
-    imageUrl = '/images/editor-bg.png',
+    imageUrl = asset('images/editor-bg.png'),
     width = 800,
     height = 600,
     cursorColor = $bindable([1.0, 1.0, 1.0, 1.0]),

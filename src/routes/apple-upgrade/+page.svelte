@@ -2,11 +2,11 @@
   import { tick } from 'svelte';
   import { resolve } from '$app/paths';
   import { PhoneOff, Smartphone } from 'lucide-svelte';
-  import Step from '$lib/components/upgrade/Step.svelte';
-  import Tiles from '$lib/components/upgrade/Tiles.svelte';
-  import Field from '$lib/components/upgrade/Field.svelte';
-  import Ledger from '$lib/components/upgrade/Ledger.svelte';
-  import Compare from '$lib/components/upgrade/Compare.svelte';
+  import Step from '#lib/components/upgrade/Step.svelte';
+  import Tiles from '#lib/components/upgrade/Tiles.svelte';
+  import Field from '#lib/components/upgrade/Field.svelte';
+  import Ledger from '#lib/components/upgrade/Ledger.svelte';
+  import Compare from '#lib/components/upgrade/Compare.svelte';
   import {
     allScenarios,
     bestUpgradeEstimate,
@@ -22,7 +22,7 @@
     money,
     money0,
     type AppleCarePlan
-  } from '$lib/apple-upgrade/model';
+  } from '#lib/apple-upgrade/model.ts';
   import {
     ASSUMPTIONS,
     DEFAULT_CARRIER_OFFER,
@@ -33,7 +33,7 @@
     buildInputs,
     carePrices,
     tradeInRates as tradeInRatesFor
-  } from '$lib/apple-upgrade/presets';
+  } from '#lib/apple-upgrade/presets.ts';
 
   const STORAGE_KEY = 'apple-upgrade-calculator';
 

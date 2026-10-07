@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import Page from './+page.svelte';
-import { HORIZON } from '$lib/apple-upgrade/model';
+import { HORIZON } from '#lib/apple-upgrade/model.ts';
 
 /**
  * Smoke test for the step-by-step flow: the page gates each question behind the

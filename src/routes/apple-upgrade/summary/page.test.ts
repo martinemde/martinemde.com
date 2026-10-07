@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import Page from './+page.svelte';
-import { EXAMPLE_QUERY } from '$lib/apple-upgrade/calculator';
-import { PARAMETERS } from '$lib/apple-upgrade/query';
+import { EXAMPLE_QUERY } from '#lib/apple-upgrade/calculator.ts';
+import { PARAMETERS } from '#lib/apple-upgrade/query.ts';
 
 /**
  * The summary page prints numbers straight out of the model, so the risk is

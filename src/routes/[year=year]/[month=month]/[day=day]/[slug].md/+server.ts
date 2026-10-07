@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getRawPost } from '$lib/utils/posts';
+import { getRawPost } from '#lib/utils/posts.ts';
 
 /**
  * Serves a post's raw markdown as text/plain.

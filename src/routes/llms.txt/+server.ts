@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
-import { getAllPosts, postDisplayTitle } from '$lib/utils/posts';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { getAllPosts, postDisplayTitle } from '#lib/utils/posts.ts';
+import { PUBLIC_APP_URL } from '$app/env/public';
 
 /**
  * GET /llms.txt

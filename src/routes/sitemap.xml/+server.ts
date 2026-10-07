@@ -1,5 +1,5 @@
-import { getSitemapEntries, type SitemapEntry } from '$lib/utils/sitemap';
-import { PUBLIC_APP_URL } from '$env/static/public';
+import { getSitemapEntries, type SitemapEntry } from '#lib/utils/sitemap.ts';
+import { PUBLIC_APP_URL } from '$app/env/public';
 
 const siteUrl = PUBLIC_APP_URL.replace(/\/$/, '');
 

@@ -4,9 +4,9 @@
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
   import { afterNavigate } from '$app/navigation';
-  import { PUBLIC_APP_URL } from '$env/static/public';
-  import { socialMetadata } from '$lib/utils/social';
-  import { createAutoHide } from '$lib/utils/autohide';
+  import { PUBLIC_APP_URL } from '$app/env/public';
+  import { socialMetadata } from '#lib/utils/social.ts';
+  import { createAutoHide } from '#lib/utils/autohide.ts';
 
   let { children } = $props();
 
@@ -206,7 +206,7 @@
     backdrop-filter: saturate(1.2) blur(8px);
     transition: transform 200ms ease;
   }
-  /* Driven by the scroll latch in the script above; see $lib/utils/autohide. */
+  /* Driven by the scroll latch in the script above; see #lib/utils/autohide. */
   .site-header.is-hidden {
     transform: translateY(-100%);
   }

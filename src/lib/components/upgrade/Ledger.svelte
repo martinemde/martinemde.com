@@ -5,8 +5,14 @@
     ADJUSTMENTS_LABEL,
     PAID_OFF_IDEAS,
     ledgerAmounts
-  } from '$lib/apple-upgrade/presentation';
-  import { money, money0, type Beat, type Category, type Scenario } from '$lib/apple-upgrade/model';
+  } from '#lib/apple-upgrade/presentation.ts';
+  import {
+    money,
+    money0,
+    type Beat,
+    type Category,
+    type Scenario
+  } from '#lib/apple-upgrade/model.ts';
 
   interface Props {
     /** One column per way of paying. Four is what fits across a phone. */

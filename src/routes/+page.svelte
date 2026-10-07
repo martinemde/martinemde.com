@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Stream from '$lib/components/Stream.svelte';
+  import Stream from '#lib/components/Stream.svelte';
   import type { PageData } from './$types';
-  import { projects } from '$lib/data/projects';
+  import { projects } from '#lib/data/projects.ts';
   import { resolve } from '$app/paths';
 
   let { data }: { data: PageData } = $props();

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Progress } from '@skeletonlabs/skeleton-svelte';
-  import { authStore } from '$lib/auth/state.svelte';
-  import { initiateOAuthLogin } from '$lib/auth/openrouter';
-  import { PUBLIC_APP_URL } from '$env/static/public';
+  import { authStore } from '#lib/auth/state.svelte.ts';
+  import { initiateOAuthLogin } from '#lib/auth/openrouter.ts';
+  import { PUBLIC_APP_URL } from '$app/env/public';
 
   interface TestResult {
     timeToFirstToken: number | null;

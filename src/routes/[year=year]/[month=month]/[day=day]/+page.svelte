@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import Stream from '$lib/components/Stream.svelte';
+  import Stream from '#lib/components/Stream.svelte';
   import { resolve } from '$app/paths';
-  import { SITE_TIME_ZONE } from '$lib/utils/post-model';
+  import { SITE_TIME_ZONE } from '#lib/utils/post-model.ts';
   let { data }: { data: PageData } = $props();
 
   const day = $derived(

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { authStore } from '$lib/auth/state.svelte';
+  import { authStore } from '#lib/auth/state.svelte.ts';
   import PHRASES from './phrases.json';
 
   // Use authenticated API key

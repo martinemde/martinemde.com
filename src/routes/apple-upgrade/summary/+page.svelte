@@ -1,11 +1,11 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import { PUBLIC_APP_URL } from '$env/static/public';
-  import { buyoutThreshold, evaluate } from '$lib/apple-upgrade/advice';
-  import { EXAMPLE_QUERY, TRADE_IN_QUOTES_CHECKED } from '$lib/apple-upgrade/calculator';
-  import { HORIZON, LEASE_SHARE, money, money0 } from '$lib/apple-upgrade/model';
-  import { DEVICES, buildInputs, upgradeTradeIns } from '$lib/apple-upgrade/presets';
-  import { PARAMETERS } from '$lib/apple-upgrade/query';
+  import { PUBLIC_APP_URL } from '$app/env/public';
+  import { buyoutThreshold, evaluate } from '#lib/apple-upgrade/advice.ts';
+  import { EXAMPLE_QUERY, TRADE_IN_QUOTES_CHECKED } from '#lib/apple-upgrade/calculator.ts';
+  import { HORIZON, LEASE_SHARE, money, money0 } from '#lib/apple-upgrade/model.ts';
+  import { DEVICES, buildInputs, upgradeTradeIns } from '#lib/apple-upgrade/presets.ts';
+  import { PARAMETERS } from '#lib/apple-upgrade/query.ts';
 
   /**
    * One worked example, so every number on this page comes out of the same

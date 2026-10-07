@@ -1,7 +1,12 @@
 <script lang="ts">
   import type { PageData } from './$types';
-  import ShareButtons from '$lib/components/ShareButtons.svelte';
-  import { dayPath, formatPostDateShort, getReadingTime, postDisplayTitle } from '$lib/utils/posts';
+  import ShareButtons from '#lib/components/ShareButtons.svelte';
+  import {
+    dayPath,
+    formatPostDateShort,
+    getReadingTime,
+    postDisplayTitle
+  } from '#lib/utils/posts.ts';
   import { resolve } from '$app/paths';
 
   let { data }: { data: PageData } = $props();
@@ -14,14 +19,19 @@
 >
 <article class="post h-entry">
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
-  <a class="back" href={resolve(dayPath(data.metadata))}>
+  <a
+    class="back"
+    href={resolve(dayPath(data.metadata).slice(1) as `${string}/${string}/${string}`)}
+  >
     <span class="back-path">~{dayPath(data.metadata)}/</span>{data.metadata.slug}
   </a>
 
   {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>{/if}
 
   <div class="meta">
-    <a class="u-url" href={resolve(data.metadata.permalink)}
+    <a
+      class="u-url"
+      href={resolve(data.metadata.permalink.slice(1) as `${string}/${string}/${string}/${string}`)}
       ><time class="meta-date dt-published" datetime={data.metadata.date.toISOString()}
         >{formatPostDateShort(data.metadata.date)}</time
       ></a

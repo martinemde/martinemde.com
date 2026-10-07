@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { exchangeCodeForKey } from '$lib/auth/openrouter';
-  import { authStore } from '$lib/auth/state.svelte';
+  import { exchangeCodeForKey } from '#lib/auth/openrouter.ts';
+  import { authStore } from '#lib/auth/state.svelte.ts';
 
   let { data } = $props();
 

@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { calculate } from '$lib/apple-upgrade/calculator';
+import { calculate } from '#lib/apple-upgrade/calculator.ts';
 
 /** Query parameters are the whole point, so this one cannot be prerendered. */
 export const prerender = false;

@@ -1,5 +1,4 @@
 import { mdsvex } from 'mdsvex';
-import adapter from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { createHighlighter } from 'shiki';
 
@@ -45,7 +44,7 @@ const colorReplacements = {
   }
 };
 
-/** @type {import('@sveltejs/kit').Config} */
+/** @type {import('@sveltejs/vite-plugin-svelte').Options} */
 const config = {
   // Consult https://svelte.dev/docs/kit/integrations
   // for more information about preprocessors
@@ -57,7 +56,7 @@ const config = {
       highlight: {
         highlighter: async (code, lang = 'text') => {
           const html = highlighter.codeToHtml(code, {
-            lang,
+            lang: lang ?? 'text',
             themes: {
               light: 'catppuccin-latte',
               dark: 'catppuccin-macchiato'
@@ -72,10 +71,6 @@ const config = {
       }
     })
   ],
-  kit: {
-    // adapter-cloudflare for Cloudflare Workers deployment
-    adapter: adapter({})
-  },
   extensions: ['.svelte', '.md', '.svx']
 };
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ShaderCanvas, { type ShaderInfo } from '$lib/components/ShaderCanvas.svelte';
+  import ShaderCanvas, { type ShaderInfo } from '../../lib/components/ShaderCanvas.svelte';
   import { onMount } from 'svelte';
 
   // Shader configurations with filenames

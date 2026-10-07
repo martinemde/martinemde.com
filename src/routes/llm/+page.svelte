@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { authStore } from '$lib/auth/state.svelte';
-  import { initiateOAuthLogin } from '$lib/auth/openrouter';
+  import { authStore } from '#lib/auth/state.svelte.ts';
+  import { initiateOAuthLogin } from '#lib/auth/openrouter.ts';
   import { Lock, Shield, Clock, DollarSign, ExternalLink, Sparkles, TestTube } from 'lucide-svelte';
 
   const { state, isLoggedIn } = authStore;

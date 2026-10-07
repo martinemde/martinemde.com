@@ -1,6 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
-import { getPost, getPublishedPermalinks } from '$lib/utils/posts';
+import { getPost, getPublishedPermalinks } from '#lib/utils/posts.ts';
 
 // 'auto' keeps a server fallback for legacy .html URLs that aren't prerendered.
 export const prerender = 'auto';

@@ -39,18 +39,18 @@ test('Pacific timestamp and filename agree across UTC midnight and DST', () => {
   expect(() => createBlogPost('Duplicate', 'my-post', options())).toThrow();
 });
 
-test('publishing renames drafts, preserves Micropub and body, and never republishes', () => {
+test('publishing renames drafts, preserves nested metadata and body, and never republishes', () => {
   const body = '\n```yaml\ndate: do not edit\npublished: false\n```\n<aside>HTML</aside>\n';
   const original = draft(
     undefined,
-    'micropub:\n  type: [h-entry]\n  properties:\n    content: ["editing source"]\n    photo: [{value: "https://example.com/photo", alt: "An image"}]\n',
+    'custom:\n  nested: [one, two]\n  photo: [{value: "https://example.com/photo", alt: "An image"}]\n',
     body
   );
   const post = publishPost('my-post', options());
   const updated = readFileSync(post.path, 'utf8');
   expect(readdirSync(directory)).toEqual(['2026-07-01-my-post.md']);
   expect(updated.endsWith(body)).toBe(true);
-  expect(metadata(updated).micropub).toEqual(metadata(original).micropub);
+  expect(metadata(updated).custom).toEqual(metadata(original).custom);
   expect(metadata(updated)).toMatchObject({ slug: 'my-post', published: true, date: post.date });
   expect(() =>
     publishPost('my-post', { directory, now: () => new Date('2026-08-02T00:00:00Z') })
@@ -120,4 +120,14 @@ test('a unique canonical slug takes priority over a longer suffix match', () => 
   writeFileSync(join(directory, '2026-06-01-long-my-post.md'), other);
   expect(publishPost('my-post', options()).slug).toBe('my-post');
   expect(readFileSync(join(directory, '2026-06-01-long-my-post.md'), 'utf8')).toBe(other);
+});
+
+test('Micropub entries stay unchanged for the authoritative publisher', () => {
+  const original = draft(
+    undefined,
+    'micropub:\n  type: [h-entry]\n  properties:\n    published: [2026-06-01T12:00:00-07:00]\n    post-status: [draft]\n    visibility: [private]\n'
+  );
+  expect(() => publishPost('my-post', options())).toThrow('Use the Micropub publisher');
+  expect(readFileSync(join(directory, '2026-06-01-my-post.md'), 'utf8')).toBe(original);
+  expect(readdirSync(directory)).toEqual(['2026-06-01-my-post.md']);
 });

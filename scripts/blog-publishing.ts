@@ -11,7 +11,7 @@ import {
 import { join } from 'node:path';
 import { isMap, parseDocument, stringify } from 'yaml';
 
-export const SITE_TIME_ZONE = 'America/Los_Angeles';
+import { SITE_TIME_ZONE } from '../src/lib/utils/post-model.ts';
 export type PublishingOptions = { directory: string; now?: () => Date };
 
 export function formatPublishDate(date: Date): string {
@@ -112,6 +112,13 @@ export function publishPost(identity: string, options: PublishingOptions) {
   if (candidates.length > 1)
     throw new Error(`Ambiguous slug: ${identity}. Use a dated filename: ${candidates.join(', ')}`);
   const post = readPost(options.directory, candidates[0]);
+  // Micropub has its own authoritative status, timestamp, and visibility fields.
+  // Leave that contract to the publisher rather than only changing wrapper fields.
+  if (post.doc.has('micropub')) {
+    throw new Error(
+      'Use the Micropub publisher to publish this entry; its properties must stay synchronized.'
+    );
+  }
   if (post.doc.get('published') !== false) {
     throw new Error(
       `Already published (or not explicitly a draft): ${post.filename}. Edit it directly; publication dates and permalinks will not be reset.`

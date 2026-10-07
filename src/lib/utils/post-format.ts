@@ -1,4 +1,5 @@
 /** Lightweight display helpers. This module must not import the post loader. */
+import { markdownBody } from './post-model.ts';
 
 /**
  * Format a date from post frontmatter consistently
@@ -29,8 +30,8 @@ export function formatPostDateShort(date: Date): string {
  * Strips frontmatter and counts remaining words
  */
 export function calculateReadingTime(rawContent: string): string {
-  // Remove frontmatter (everything between --- delimiters)
-  const contentWithoutFrontmatter = rawContent.replace(/^---[\s\S]*?---/, '');
+  // Share the line-aware body parser used by metadata and the feed.
+  const contentWithoutFrontmatter = markdownBody(rawContent);
 
   // Count words (split by whitespace and filter empty strings)
   const words = contentWithoutFrontmatter.trim().split(/\s+/).filter(Boolean);

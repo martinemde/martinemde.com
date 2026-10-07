@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import ShareButtons from '#lib/components/ShareButtons.svelte';
-  import { dayPath, postDisplayTitle } from '#lib/utils/post-model.ts';
+  import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
+  import { postDisplayTitle } from '#lib/utils/post-model.ts';
   import { formatPostDateShort } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
@@ -14,12 +15,7 @@
 >
 <article class="post h-entry">
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
-  <a
-    class="back"
-    href={resolve('/[year=year]/[month=month]/[day=day]', postRouteParams(data.metadata))}
-  >
-    <span class="back-path">~{dayPath(data.metadata)}/</span>{data.metadata.slug}
-  </a>
+  <PostBreadcrumbs post={data.metadata} />
 
   {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>{/if}
 
@@ -63,23 +59,6 @@
     max-width: 680px;
     margin: 0 auto;
     padding: 48px 0 88px;
-  }
-  .back {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 36px;
-    font-family: var(--font-mono);
-    font-weight: 460;
-    font-size: 12px;
-    color: var(--muted);
-    text-decoration: none;
-  }
-  .back-path {
-    color: var(--faint);
-  }
-  .back:hover {
-    color: var(--accent);
   }
   .post-title {
     margin: 0 0 20px;

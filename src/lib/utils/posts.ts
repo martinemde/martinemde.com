@@ -149,6 +149,20 @@ export async function getStreamEntries(limit?: number) {
   return (await getAllPosts()).slice(0, limit).map(streamEntry);
 }
 
+/** Published entries for one year page, e.g. /2026. */
+export async function getYearEntries(year: string) {
+  return (await getAllPosts())
+    .filter((post) => dayPath(post).startsWith(`${year}/`))
+    .map(streamEntry);
+}
+
+/** Published entries for one month page, e.g. /2026/07. */
+export async function getMonthEntries(month: string) {
+  return (await getAllPosts())
+    .filter((post) => dayPath(post).startsWith(`${month}/`))
+    .map(streamEntry);
+}
+
 /** Published entries for one day page, e.g. /2026/07/21 */
 export async function getDayEntries(day: string) {
   return (await getAllPosts()).filter((post) => dayPath(post) === day).map(streamEntry);

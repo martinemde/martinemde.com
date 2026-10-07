@@ -198,7 +198,9 @@ slugs across edits. Untitled publisher posts are named by Pacific publish time
 `photo` identifies primary photographic content and retains supplied alt text.
 
 `/blog` lists articles. `/stream` includes all published entries, grouped by
-Los Angeles calendar day. The homepage leads with the latest 20 stream entries
+Los Angeles calendar day. `/YYYY` and `/YYYY/MM` archive the same entries for a
+year or month; `/YYYY/MM/DD` lists one day. Only periods with published entries
+are prerendered; empty periods return 404. The homepage leads with the latest 20 stream entries
 of every type, including expandable article previews.
 Projects enter the stream through ordinary bookmark posts that link to the project
 and provide an introduction. Project pages and the directory stay independent;

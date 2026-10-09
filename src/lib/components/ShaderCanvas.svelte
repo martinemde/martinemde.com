@@ -429,8 +429,19 @@
 
   // Lifecycle
   onMount(() => {
-    if (!initWebGL()) return;
-    start();
+    if (!canvas) return;
+
+    /*
+     * Set up WebGL only once the canvas is on screen, and only animate while it
+     * stays there. Off-screen demos (below the fold, or inside a collapsed
+     * stream preview on the homepage) then cost nothing at load.
+     */
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return stop();
+      if (!gl && !initWebGL()) return observer.disconnect();
+      start();
+    });
+    observer.observe(canvas);
 
     // Add global click handler to detect clicks outside canvas
     const handleGlobalClick = (e: MouseEvent) => {
@@ -458,6 +469,7 @@
     document.addEventListener('click', handleGlobalClick);
 
     return () => {
+      observer.disconnect();
       document.removeEventListener('click', handleGlobalClick);
     };
   });

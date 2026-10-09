@@ -233,6 +233,11 @@ published blog content. Add an integration fixture before advertising a new type
 
 Permalink unfurls use Open Graph and Twitter metadata. `bun run social:images`
 generates 1200×630 PNG cards into ignored `static/social/`; dev/build run it first.
+`bun run images:optimize` likewise writes WebP copies of `static/images/**` into
+ignored `static/optimized/` plus a manifest in ignored `src/lib/generated/`. Post
+header images (`optimizedImage()`) and `<img>` tags in post bodies (a preprocessor
+in `svelte-options.js`) use the copies with `srcset`; body images also get
+`loading="lazy"`. Originals stay in feeds and share metadata.
 Explicit photos/featured images take precedence over generated cards. Set
 `PUBLIC_APP_URL=https://martinemde.com` for a production build so canonical URLs,
 RSS URLs, and preview image URLs use the public origin. Verify the built HTML and
@@ -254,9 +259,12 @@ when that causes existing tests to fail at `localStorage.clear()`.
 Loading lives in `src/lib/utils/posts.ts`. Display components use the lightweight
 `post-format.ts` date helpers and `post-model.ts` metadata helpers/types instead.
 The loader caches `readingTime` on `LoadedPostMetadata` from the canonical raw body.
-`/blog` uses a server loader because it returns only serializable metadata; stream
-and permalink universal loaders still return compiled Svelte content components.
-Do not import the eager loader into display components.
+`posts.ts` eagerly imports every post and its raw Markdown, so it is server-only:
+import it from `+page.server.ts`/`+server.ts`, never from `+page.ts` or components,
+or every post ships in the client bundle. Stream, archive, and permalink routes
+return serializable metadata (with `path`) from `+page.server.ts`, and their
+`+page.ts` attaches compiled components through `post-content.ts`, which loads
+each post as its own lazy chunk.
 
 Located in `src/lib/utils/posts.ts`:
 

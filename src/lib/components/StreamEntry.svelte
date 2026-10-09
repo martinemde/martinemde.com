@@ -4,8 +4,10 @@
   import { postDisplayTitle, type PostMetadata } from '#lib/utils/post-model.ts';
   import { formatPostTime, postDateTime } from '#lib/utils/post-format.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
+  import { optimizedImage } from '#lib/utils/images.ts';
 
   let { metadata, content: Content }: { metadata: PostMetadata; content: Component } = $props();
+  const image = $derived(optimizedImage(metadata.image));
   const url = $derived(
     resolve('/[year=year]/[month=month]/[day=day]/[slug]', postRouteParams(metadata))
   );
@@ -28,7 +30,16 @@
       <details>
         <summary>Read here<span class="sr-only">: {metadata.title}</span></summary>
         <div class="entry-body e-content prose max-w-none" tabindex="-1">
-          {#if metadata.image}<img src={metadata.image} alt="" />{/if}
+          {#if metadata.image}<img
+              src={image?.src ?? metadata.image}
+              srcset={image?.srcset}
+              sizes={image?.sizes}
+              width={image?.width}
+              height={image?.height}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />{/if}
           <Content />
         </div>
       </details>

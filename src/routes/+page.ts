@@ -1,8 +1,6 @@
 import type { PageLoad } from './$types';
-import { getStreamEntries } from '#lib/utils/posts.ts';
+import { withContent } from '#lib/utils/post-content.ts';
 
-export const prerender = true;
-
-export const load: PageLoad = async () => ({
-  recentEntries: await getStreamEntries(20)
+export const load: PageLoad = async ({ data }) => ({
+  recentEntries: await withContent(data.recentPosts)
 });

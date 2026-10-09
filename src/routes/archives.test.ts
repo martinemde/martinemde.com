@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Post } from '#lib/utils/posts.ts';
 import { getAllPosts, getMonthEntries, getYearEntries } from '#lib/utils/posts.ts';
-import { entries as monthParams, load as loadMonth } from './[year=year]/[month=month]/+page.ts';
-import { entries as yearParams, load as loadYear } from './[year=year]/+page.ts';
+import {
+  entries as monthParams,
+  load as loadMonth
+} from './[year=year]/[month=month]/+page.server.ts';
+import { entries as yearParams, load as loadYear } from './[year=year]/+page.server.ts';
 
 vi.mock('#lib/utils/posts.ts', () => ({
   getAllPosts: vi.fn(),
@@ -57,24 +60,23 @@ describe('archive prerender parameters', () => {
 });
 
 describe('archive loaders', () => {
-  it('loads renderable entries using the canonical month path', async () => {
+  // Only serializable metadata crosses to the client; +page.ts attaches the components.
+  it('loads entry metadata using the canonical month path', async () => {
     const entries = [{ metadata: posts[0], content: vi.fn() }];
     vi.mocked(getMonthEntries).mockResolvedValue(entries);
     const result = await loadMonth({ params: { year: '2026', month: '01' } } as Parameters<
       typeof loadMonth
     >[0]);
     expect(getMonthEntries).toHaveBeenCalledExactlyOnceWith('/2026/01');
-    expect(result).toEqual({ entries });
-    expect(result?.entries).toBe(entries);
+    expect(result).toEqual({ posts: [posts[0]] });
   });
 
-  it('loads renderable entries using the canonical year path', async () => {
+  it('loads entry metadata using the canonical year path', async () => {
     const entries = [{ metadata: posts[0], content: vi.fn() }];
     vi.mocked(getYearEntries).mockResolvedValue(entries);
     const result = await loadYear({ params: { year: '2026' } } as Parameters<typeof loadYear>[0]);
     expect(getYearEntries).toHaveBeenCalledExactlyOnceWith('/2026');
-    expect(result).toEqual({ entries });
-    expect(result?.entries).toBe(entries);
+    expect(result).toEqual({ posts: [posts[0]] });
   });
 
   it('returns a 404 for a month with no published entries', async () => {

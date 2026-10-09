@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
-@import '@skeletonlabs/skeleton/themes/catppuccin';
 @import './espresso.css'; /* Custom Themes */
 @import './theme.css'; /* Comp-matched design tokens (Teal & Violet) */
 @import './fonts.css'; /* MonoLisa webfonts (@font-face) */

@@ -1,2 +1,4 @@
-import { getStreamEntries } from '#lib/utils/posts.ts';
-export const load = async () => ({ entries: await getStreamEntries() });
+import type { PageLoad } from './$types';
+import { withContent } from '#lib/utils/post-content.ts';
+
+export const load: PageLoad = async ({ data }) => ({ entries: await withContent(data.posts) });

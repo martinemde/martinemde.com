@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mdsvex } from 'mdsvex';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { createHighlighter } from 'shiki';
@@ -44,6 +45,42 @@ const colorReplacements = {
   }
 };
 
+/**
+ * Images in post bodies load lazily: article previews on the stream sit in
+ * closed <details>, which doesn't stop an eager image from downloading. Local
+ * uploads also swap to the WebP copies from scripts/optimize-images.ts, with
+ * their dimensions so the page doesn't shift as they arrive.
+ *
+ * @type {import('svelte/compiler').PreprocessorGroup}
+ */
+const postImages = {
+  name: 'post-images',
+  markup({ content, filename }) {
+    if (!/\.(md|svx)$/.test(filename ?? '')) return;
+    /** @type {Record<string, import('./src/lib/utils/images.ts').OptimizedImage>} */
+    let optimized = {};
+    try {
+      optimized = JSON.parse(readFileSync('src/lib/generated/optimized-images.json', 'utf8'));
+    } catch {
+      // Not generated (e.g. under Vitest): keep the originals.
+    }
+    const code = content.replace(/<img\b[^>]*>/g, (tag) => {
+      let attributes = '';
+      if (!/\sloading=/.test(tag)) attributes += ' loading="lazy" decoding="async"';
+      const src = tag.match(/\ssrc="([^"]+)"/)?.[1];
+      const image = src && optimized[src.replace(/^https:\/\/martinemde\.com(?=\/)/, '')];
+      if (image) {
+        tag = tag.replace(`src="${src}"`, `src="${image.src}"`);
+        attributes += ` srcset="${image.srcset}" sizes="${image.sizes}"`;
+        if (!/\s(width|height)=/.test(tag))
+          attributes += ` width="${image.width}" height="${image.height}"`;
+      }
+      return tag.replace(/^<img/, `<img${attributes}`);
+    });
+    return { code };
+  }
+};
+
 /** @type {import('@sveltejs/vite-plugin-svelte').Options} */
 const config = {
   // Consult https://svelte.dev/docs/kit/integrations
@@ -69,7 +106,8 @@ const config = {
           return `{@html \`${escaped}\` }`;
         }
       }
-    })
+    }),
+    postImages
   ],
   extensions: ['.svelte', '.md', '.svx']
 };

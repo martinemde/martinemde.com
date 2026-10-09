@@ -112,9 +112,9 @@ export async function getRecentPosts(limit: number): Promise<Post[]> {
  */
 export async function getPost(
   permalink: string
-): Promise<{ content: Component; metadata: LoadedPostMetadata } | null> {
+): Promise<{ content: Component; metadata: LoadedPostMetadata; path: string } | null> {
   const entry = postIndex.get(permalink);
-  return entry ? { content: entry.component, metadata: entry.metadata } : null;
+  return entry ? { content: entry.component, metadata: entry.metadata, path: entry.path } : null;
 }
 
 /**
@@ -143,11 +143,6 @@ const streamEntry = (post: Post) => ({
   metadata: post,
   content: postIndex.get(post.permalink)!.component
 });
-
-/** Renderable public entries shared by the stream and homepage. */
-export async function getStreamEntries(limit?: number) {
-  return (await getAllPosts()).slice(0, limit).map(streamEntry);
-}
 
 /** Published entries for one year page, e.g. /2026. */
 export async function getYearEntries(year: string) {

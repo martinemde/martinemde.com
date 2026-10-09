@@ -30,3 +30,7 @@ vite.config.ts.timestamp-*
 
 # Generated permalink share cards
 /static/social/
+
+# Generated WebP copies of static/images (scripts/optimize-images.ts)
+/static/optimized/
+/src/lib/generated/

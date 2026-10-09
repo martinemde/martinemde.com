@@ -1,0 +1,17 @@
+import { error } from '@sveltejs/kit';
+import type { EntryGenerator, PageServerLoad } from './$types';
+import { getAllPosts, getDayEntries } from '#lib/utils/posts.ts';
+import { dayPath } from '#lib/utils/post-model.ts';
+
+export const entries: EntryGenerator = async () =>
+  [...new Set((await getAllPosts()).map(dayPath))].map((path) => {
+    const [, year, month, day] = path.split('/');
+    return { year, month, day };
+  });
+
+export const load: PageServerLoad = async ({ params }) => {
+  const { year, month, day } = params;
+  const entries = await getDayEntries(`/${year}/${month}/${day}`);
+  if (!entries.length) throw error(404, 'Nothing posted that day');
+  return { posts: entries.map((entry) => entry.metadata) };
+};

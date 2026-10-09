@@ -6,8 +6,10 @@
   import { formatPostDateShort } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
+  import { optimizedImage } from '#lib/utils/images.ts';
 
   let { data }: { data: PageData } = $props();
+  const image = $derived(optimizedImage(data.metadata.image));
 </script>
 
 <svelte:head
@@ -37,7 +39,16 @@
   </div>
 
   {#if data.metadata.image}
-    <img class="post-image" src={data.metadata.image} alt={data.metadata.title} />
+    <img
+      class="post-image"
+      src={image?.src ?? data.metadata.image}
+      srcset={image?.srcset}
+      sizes={image?.sizes}
+      width={image?.width}
+      height={image?.height}
+      alt={data.metadata.title}
+      fetchpriority="high"
+    />
   {/if}
 
   <div class="e-content prose prose-lg max-w-none">
@@ -109,6 +120,7 @@
   }
   .post-image {
     width: 100%;
+    height: auto;
     max-height: 24rem;
     object-fit: cover;
     border-radius: 0.75rem;

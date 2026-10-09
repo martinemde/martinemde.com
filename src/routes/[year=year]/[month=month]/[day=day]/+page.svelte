@@ -2,17 +2,11 @@
   import type { PageData } from './$types';
   import Stream from '#lib/components/Stream.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
-  import { SITE_TIME_ZONE } from '#lib/utils/post-model.ts';
+  import { formatPostDay } from '#lib/utils/post-format.ts';
   let { data }: { data: PageData } = $props();
 
   const day = $derived(
-    data.entries[0].metadata.date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: SITE_TIME_ZONE
-    })
+    formatPostDay(data.entries[0].metadata.date, data.entries[0].metadata.dateOnly)
   );
 </script>
 

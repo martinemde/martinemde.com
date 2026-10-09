@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/svelte';
 import type { Component } from 'svelte';
 import YAML from 'yaml';
 import Stream from './Stream.svelte';
+import Permalink from '../../routes/[year=year]/[month=month]/[day=day]/[slug]/+page.svelte';
 import { normalizePostMetadata } from '../utils/post-model';
 import { renderFeedItem } from '../utils/feed';
 import { socialMetadata } from '../utils/social';
@@ -155,6 +156,53 @@ describe('publisher files through the stream and feed', () => {
     expect(times[1].textContent?.trim()).toBe('Dec 14, 2025');
     expect(times[1].getAttribute('datetime')).toBe('2025-12-14');
   });
+
+  it.each([
+    [
+      '2026-01-02T07:59:59Z',
+      false,
+      'Jan 1, 2026',
+      '11:59 PM',
+      '2026-01-02T07:59:59.000Z',
+      'Thursday, January 1, 2026'
+    ],
+    [
+      '2026-03-08T10:00:00Z',
+      false,
+      'Mar 8, 2026',
+      '3:00 AM',
+      '2026-03-08T10:00:00.000Z',
+      'Sunday, March 8, 2026'
+    ],
+    [
+      '2026-01-02T00:00:00Z',
+      true,
+      'Jan 2, 2026',
+      'Jan 2, 2026',
+      '2026-01-02',
+      'Friday, January 2, 2026'
+    ]
+  ])(
+    'renders matching stream/permalink date semantics for %s',
+    (instant, dateOnly, date, time, datetime, day) => {
+      const entry = published[0];
+      const metadata = {
+        ...entry.metadata,
+        date: new Date(instant),
+        dateOnly,
+        readingTime: '1 min read'
+      };
+      const stream = render(Stream, { entries: [{ ...entry, metadata }] });
+      expect(stream.container.querySelector('h2')?.textContent?.trim()).toBe(day);
+      const streamTime = stream.container.querySelector('time.dt-published')!;
+      expect(streamTime.textContent?.trim()).toBe(time);
+      expect(streamTime.getAttribute('datetime')).toBe(datetime);
+      const page = render(Permalink, { data: { metadata, content: entry.content } });
+      const pageTime = page.container.querySelector('time.dt-published')!;
+      expect(pageTime.textContent?.trim()).toBe(date);
+      expect(pageTime.getAttribute('datetime')).toBe(datetime);
+    }
+  );
 
   it('publishes full readable RSS with stable permalinks, untitled notes, and intact media', async () => {
     const items = await Promise.all(

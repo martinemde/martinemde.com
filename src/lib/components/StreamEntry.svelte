@@ -2,6 +2,7 @@
   import type { Component } from 'svelte';
   import { resolve } from '$app/paths';
   import { postDisplayTitle, type PostMetadata } from '#lib/utils/post-model.ts';
+  import { formatPostTime, postDateTime } from '#lib/utils/post-format.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
 
   let { metadata, content: Content }: { metadata: PostMetadata; content: Component } = $props();
@@ -40,24 +41,8 @@
     <div class="entry-body e-content prose max-w-none"><Content /></div>
   {/if}
   <a class="permalink u-url" href={url} aria-label={`Permalink: ${postDisplayTitle(metadata)}`}>
-    <time
-      class="dt-published"
-      datetime={metadata.dateOnly
-        ? metadata.date.toISOString().slice(0, 10)
-        : metadata.date.toISOString()}
-    >
-      {metadata.dateOnly
-        ? metadata.date.toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            timeZone: 'America/Los_Angeles'
-          })
-        : metadata.date.toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: 'America/Los_Angeles'
-          })}
+    <time class="dt-published" datetime={postDateTime(metadata.date, metadata.dateOnly)}>
+      {formatPostTime(metadata.date, metadata.dateOnly)}
     </time>
   </a>
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>

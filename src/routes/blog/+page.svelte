@@ -29,7 +29,7 @@
         href={resolve('/[year=year]/[month=month]/[day=day]/[slug]', postRouteParams(post))}
       >
         <div class="post-meta">
-          <span class="post-date">{formatPostDateShort(post.date)}</span>
+          <span class="post-date">{formatPostDateShort(post.date, post.dateOnly)}</span>
           <span class="post-read">{post.readingTime}</span>
         </div>
         <div>

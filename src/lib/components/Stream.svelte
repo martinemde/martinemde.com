@@ -4,6 +4,7 @@
   import { resolve } from '$app/paths';
   import type { PostMetadata } from '#lib/utils/post-model.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
+  import { formatPostDay } from '#lib/utils/post-format.ts';
   import StreamEntry from './StreamEntry.svelte';
 
   let {
@@ -14,13 +15,7 @@
   const groups = $derived.by(() => {
     const result = new SvelteMap<string, typeof entries>();
     for (const entry of entries) {
-      const day = entry.metadata.date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-        timeZone: 'America/Los_Angeles'
-      });
+      const day = formatPostDay(entry.metadata.date, entry.metadata.dateOnly);
       result.set(day, [...(result.get(day) ?? []), entry]);
     }
     return [...result];

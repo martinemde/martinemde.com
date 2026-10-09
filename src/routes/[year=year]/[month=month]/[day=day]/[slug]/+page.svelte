@@ -3,7 +3,7 @@
   import ShareButtons from '#lib/components/ShareButtons.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
   import { postDisplayTitle } from '#lib/utils/post-model.ts';
-  import { formatPostDateShort } from '#lib/utils/post-format.ts';
+  import { formatPostDateShort, postDateTime } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
 
@@ -23,8 +23,10 @@
     <a
       class="u-url"
       href={resolve('/[year=year]/[month=month]/[day=day]/[slug]', postRouteParams(data.metadata))}
-      ><time class="meta-date dt-published" datetime={data.metadata.date.toISOString()}
-        >{formatPostDateShort(data.metadata.date)}</time
+      ><time
+        class="meta-date dt-published"
+        datetime={postDateTime(data.metadata.date, data.metadata.dateOnly)}
+        >{formatPostDateShort(data.metadata.date, data.metadata.dateOnly)}</time
       ></a
     >
     {#if data.metadata.type === 'article'}<span class="meta-dot"></span><span class="meta-read"

@@ -395,6 +395,10 @@ The site provides special endpoints for LLM consumption:
 
 - **`/YYYY/MM/DD/[slug].txt`**: Individual posts as plain text markdown
 - **`/llms.txt`**: Index of all posts with links to `.txt` versions
+- **`/index.md`, `/stream.md`, `/blog.md`, `/YYYY.md`, `/YYYY/MM.md`, `/YYYY/MM/DD.md`**: The index pages as plain
+  Markdown (`src/lib/server/markdown-pages.ts`), served as `text/plain` like the post `.md` endpoints. Headings
+  carry the hierarchy (page, month, day, entry; untitled entries are headed by their time), every internal
+  link points at another `.md` view, and the publisher's simple `<a>`/`<img>` HTML is rewritten as Markdown
 - **ShareButtons**: Include "LLM" button to copy `.txt` URL
 
 ### 2. RSS Feed (`/rss.xml`)

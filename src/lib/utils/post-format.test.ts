@@ -3,6 +3,7 @@ import {
   calculateReadingTime,
   formatPostDate,
   formatPostDateShort,
+  postNavLabel,
   formatPostDay,
   formatPostTime,
   postDateTime
@@ -104,5 +105,16 @@ title: Empty
       ).toBe('0 min read');
       expect(calculateReadingTime(' \t\n one\n two \t')).toBe('1 min read');
     });
+  });
+});
+
+describe('postNavLabel', () => {
+  it('uses the title, or the Pacific publication time for untitled entries', () => {
+    const date = new Date('2026-09-23T00:48:33Z');
+    expect(postNavLabel({ title: 'A title', date })).toBe('A title');
+    expect(postNavLabel({ title: '', date })).toBe('Sep 22, 2026, 5:48 PM');
+    expect(
+      postNavLabel({ title: '', date: new Date('2025-03-04T12:00:00Z'), dateOnly: true })
+    ).toBe('Mar 4, 2025');
   });
 });

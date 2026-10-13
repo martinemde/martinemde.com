@@ -71,7 +71,7 @@ martinemde.com/
 │   │   │   └── [slug]/, [slug].txt/, [slug].md/  # 301s from legacy /blog/slug URLs
 │   │   ├── [year=year]/[month=month]/[day=day]/  # Day page listing that day's entries
 │   │   │   ├── [slug]/           # Post permalink /YYYY/MM/DD/slug
-│   │   │   └── [slug].txt/, [slug].md/  # Raw markdown endpoints
+│   │   │   └── [slug].txt/, [slug].md/  # Raw markdown (.md adds a nav footer)
 │   │   ├── rss.xml/              # RSS feed endpoint
 │   │   │   └── +server.ts        # Generate RSS XML
 │   │   ├── sitemap.xml/          # XML sitemap endpoint
@@ -405,6 +405,9 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 The site provides special endpoints for LLM consumption:
 
 - **`/YYYY/MM/DD/[slug].txt`**: Individual posts as plain text markdown
+- **`/YYYY/MM/DD/[slug].md`**: The same source followed by a navigation footer (breadcrumb, newer/older
+  entries in stream order, site nav). `.txt` stays byte-for-byte source. HTML post pages end with the same
+  newer/older and day/site links (`getAdjacentPosts()`)
 - **`/llms.txt`**: Index of all posts with links to `.txt` versions
 - **`/index.md`, `/stream.md`, `/blog.md`, `/YYYY.md`, `/YYYY/MM.md`, `/YYYY/MM/DD.md`**: The index pages as plain
   Markdown (`src/lib/server/markdown-pages.ts`), served as `text/plain` like the post `.md` endpoints. Headings

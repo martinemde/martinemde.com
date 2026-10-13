@@ -3,6 +3,7 @@ import { PUBLIC_APP_URL } from '$app/env/public';
 import { projects } from '#lib/data/projects.ts';
 import {
   getAllPosts,
+  getAdjacentPosts,
   getArticles,
   getDayEntries,
   getMonthEntries,
@@ -12,7 +13,12 @@ import {
   type Post
 } from '#lib/utils/posts.ts';
 import { dayPath, markdownBody, type PostMetadata } from '#lib/utils/post-model.ts';
-import { formatPostDateShort, formatPostDay, formatPostTime } from '#lib/utils/post-format.ts';
+import {
+  formatPostDateShort,
+  formatPostDay,
+  formatPostTime,
+  postNavLabel
+} from '#lib/utils/post-format.ts';
 
 /**
  * Plain Markdown twins of the index pages (/index.md, /stream.md, /blog.md and
@@ -261,4 +267,36 @@ export async function dayMarkdown(year: string, month: string, day: string): Pro
     ...posts.map((post) => entryMarkdown(post, 2)),
     nav(path)
   ]);
+}
+
+/**
+ * A post's exact source with a footer appended: breadcrumb up to its day,
+ * newer and older entries, and the site nav. Drafts get no newer/older links.
+ */
+export async function postMarkdown(params: {
+  year: string;
+  month: string;
+  day: string;
+  slug: string;
+}): Promise<Response> {
+  const { year, month, day, slug } = params;
+  const permalink = `/${year}/${month}/${day}/${slug}`;
+  const source = getRawPost(permalink);
+  if (!source) throw error(404, `Post not found: ${slug}`);
+  const { newer, older } = await getAdjacentPosts(permalink);
+  const footer = [
+    '---',
+    breadcrumb(permalink),
+    [
+      newer && `Newer: ${link(postNavLabel(newer), newer.permalink)}`,
+      older && `Older: ${link(postNavLabel(older), older.permalink)}`
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    nav(permalink)
+  ];
+  // The blank line keeps the rule from turning the body's last line into a heading.
+  return new Response(`${source.trimEnd()}\n\n${footer.filter(Boolean).join('\n\n')}\n`, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+  });
 }

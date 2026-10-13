@@ -39,7 +39,7 @@ describe('post breadcrumbs', () => {
     };
     render(PostPage, {
       params: postRouteParams(metadata),
-      data: { metadata, content },
+      data: { metadata, content, newer: undefined, older: undefined },
       form: undefined
     });
     const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
@@ -52,5 +52,51 @@ describe('post breadcrumbs', () => {
     ]);
     expect(nav.querySelector('[aria-current="page"]')?.textContent).toBe('canonical-slug');
     expect(nav.querySelectorAll('li')).toHaveLength(5);
+  });
+});
+
+describe('post navigation', () => {
+  const metadata = {
+    ...normalizePostMetadata({}, 'test.md', ''),
+    permalink: '/2026/01/31/canonical-slug' as const,
+    slug: 'canonical-slug',
+    date: new Date('2026-02-01T07:00:00Z'),
+    readingTime: '1 min read'
+  };
+
+  it('links newer and older entries, the day, and the site sections at the end of a post', () => {
+    render(PostPage, {
+      params: postRouteParams(metadata),
+      data: {
+        metadata,
+        content,
+        newer: { permalink: '/2026/02/02/newer', label: 'A newer post' },
+        older: { permalink: '/2026/01/30/older', label: 'Jan 30, 2026, 9:15 AM' }
+      },
+      form: undefined
+    });
+    const nav = screen.getByRole('navigation', { name: 'More posts' });
+    const links = [...nav.querySelectorAll('a')];
+    expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['A newer post', '/2026/02/02/newer'],
+      ['Jan 30, 2026, 9:15 AM', '/2026/01/30/older'],
+      ['Saturday, January 31, 2026', '/2026/01/31'],
+      ['Stream', '/stream'],
+      ['Blog', '/blog'],
+      ['RSS', '/rss.xml']
+    ]);
+    expect(nav.querySelector('a[rel="next"]')?.textContent).toBe('A newer post');
+    expect(nav.querySelector('a[rel="prev"]')?.textContent).toBe('Jan 30, 2026, 9:15 AM');
+  });
+
+  it('leaves out newer/older when the post has no neighbors', () => {
+    render(PostPage, {
+      params: postRouteParams(metadata),
+      data: { metadata, content, newer: undefined, older: undefined },
+      form: undefined
+    });
+    const nav = screen.getByRole('navigation', { name: 'More posts' });
+    expect(nav.querySelector('ul')).toBeNull();
+    expect(nav.querySelectorAll('a')).toHaveLength(4);
   });
 });

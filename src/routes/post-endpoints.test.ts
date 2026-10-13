@@ -21,10 +21,8 @@ const draft = {
 
 afterEach(() => vi.restoreAllMocks());
 
-describe.each([
-  ['.txt', txt],
-  ['.md', md]
-] as const)('dated %s endpoint', (_suffix, handler) => {
+describe('dated .txt endpoint', () => {
+  const handler = txt;
   it('serves the exact published source bytes with the original content type', async () => {
     const [post] = await posts.getAllPosts();
     const source = await readFile(new URL(post.path.replace('../../', '../'), import.meta.url));
@@ -41,7 +39,42 @@ describe.each([
     expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array(source));
   });
+});
 
+describe('dated .md endpoint', () => {
+  it('serves the exact source followed by a navigation footer', async () => {
+    const [newest, post, oldest] = await posts.getAllPosts();
+    const source = await readFile(
+      new URL(post.path.replace('../../', '../'), import.meta.url),
+      'utf8'
+    );
+    const response = await md(event(postRouteParams(post)));
+    expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
+    const text = await response.text();
+    expect(text.startsWith(source.trimEnd())).toBe(true);
+    const footer = text.slice(source.trimEnd().length);
+    expect(footer).toMatch(/^\n\n---\n\n\[~\]\(https:\/\/example\.com\/index\.md\)/);
+    expect(footer).toContain(`(https://example.com${newest.permalink}.md)`);
+    expect(footer).toContain(`(https://example.com${oldest.permalink}.md)`);
+    expect(footer).toContain(`[HTML version](https://example.com${post.permalink})`);
+  });
+
+  it('gives drafts the breadcrumb and site nav but no newer/older links', async () => {
+    const source = await readFile(
+      new URL(draft.path.replace('../../', '../'), import.meta.url),
+      'utf8'
+    );
+    const text = await (await md(event(postRouteParams(draft)))).text();
+    expect(text.startsWith(source.trimEnd())).toBe(true);
+    expect(text).not.toMatch(/^(Newer|Older): /m);
+    expect(text).toContain('[Stream](https://example.com/stream.md)');
+  });
+});
+
+describe.each([
+  ['.txt', txt],
+  ['.md', md]
+] as const)('dated %s endpoint errors', (_suffix, handler) => {
   it('retains the missing-post error', async () => {
     await expect(
       handler(event({ year: '2000', month: '01', day: '01', slug: 'missing' }))

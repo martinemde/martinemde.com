@@ -1,0 +1,264 @@
+import { error } from '@sveltejs/kit';
+import { PUBLIC_APP_URL } from '$app/env/public';
+import { projects } from '#lib/data/projects.ts';
+import {
+  getAllPosts,
+  getArticles,
+  getDayEntries,
+  getMonthEntries,
+  getRawPost,
+  getRecentPosts,
+  getYearEntries,
+  type Post
+} from '#lib/utils/posts.ts';
+import { dayPath, markdownBody, type PostMetadata } from '#lib/utils/post-model.ts';
+import { formatPostDateShort, formatPostDay, formatPostTime } from '#lib/utils/post-format.ts';
+
+/**
+ * Plain Markdown twins of the index pages (/index.md, /stream.md, /blog.md and
+ * the /YYYY, /YYYY/MM, /YYYY/MM/DD archives). Headings carry the hierarchy:
+ * page, then month, day, entry. Every link points at another .md view, so a
+ * reader can navigate the whole site without leaving plain text.
+ */
+
+type Entry = PostMetadata & { readingTime?: string };
+type Level = 1 | 2 | 3 | 4 | 5 | 6;
+
+const url = (path: string) => `${PUBLIC_APP_URL}${path}`;
+const mdUrl = (path: string) => url(path === '/' ? '/index.md' : `${path}.md`);
+const heading = (level: number, text: string) => `${'#'.repeat(Math.min(level, 6))} ${text}`;
+const link = (text: string, path: string) => `[${escapeText(text)}](${mdUrl(path)})`;
+
+/** Keep titles from turning into accidental Markdown structure inside link text. */
+function escapeText(text: string): string {
+  return text.replace(/[\\[\]]/g, '\\$&').replace(/\s+/g, ' ');
+}
+
+/** Apply a transform to each line outside fenced code blocks. */
+function eachProseLine(markdown: string, transform: (line: string) => string): string {
+  let fence: string | null = null;
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+      if (marker && (!fence || marker.startsWith(fence))) {
+        fence = fence ? null : marker;
+        return line;
+      }
+      return fence ? line : transform(line);
+    })
+    .join('\n');
+}
+
+/** Push an embedded body's headings below the entry heading. */
+export function demoteHeadings(markdown: string, by: number): string {
+  return eachProseLine(markdown, (line) =>
+    line.replace(
+      /^( {0,3})(#{1,6})(?=\s|$)/,
+      (_, indent, hashes) => indent + '#'.repeat(Math.min(hashes.length + by, 6))
+    )
+  );
+}
+
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+function attribute(tag: string, name: string): string | undefined {
+  const value = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(tag);
+  return value ? decodeEntities(value[1] ?? value[2]) : undefined;
+}
+
+/**
+ * The publisher writes simple links and photos as HTML. Rewrite those two
+ * shapes as Markdown so the text view stays plain; anything else is left as is.
+ */
+export function simpleHtmlToMarkdown(markdown: string): string {
+  return eachProseLine(markdown, (line) =>
+    line
+      .replace(/<a\b([^>]*)>([^<]*)<\/a>/gi, (tag, attrs: string, text: string) => {
+        const href = attribute(attrs, 'href');
+        if (!href) return tag;
+        const label = decodeEntities(text).trim();
+        return label === href || !label ? `<${href}>` : `[${escapeText(label)}](${href})`;
+      })
+      .replace(/<img\b[^>]*>/gi, (tag) => {
+        const src = attribute(tag, 'src');
+        return src ? `![${escapeText(attribute(tag, 'alt') ?? '')}](${src})` : tag;
+      })
+  );
+}
+
+function pageMarkdown(blocks: (string | false | undefined)[]): Response {
+  const body = `${blocks.filter(Boolean).join('\n\n').trim()}\n`;
+  return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+
+function nav(htmlPath: string): string {
+  return [
+    `[Stream](${mdUrl('/stream')})`,
+    `[Blog](${mdUrl('/blog')})`,
+    `[RSS](${url('/rss.xml')})`,
+    `[HTML version](${url(htmlPath)})`
+  ].join(' · ');
+}
+
+/** Archive breadcrumb, mirroring the HTML pages: ~ / 2026 / 10 / 12 */
+function breadcrumb(path: string): string {
+  const parts = path.split('/').filter(Boolean);
+  const crumbs = parts.map((part, index) =>
+    index === parts.length - 1 ? part : link(part, `/${parts.slice(0, index + 1).join('/')}`)
+  );
+  return [link('~', '/'), ...crumbs].join(' / ');
+}
+
+function entryMarkdown(post: Entry, level: Level): string {
+  const time = formatPostTime(post.date, post.dateOnly);
+  if (post.type === 'article') {
+    const meta = [time, post.readingTime].filter(Boolean).join(' · ');
+    return [
+      heading(level, link(post.title, post.permalink)),
+      `*${meta}*`,
+      post.description || post.excerpt
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  // Untitled entries are named by their time, so every entry has a heading to navigate by.
+  const body = demoteHeadings(
+    simpleHtmlToMarkdown(markdownBody(getRawPost(post.permalink) ?? '')),
+    level
+  );
+  return [heading(level, link(post.title || time, post.permalink)), post.title && `*${time}*`, body]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function groupBy<T>(items: T[], key: (item: T) => string): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) groups.set(key(item), [...(groups.get(key(item)) ?? []), item]);
+  return [...groups];
+}
+
+/** Entries grouped under a heading per day, each day linking to its own page. */
+function daysMarkdown(posts: Entry[], level: Level): string {
+  return groupBy(posts, dayPath)
+    .map(([day, entries]) =>
+      [
+        heading(level, link(formatPostDay(entries[0].date, entries[0].dateOnly), day)),
+        ...entries.map((post) => entryMarkdown(post, (level + 1) as Level))
+      ].join('\n\n')
+    )
+    .join('\n\n');
+}
+
+function monthName(path: string): string {
+  const [, year, month] = path.split('/');
+  return new Date(Date.UTC(Number(year), Number(month) - 1, 15)).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC'
+  });
+}
+
+const metadata = (entries: { metadata: PostMetadata }[]) => entries.map((entry) => entry.metadata);
+
+export async function homeMarkdown(): Promise<Response> {
+  const featured = projects.slice(0, 4);
+  return pageMarkdown([
+    heading(1, 'Martin Emde'),
+    'AI Developer Tools Engineer at [Gusto](https://gusto.com).',
+    nav('/'),
+    heading(2, 'Recently'),
+    daysMarkdown(await getRecentPosts(20), 3),
+    `[Full stream](${mdUrl('/stream')})`,
+    heading(2, 'Selected projects'),
+    featured
+      .map((project) => {
+        const href = project.url.startsWith('/') ? url(project.url) : project.url;
+        return `- [${escapeText(project.name)}](${href}): ${project.description}`;
+      })
+      .join('\n'),
+    `[All projects](${url('/projects')})`,
+    heading(2, 'Elsewhere'),
+    [
+      '- [GitHub: @martinemde](https://github.com/martinemde)',
+      '- [Bluesky: @martinemde.com](https://bsky.app/profile/martinemde.com)',
+      `- [Dead HTML webring](${url('/deadhtml')})`
+    ].join('\n')
+  ]);
+}
+
+export async function streamMarkdown(): Promise<Response> {
+  return pageMarkdown([
+    breadcrumb('/stream'),
+    heading(1, 'Stream'),
+    'Notes, links, and things worth sharing.',
+    nav('/stream'),
+    daysMarkdown(await getAllPosts(), 2)
+  ]);
+}
+
+export async function blogMarkdown(): Promise<Response> {
+  const posts = await getArticles();
+  return pageMarkdown([
+    breadcrumb('/blog'),
+    heading(1, 'Blog'),
+    'Notes on the intersection between developer tooling, AI, and a life spent telling computers what to do.',
+    nav('/blog'),
+    ...posts.map((post: Post) =>
+      [
+        heading(2, link(post.title, post.permalink)),
+        `*${[formatPostDateShort(post.date, post.dateOnly), post.readingTime].join(' · ')}*`,
+        post.description || post.excerpt,
+        post.tags.length > 0 && `Tags: ${post.tags.join(', ')}`
+      ]
+        .filter(Boolean)
+        .join('\n\n')
+    )
+  ]);
+}
+
+export async function yearMarkdown(year: string): Promise<Response> {
+  const posts = metadata(await getYearEntries(`/${year}`));
+  if (!posts.length) throw error(404, 'Nothing posted that year');
+  const months = groupBy(posts, (post) => dayPath(post).slice(0, 8));
+  return pageMarkdown([
+    breadcrumb(`/${year}`),
+    heading(1, year),
+    ...months.map(([month, entries]) =>
+      [heading(2, link(monthName(month), month)), daysMarkdown(entries, 3)].join('\n\n')
+    ),
+    nav(`/${year}`)
+  ]);
+}
+
+export async function monthMarkdown(year: string, month: string): Promise<Response> {
+  const path = `/${year}/${month}`;
+  const posts = metadata(await getMonthEntries(path));
+  if (!posts.length) throw error(404, 'Nothing posted that month');
+  return pageMarkdown([
+    breadcrumb(path),
+    heading(1, monthName(path)),
+    daysMarkdown(posts, 2),
+    nav(path)
+  ]);
+}
+
+export async function dayMarkdown(year: string, month: string, day: string): Promise<Response> {
+  const path = `/${year}/${month}/${day}`;
+  const posts = metadata(await getDayEntries(path));
+  if (!posts.length) throw error(404, 'Nothing posted that day');
+  return pageMarkdown([
+    breadcrumb(path),
+    heading(1, formatPostDay(posts[0].date, posts[0].dateOnly)),
+    ...posts.map((post) => entryMarkdown(post, 2)),
+    nav(path)
+  ]);
+}

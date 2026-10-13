@@ -39,7 +39,7 @@ micropub:
     slug:
       - a-week-ahead
     updated:
-      - '2026-10-13T06:28:12.002Z'
+      - '2026-10-13T06:35:25.587Z'
     published:
       - '2026-10-13T06:35:14.216Z'
     post-status:

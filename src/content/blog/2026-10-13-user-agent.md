@@ -4,6 +4,7 @@ date: '2026-10-13T21:48:54.598Z'
 author: martinemde
 published: true
 slug: user-agent
+categories: []
 micropub:
   type:
     - h-entry
@@ -13,8 +14,8 @@ micropub:
     content:
       - >-
         I made more of my blog navigable as pure Markdown by adding `.md` to the
-        end of most pages. Validating via these .md files still sucks for a
-        human, but agents can use it to save tokens.
+        end of most pages. Navigating via .md files still sucks for a human, but
+        agents can use it to save tokens.
 
 
         When the semantic web first came around, I remember reorganizing my home
@@ -64,13 +65,18 @@ micropub:
     slug:
       - user-agent
     updated:
-      - '2026-10-13T21:48:52.377Z'
+      - '2026-10-14T05:08:32.171Z'
     published:
       - '2026-10-13T21:48:54.598Z'
     post-status:
       - published
+    summary: []
+    featured: []
+    visibility: []
+    description: []
+    category: []
 ---
-I made more of my blog navigable as pure Markdown by adding `.md` to the end of most pages. Validating via these .md files still sucks for a human, but agents can use it to save tokens.
+I made more of my blog navigable as pure Markdown by adding `.md` to the end of most pages. Navigating via .md files still sucks for a human, but agents can use it to save tokens.
 
 When the semantic web first came around, I remember reorganizing my home page to include the tags that would make Google render my blog better in search results. It’s exciting to be able to participate in the web, to change something on your own site and have your changes reverberate through the rest of the standards-based web. To my knowledge, Google no longer does this in any meaningful way, but lately the web has been flipped upside down by agents and things are on the table again.
 

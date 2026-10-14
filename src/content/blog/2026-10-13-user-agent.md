@@ -57,8 +57,9 @@ micropub:
         Maybe agents, the LLM kind, will change this? Two things make me
         hopeful: we pay for them so incentives are aligned with the user, and
         they summarize what they read, so most dickovers, ads, mess, and user
-        hostile features all gets squashed into a summary. The only thing they
-        do now is increase token spend and cost to serve the page).
+        hostile features all gets squashed into a summary. The only thing all
+        this mess does now is increase tokens and spending. The incentive to
+        reduce costs will hopefully shake that out.
 
 
         I hope my little change to render plain text helps.
@@ -86,6 +87,6 @@ Now we also have user-controlled “agents” that browse the web on our behalf.
 
 Somewhere along the way the browser stopped being the _user’s_ agent and became a tool for companies to render content into a window you mostly don’t control. (You only get to control the “chrome”, the borders and buttons around the outside of the page). The fight over ad blockers makes this clear. Google Chrome effectively removing them means you aren’t allowed to render pages the way you want. GDPR [dickovers](https://daringfireball.net/2026/05/what_is_a_dickover) and other user-hostile features like fields you can’t paste into and things you can’t right-click on, are further evidence that browsers are no longer _user_ agents. The small slice of users that know you can edit the page itself in the inspector, also know that it’s more of a last resort than a feature.
 
-Maybe agents, the LLM kind, will change this? Two things make me hopeful: we pay for them so incentives are aligned with the user, and they summarize what they read, so most dickovers, ads, mess, and user hostile features all gets squashed into a summary. The only thing they do now is increase token spend and cost to serve the page).
+Maybe agents, the LLM kind, will change this? Two things make me hopeful: we pay for them so incentives are aligned with the user, and they summarize what they read, so most dickovers, ads, mess, and user hostile features all gets squashed into a summary. The only thing all this mess does now is increase tokens and spending. The incentive to reduce costs will hopefully shake that out.
 
 I hope my little change to render plain text helps.

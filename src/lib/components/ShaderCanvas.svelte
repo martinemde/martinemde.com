@@ -1,3 +1,11 @@
+<script lang="ts" module>
+  export type ShaderInfo = {
+    name: string;
+    code: string;
+    enabled: boolean;
+  };
+</script>
+
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
   import { asset } from '$app/paths';
@@ -5,12 +13,6 @@
   import { UniformManager } from '#lib/webgl/uniform-manager.ts';
   import ShaderDebugWindow from './ShaderDebugWindow.svelte';
   import ShaderSelectionMenu from './ShaderSelectionMenu.svelte';
-
-  export type ShaderInfo = {
-    name: string;
-    code: string;
-    enabled: boolean;
-  };
 
   // Props
   let {
@@ -427,6 +429,29 @@
     isFocused = false;
   };
 
+  // Global click handler (on <svelte:document>) to detect clicks outside canvas
+  const handleGlobalClick = (e: MouseEvent) => {
+    if (!canvas) return;
+
+    // Check if click is outside the canvas
+    const rect = canvas.getBoundingClientRect();
+    const isOutside =
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+
+    if (isOutside && isFocused) {
+      isFocused = false;
+      canvas.blur();
+    }
+
+    // Close shader menu when clicking outside
+    if (isOutside && showShaderMenu) {
+      showShaderMenu = false;
+    }
+  };
+
   // Lifecycle
   onMount(() => {
     if (!canvas) return;
@@ -443,35 +468,7 @@
     });
     observer.observe(canvas);
 
-    // Add global click handler to detect clicks outside canvas
-    const handleGlobalClick = (e: MouseEvent) => {
-      if (!canvas) return;
-
-      // Check if click is outside the canvas
-      const rect = canvas.getBoundingClientRect();
-      const isOutside =
-        e.clientX < rect.left ||
-        e.clientX > rect.right ||
-        e.clientY < rect.top ||
-        e.clientY > rect.bottom;
-
-      if (isOutside && isFocused) {
-        isFocused = false;
-        canvas.blur();
-      }
-
-      // Close shader menu when clicking outside
-      if (isOutside && showShaderMenu) {
-        showShaderMenu = false;
-      }
-    };
-
-    document.addEventListener('click', handleGlobalClick);
-
-    return () => {
-      observer.disconnect();
-      document.removeEventListener('click', handleGlobalClick);
-    };
+    return () => observer.disconnect();
   });
 
   onDestroy(() => {
@@ -526,6 +523,8 @@
     }
   });
 </script>
+
+<svelte:document onclick={handleGlobalClick} />
 
 <div class="relative inline-block">
   <canvas

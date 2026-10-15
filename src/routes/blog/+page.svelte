@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
   import { formatPostDateShort } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
 
-  let { data }: { data: PageData } = $props();
+  let { data }: PageProps = $props();
 </script>
 
 <svelte:head>

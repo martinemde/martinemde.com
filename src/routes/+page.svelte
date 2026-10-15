@@ -1,10 +1,10 @@
 <script lang="ts">
   import Stream from '#lib/components/Stream.svelte';
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
   import { projects } from '#lib/data/projects.ts';
   import { resolve } from '$app/paths';
 
-  let { data }: { data: PageData } = $props();
+  let { data }: PageProps = $props();
 
   const featured = projects.slice(0, 4);
   const linkLabel = (p: (typeof projects)[number]) => p.linktext ?? p.name;

@@ -15,10 +15,10 @@ export const load: PageServerLoad = async ({ params }) => {
   const { year, month, day, slug } = params;
   const permalink = `/${year}/${month}/${day}/${slug}`;
 
-  if (slug.endsWith('.html')) throw redirect(301, permalink.slice(0, -'.html'.length));
+  if (slug.endsWith('.html')) redirect(301, permalink.slice(0, -'.html'.length));
 
   const post = await getPost(permalink);
-  if (!post) throw error(404, `Post not found: ${permalink}`);
+  if (!post) error(404, `Post not found: ${permalink}`);
 
   return { metadata: post.metadata, path: post.path };
 };

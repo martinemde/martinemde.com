@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
   import Stream from '#lib/components/Stream.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
   import { SITE_TIME_ZONE } from '#lib/utils/post-model.ts';
-  let { data }: { data: PageData } = $props();
+  let { data }: PageProps = $props();
 
   const month = $derived(
     data.entries[0].metadata.date.toLocaleDateString('en-US', {

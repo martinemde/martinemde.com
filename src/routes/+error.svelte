@@ -14,7 +14,7 @@
     renderFailed ? 'Internal Server Error' : page.error?.message || 'Page Not Found'
   );
 
-  const { state: authState, isLoggedIn } = authStore;
+  const { state: authState } = authStore;
 
   let limerick = $state('');
   let loading = $state(false);
@@ -96,7 +96,7 @@
   </div>
 
   {#if status === 404}
-    {#if !isLoggedIn}
+    {#if !authStore.isLoggedIn}
       <!-- Not logged in: Show login prompt -->
       <div class="mb-8 max-w-md rounded-lg border border-tertiary-300-700 bg-surface-100-900 p-6">
         <div class="mb-4 flex justify-center">

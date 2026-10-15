@@ -287,7 +287,7 @@
         </thead>
         <tbody>
           {#each advice.plans as plan (plan.key)}
-            <tr class:best={plan.rank === 1}>
+            <tr class={{ best: plan.rank === 1 }}>
               <th scope="row">{plan.name}</th>
               <td>{money0(plan.netCost)}</td>
               <td>{plan.costAboveBest === 0 ? '—' : `+${money0(plan.costAboveBest)}`}</td>

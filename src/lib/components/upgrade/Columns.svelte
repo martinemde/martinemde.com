@@ -95,7 +95,7 @@
   );
 </script>
 
-<div class="panel" class:stuck>
+<div class={['panel', { stuck }]}>
   <div class="top">
     <h3 class="chart-title">
       {finalLabel ?? (month < 0 ? 'Total spent so far' : `Total spent by month ${month}`)}
@@ -129,7 +129,7 @@
     <!-- Every cell is placed explicitly: the reference line spans the whole
          plot row, and auto-placement would shove the bars out of it. -->
     {#each bars as bar, i (bar.key)}
-      <span class="total" class:low={i === leader} style="grid-column: {i + 1}"
+      <span class={['total', { low: i === leader }]} style="grid-column: {i + 1}"
         >{money0(bar.net)}</span
       >
     {/each}
@@ -181,7 +181,7 @@
     {/if}
 
     {#each bars as bar, i (bar.key)}
-      <span class="name" class:low={i === leader} style="grid-column: {i + 1}">
+      <span class={['name', { low: i === leader }]} style="grid-column: {i + 1}">
         {bar.name}
         {#if bar.refund > 0}<b>{money0(bar.refund)} back</b>{/if}
       </span>

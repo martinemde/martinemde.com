@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import type { Attachment } from 'svelte/attachments';
   import Columns from './Columns.svelte';
   import {
     ADJUSTMENTS_LABEL,
@@ -48,8 +49,6 @@
   let chartPx = $state(112);
 
   let blockEls = $state<(HTMLElement | undefined)[]>([]);
-  let sentinel: HTMLElement;
-  let panelWrap: HTMLElement;
   let panelPx = $state(0);
   /** Height of the site's own sticky header, which the panel has to clear. */
   let headerPx = $state(57);
@@ -212,22 +211,21 @@
     return () => window.removeEventListener('resize', measure);
   });
 
-  $effect(() => {
-    if (!panelWrap) return;
+  const measurePanel: Attachment<HTMLElement> = (panel) => {
     const sizer = new ResizeObserver(([entry]) => (panelPx = entry.contentRect.height));
-    sizer.observe(panelWrap);
+    sizer.observe(panel);
     return () => sizer.disconnect();
-  });
+  };
 
   // Has the panel latched to the top yet? Only used to lift it off the text.
-  $effect(() => {
-    if (!sentinel) return;
+  // Reads `headerPx`, so the observer is rebuilt when the header resizes.
+  const watchStuck: Attachment<HTMLElement> = (sentinel) => {
     const observer = new IntersectionObserver(([entry]) => (stuck = !entry.isIntersecting), {
       rootMargin: `-${headerPx + 1}px 0px 0px 0px`
     });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  });
+  };
 
   /**
    * The month sitting just under the panel is the one being read. Straight
@@ -260,9 +258,9 @@
 </script>
 
 <div class="ledger" style="--sticky-top: {headerPx}px; --columns: {columns}">
-  <div class="sentinel" bind:this={sentinel} aria-hidden="true"></div>
+  <div class="sentinel" {@attach watchStuck} aria-hidden="true"></div>
 
-  <div class="panel-wrap" bind:this={panelWrap}>
+  <div class="panel-wrap" {@attach measurePanel}>
     <Columns
       {scenarios}
       month={activeMonth}
@@ -309,12 +307,16 @@
       }}
       bind:this={blockEls[month]}
       data-month={month}
-      class="month"
-      class:expanded={!!expanded[month]}
-      class:on={month === activeMonth}
-      class:landed={month <= activeMonth}
-      class:beat={!!beat}
-      class:quiet={charges.length === 0}
+      class={[
+        'month',
+        {
+          expanded: !!expanded[month],
+          on: month === activeMonth,
+          landed: month <= activeMonth,
+          beat: !!beat,
+          quiet: charges.length === 0
+        }
+      ]}
     >
       <header>
         <span class="mnum">{String(month).padStart(2, '0')}</span>
@@ -369,8 +371,7 @@
                    column that gets handed this charge, sized against the
                    biggest single bill of the month. -->
                   <div
-                    class="bars"
-                    class:credit={charge.credit}
+                    class={['bars', { credit: charge.credit }]}
                     data-cat={charge.category}
                     style="--track-height: {barPx(
                       Math.max(...charge.amounts.map(Math.abs)),
@@ -379,9 +380,10 @@
                   >
                     {#each charge.amounts as amount, i (cells[i].key)}
                       <span
-                        class="cell"
-                        class:zero={Math.abs(amount) <= 0.005}
-                        class:credit={charge.credit || amount < 0}
+                        class={[
+                          'cell',
+                          { zero: Math.abs(amount) <= 0.005, credit: charge.credit || amount < 0 }
+                        ]}
                         data-cat={charge.categories[i]}
                       >
                         <span class="track">
@@ -436,7 +438,7 @@
       </div>
       <div class="totals">
         {#each cells as cell (cell.key)}
-          <span class="sum" class:zero={Math.abs(cell.net) <= 0.005} class:back={cell.net < 0}>
+          <span class={['sum', { zero: Math.abs(cell.net) <= 0.005, back: cell.net < 0 }]}>
             {Math.abs(cell.net) > 0.005 ? money(cell.net) : '—'}
           </span>
         {/each}

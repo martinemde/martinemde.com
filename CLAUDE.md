@@ -82,7 +82,6 @@ martinemde.com/
 │   │   └── blog/                 # Markdown blog posts (*.md)
 │   ├── lib/
 │   │   ├── components/           # Reusable Svelte components
-│   │   │   ├── CodeBlock.svelte  # Syntax highlighting
 │   │   │   └── ShareButtons.svelte # Share/copy buttons
 │   │   ├── utils/
 │   │   │   └── posts.ts          # Blog post utilities
@@ -311,8 +310,15 @@ This project uses Svelte 5's **runes syntax**:
 
 ```svelte
 <script lang="ts">
-  // Props destructuring
-  let { children, title = 'Default' } = $props();
+  import type { Snippet } from 'svelte';
+
+  interface Props {
+    children: Snippet;
+    title?: string;
+  }
+
+  // Props destructuring (route components use `PageProps`/`LayoutProps` from './$types')
+  let { children, title = 'Default' }: Props = $props();
 
   // Reactive state
   let copied = $state(false);
@@ -326,9 +332,21 @@ This project uses Svelte 5's **runes syntax**:
 
 1. **Always use TypeScript** in components: `<script lang="ts">`
 2. **Use theme-aware classes**: Follow Skeleton color patterns
-3. **Prefer composition**: Use slots and children props
+3. **Prefer composition**: Use snippets and the `children` prop, rendered with `{@render}`
 4. **Include accessibility**: Add ARIA labels where needed
 5. **Keep components focused**: Single responsibility principle
+6. **Conditional classes**: Use the `class={['base', { active: isActive }]}` form, not `class:` directives
+7. **Effects are a last resort**: Compute with `$derived`. Listen with `<svelte:window>`/`<svelte:document>`
+   handlers rather than `addEventListener` in an effect, and attach DOM observers with `{@attach}`
+   rather than `bind:this` plus an effect. `$effect` is for syncing to the outside world (e.g. localStorage)
+8. **Dynamic components**: Render them directly (`<item.icon />`); `<svelte:component>` is deprecated
+9. **Shared rune state**: Read reactive class fields through the object (`authStore.isLoggedIn`).
+   Destructuring a `$derived` or primitive field copies its current value and stops updating
+10. **Exports from components**: Types and values a `.svelte` file exports go in `<script module>`
+
+`svelte-check --tsgo` resolves `#lib/*.svelte` imports to the ambient `*.svelte` module, so props
+of components imported that way are not type-checked, and a named export (e.g. a type from
+`<script module>`) needs a relative import to be visible.
 
 ### Key Components
 
@@ -339,35 +357,28 @@ This project uses Svelte 5's **runes syntax**:
 - Shows visual feedback with icon change on copy
 - Props: `url` (string)
 
-**CodeBlock.svelte** (`src/lib/components/CodeBlock.svelte`):
-
-- Wraps Shiki syntax highlighting
-- Props: `code`, `lang` (default: 'ruby'), `theme`
-- Falls back to unstyled `<pre>` if highlighting fails
-- Adds overflow scrolling and rounded corners
-
 ## Route Loader Patterns
 
 ### Page Load Functions
 
 ```typescript
-// +page.ts
-import type { PageLoad } from './$types';
+// +page.server.ts (posts.ts is server-only)
+import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { getPostBySlug } from '#lib/utils/posts.ts';
+import { getPost } from '#lib/utils/posts.ts';
 
-export const load: PageLoad = async ({ params }) => {
-  const post = await getPostBySlug(params.slug);
+export const load: PageServerLoad = async ({ params }) => {
+  const post = await getPost(`/${params.year}/${params.month}/${params.day}/${params.slug}`);
 
-  if (!post) {
-    throw error(404, 'Post not found');
-  }
+  // error() and redirect() throw on their own; no `throw` needed.
+  if (!post) error(404, 'Post not found');
 
-  return post;
+  return { metadata: post.metadata, path: post.path };
 };
-
-export const prerender = true;
 ```
+
+`prerender = true` is inherited from the root `+layout.ts`; only set page options
+that differ from it.
 
 ### Server Endpoints
 
@@ -507,7 +518,7 @@ trade-in against a replacement lease. AppleCare is billed separately on every pa
 - `@typescript/native` (`npm:typescript@7`) — the TypeScript 7 native compiler, used by `svelte-check --tsgo`
 
 This is the setup `svelte-check` itself prescribes for TypeScript 7; it refuses to run on TS 7 alone.
-Both compilers report identical diagnostics on this codebase, and `--tsgo` is roughly twice as fast.
+`--tsgo` is roughly twice as fast. It does not type-check `#lib/*.svelte` imports (see Component Conventions); the classic compiler does.
 Do not remove either package, and do not bump `typescript` to 7.x until `typescript-eslint` supports it.
 
 ## Important Conventions

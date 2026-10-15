@@ -14,6 +14,6 @@ export const entries: EntryGenerator = async () =>
 export const load: PageServerLoad = async ({ params }) => {
   const { year } = params;
   const entries = await getYearEntries(`/${year}`);
-  if (!entries.length) throw error(404, 'Nothing posted that year');
+  if (!entries.length) error(404, 'Nothing posted that year');
   return { posts: entries.map((entry) => entry.metadata) };
 };

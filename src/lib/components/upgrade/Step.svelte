@@ -15,7 +15,7 @@
   let { n, title, lede, locked = false, answer, children }: Props = $props();
 </script>
 
-<section class="step" class:locked aria-current={locked ? undefined : 'step'}>
+<section class={['step', { locked }]} aria-current={locked ? undefined : 'step'}>
   <div class="head">
     <span class="num">{String(n).padStart(2, '0')}</span>
     <h2>{title}</h2>

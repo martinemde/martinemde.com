@@ -141,7 +141,7 @@
       <tr>
         <th class="stub"></th>
         {#each scenarios as s (s.key)}
-          <th class:mine={s.key === highlight}>
+          <th class={{ mine: s.key === highlight }}>
             <span class="name">{s.name}</span>
           </th>
         {/each}
@@ -150,13 +150,13 @@
     <tbody>
       {#each rows as row (row.label)}
         {@const best = winner(row)}
-        <tr class:lead={row.lead}>
+        <tr class={{ lead: row.lead }}>
           <th class="stub" scope="row">
             {row.label}
             {#if row.hint}<span class="hint">{row.hint}</span>{/if}
           </th>
           {#each scenarios as s, i (s.key)}
-            <td class:best={i === best} class:mine={s.key === highlight}>
+            <td class={{ best: i === best, mine: s.key === highlight }}>
               {#if row.ownership}
                 <span class="ownership">
                   {#if s.rows[HORIZON].hasPhone}<Smartphone size={18} aria-hidden="true" />

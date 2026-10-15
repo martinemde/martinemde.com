@@ -67,7 +67,7 @@
 
 <label class="field">
   <span class="field-name">{label}</span>
-  <span class="wrap" class:money={unit === '$'} class:pct={unit === '%'}>
+  <span class={['wrap', { money: unit === '$', pct: unit === '%' }]}>
     {#if unit === '$'}<span class="unit left" aria-hidden="true">$</span>{/if}
     <input
       {id}

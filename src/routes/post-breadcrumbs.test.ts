@@ -4,6 +4,7 @@ import type { Component } from 'svelte';
 import PostPage from './[year=year]/[month=month]/[day=day]/[slug]/+page.svelte';
 import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
 import { normalizePostMetadata } from '#lib/utils/post-model.ts';
+import { postRouteParams } from '#lib/utils/post-routing.ts';
 
 const modules = import.meta.glob('../lib/fixtures/publisher/note.md', { eager: true }) as Record<
   string,
@@ -36,7 +37,11 @@ describe('post breadcrumbs', () => {
       date: new Date('2026-02-01T07:00:00Z'),
       readingTime: '1 min read'
     };
-    render(PostPage, { data: { metadata, content } });
+    render(PostPage, {
+      params: postRouteParams(metadata),
+      data: { metadata, content },
+      form: undefined
+    });
     const nav = screen.getByRole('navigation', { name: 'Breadcrumb' });
     const links = [...nav.querySelectorAll('a')];
     expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([

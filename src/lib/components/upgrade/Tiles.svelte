@@ -22,7 +22,7 @@
 <fieldset class="tiles" style="--min: {min}">
   <legend class="sr-only">{name}</legend>
   {#each options as option (option.value)}
-    <label class="tile" class:on={value === option.value}>
+    <label class={['tile', { on: value === option.value }]}>
       <input type="radio" {name} value={option.value} bind:group={value} />
       <span class="tile-name">{option.label}</span>
       {#if option.sub}<span class="figure">{option.sub}</span>{/if}

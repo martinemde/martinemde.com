@@ -6,8 +6,9 @@
   import { PUBLIC_APP_URL } from '$app/env/public';
   import { socialMetadata } from '#lib/utils/social.ts';
   import { createAutoHide } from '#lib/utils/autohide.ts';
+  import type { LayoutProps } from './$types';
 
-  let { children } = $props();
+  let { children }: LayoutProps = $props();
 
   const social = $derived(
     page.data.metadata ? socialMetadata(page.data.metadata, PUBLIC_APP_URL) : undefined
@@ -45,29 +46,24 @@
     hold: () => !!headerEl?.contains(document.activeElement)
   });
 
-  $effect(() => {
-    let queued = false;
+  let queued = false;
 
-    function read() {
-      queued = false;
-      // Clamp to the real scroll range so iOS rubber-banding past either end
-      // doesn't register as a direction change.
-      const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      headerHidden = autoHide.update(Math.min(Math.max(window.scrollY, 0), limit));
-    }
+  function read() {
+    queued = false;
+    // Clamp to the real scroll range so iOS rubber-banding past either end
+    // doesn't register as a direction change.
+    const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    headerHidden = autoHide.update(Math.min(Math.max(window.scrollY, 0), limit));
+  }
 
-    function onScroll() {
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(read); // one decision per frame, not per event
-    }
+  function onScroll() {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(read); // one decision per frame, not per event
+  }
 
-    autoHide.reset(window.scrollY);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  });
-
-  // A new page starts at the top, so start it with the bar in view.
+  // Runs on first mount too. A new page starts at the top, so start it with
+  // the bar in view.
   afterNavigate(() => {
     headerHidden = autoHide.reset(window.scrollY);
   });
@@ -122,10 +118,12 @@
     <meta name="twitter:card" content="summary" />
   {/if}
 </svelte:head>
+
+<svelte:window onscroll={onScroll} />
+
 <div class="site">
   <header
-    class="site-header"
-    class:is-hidden={headerHidden}
+    class={['site-header', { 'is-hidden': headerHidden }]}
     bind:this={headerEl}
     onfocusin={() => (headerHidden = autoHide.reset(window.scrollY))}
   >
@@ -135,16 +133,16 @@
         <span class="brand-name">Martin Emde</span>
       </a>
       <nav class="nav" aria-label="Main navigation">
-        <a class="nav-link" class:active={isStream} href={resolve('/stream')}
+        <a class={['nav-link', { active: isStream }]} href={resolve('/stream')}
           ><span class="slash">/</span>stream</a
         >
-        <a class="nav-link" class:active={isBlog} href={resolve('/blog')}>
+        <a class={['nav-link', { active: isBlog }]} href={resolve('/blog')}>
           <span class="slash">/</span>blog
         </a>
-        <a class="nav-link" class:active={isProjects} href={resolve('/projects')}>
+        <a class={['nav-link', { active: isProjects }]} href={resolve('/projects')}>
           <span class="slash">/</span>projects
         </a>
-        <a class="nav-link" class:active={isAbout} href={resolve('/about')}>
+        <a class={['nav-link', { active: isAbout }]} href={resolve('/about')}>
           <span class="slash">/</span>about
         </a>
         <button

@@ -14,8 +14,7 @@
 </script>
 
 <article
-  class="stream-entry h-entry"
-  class:article-preview={metadata.type === 'article'}
+  class={['stream-entry h-entry', { 'article-preview': metadata.type === 'article' }]}
   id={`entry-${metadata.permalink.slice(1).replaceAll('/', '-')}`}
   tabindex="-1"
   aria-label={postDisplayTitle(metadata)}

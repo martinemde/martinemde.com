@@ -5,6 +5,7 @@ import YAML from 'yaml';
 import Stream from './Stream.svelte';
 import Permalink from '../../routes/[year=year]/[month=month]/[day=day]/[slug]/+page.svelte';
 import { normalizePostMetadata } from '../utils/post-model';
+import { postRouteParams } from '../utils/post-routing';
 import { renderFeedItem } from '../utils/feed';
 import { socialMetadata } from '../utils/social';
 import publishing from '../../../publishing.json';
@@ -197,7 +198,11 @@ describe('publisher files through the stream and feed', () => {
       const streamTime = stream.container.querySelector('time.dt-published')!;
       expect(streamTime.textContent?.trim()).toBe(time);
       expect(streamTime.getAttribute('datetime')).toBe(datetime);
-      const page = render(Permalink, { data: { metadata, content: entry.content } });
+      const page = render(Permalink, {
+        params: postRouteParams(metadata),
+        data: { metadata, content: entry.content },
+        form: undefined
+      });
       const pageTime = page.container.querySelector('time.dt-published')!;
       expect(pageTime.textContent?.trim()).toBe(date);
       expect(pageTime.getAttribute('datetime')).toBe(datetime);

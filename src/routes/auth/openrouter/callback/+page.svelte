@@ -4,8 +4,9 @@
   import { resolve } from '$app/paths';
   import { exchangeCodeForKey } from '#lib/auth/openrouter.ts';
   import { authStore } from '#lib/auth/state.svelte.ts';
+  import type { PageProps } from './$types';
 
-  let { data } = $props();
+  let { data }: PageProps = $props();
 
   let status = $state<'loading' | 'success' | 'error'>('loading');
   let errorMessage = $state<string>('');

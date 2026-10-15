@@ -5,8 +5,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  plugins: [tailwindcss(), sveltekit({ ...svelteOptions, adapter: adapter({}) })] as any,
+  plugins: [tailwindcss(), sveltekit({ ...svelteOptions, adapter: adapter({}) })],
   test: {
     include: ['src/**/*.{test,spec}.{js,ts}'],
     environment: 'jsdom',

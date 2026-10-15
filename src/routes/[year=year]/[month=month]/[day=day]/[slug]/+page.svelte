@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
   import ShareButtons from '#lib/components/ShareButtons.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
   import { postDisplayTitle } from '#lib/utils/post-model.ts';
@@ -8,7 +8,7 @@
   import { postRouteParams } from '#lib/utils/post-routing.ts';
   import { optimizedImage } from '#lib/utils/images.ts';
 
-  let { data }: { data: PageData } = $props();
+  let { data }: PageProps = $props();
   const image = $derived(optimizedImage(data.metadata.image));
 </script>
 

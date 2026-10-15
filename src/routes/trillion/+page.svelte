@@ -336,7 +336,7 @@
       </div>
       <div>
         <span class="t-label">{inTheRed > 0 ? 'Overdrawn by' : 'Still in the pile'}</span>
-        <span class="t-value" class:red={inTheRed > 0}>{formatExact(Math.abs(left))}</span>
+        <span class={['t-value', { red: inTheRed > 0 }]}>{formatExact(Math.abs(left))}</span>
         <span class="t-note">
           {#if inTheRed > 0}
             Past every billionaire on Earth. This money does not exist.
@@ -422,7 +422,7 @@
           {@const affordable = canAfford(item.cost, budgetFor(item), bankroll.unlimited)}
           {@const short = shortfall(item.cost, budgetFor(item))}
           {@const askable = needsUpgrade(item.cost, budgetFor(item), bankrolls, level)}
-          <article class="card" class:funded={n > 0} class:broke={!affordable && n === 0}>
+          <article class={['card', { funded: n > 0, broke: !affordable && n === 0 }]}>
             <div class="card-top">
               <h3>{item.label}</h3>
               <div class="price">
@@ -434,7 +434,7 @@
 
             <div class="card-foot">
               {#if item.per}
-                <div class="stepper" class:on={n > 0}>
+                <div class={['stepper', { on: n > 0 }]}>
                   <button
                     type="button"
                     onclick={() => bump(item, -1, tierIndex)}
@@ -462,9 +462,7 @@
               {:else}
                 <button
                   type="button"
-                  class="fund"
-                  class:on={n > 0}
-                  class:ask={askable && n === 0}
+                  class={['fund', { on: n > 0, ask: askable && n === 0 }]}
                   disabled={!affordable && !askable && n === 0}
                   onclick={() => toggle(item, tierIndex)}
                 >
@@ -569,14 +567,13 @@
     >
       <div class="hud-main">
         <span class="hud-label">{inTheRed > 0 ? 'Overdrawn' : 'Still to spend'}</span>
-        <span class="hud-amount" class:red={inTheRed > 0}
+        <span class={['hud-amount', { red: inTheRed > 0 }]}
           >{inTheRed > 0 ? '−' : ''}{formatExact(Math.abs(left))}</span
         >
       </div>
       <div class="hud-bar">
         <div
-          class="hud-fill"
-          class:red={inTheRed > 0}
+          class={['hud-fill', { red: inTheRed > 0 }]}
           style:width="{spentFraction(spent, pot) * 100}%"
         ></div>
       </div>

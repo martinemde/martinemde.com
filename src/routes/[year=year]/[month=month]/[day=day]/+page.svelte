@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { PageData } from './$types';
+  import type { PageProps } from './$types';
   import Stream from '#lib/components/Stream.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
   import { formatPostDay } from '#lib/utils/post-format.ts';
-  let { data }: { data: PageData } = $props();
+  let { data }: PageProps = $props();
 
   const day = $derived(
     formatPostDay(data.entries[0].metadata.date, data.entries[0].metadata.dateOnly)

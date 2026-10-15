@@ -227,7 +227,7 @@ export async function blogMarkdown(): Promise<Response> {
 
 export async function yearMarkdown(year: string): Promise<Response> {
   const posts = metadata(await getYearEntries(`/${year}`));
-  if (!posts.length) throw error(404, 'Nothing posted that year');
+  if (!posts.length) error(404, 'Nothing posted that year');
   const months = groupBy(posts, (post) => dayPath(post).slice(0, 8));
   return pageMarkdown([
     breadcrumb(`/${year}`),
@@ -242,7 +242,7 @@ export async function yearMarkdown(year: string): Promise<Response> {
 export async function monthMarkdown(year: string, month: string): Promise<Response> {
   const path = `/${year}/${month}`;
   const posts = metadata(await getMonthEntries(path));
-  if (!posts.length) throw error(404, 'Nothing posted that month');
+  if (!posts.length) error(404, 'Nothing posted that month');
   return pageMarkdown([
     breadcrumb(path),
     heading(1, monthName(path)),
@@ -254,7 +254,7 @@ export async function monthMarkdown(year: string, month: string): Promise<Respon
 export async function dayMarkdown(year: string, month: string, day: string): Promise<Response> {
   const path = `/${year}/${month}/${day}`;
   const posts = metadata(await getDayEntries(path));
-  if (!posts.length) throw error(404, 'Nothing posted that day');
+  if (!posts.length) error(404, 'Nothing posted that day');
   return pageMarkdown([
     breadcrumb(path),
     heading(1, formatPostDay(posts[0].date, posts[0].dateOnly)),

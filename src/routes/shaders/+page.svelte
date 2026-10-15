@@ -1,4 +1,6 @@
 <script lang="ts">
+  // Relative rather than #lib: under `svelte-check --tsgo`, a #lib .svelte import
+  // resolves to the ambient `*.svelte` module, which has no ShaderInfo export.
   import ShaderCanvas, { type ShaderInfo } from '../../lib/components/ShaderCanvas.svelte';
   import { onMount } from 'svelte';
   import { asset } from '$app/paths';

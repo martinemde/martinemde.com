@@ -81,6 +81,23 @@ const postImages = {
   }
 };
 
+/**
+ * mdsvex still emits its frontmatter as `<script context="module">`, which
+ * Svelte 5 deprecates (and warns about in runes-mode posts). Rewrite it to the
+ * `module` attribute.
+ *
+ * @type {import('svelte/compiler').PreprocessorGroup}
+ */
+const moduleScript = {
+  name: 'module-script',
+  markup({ content, filename }) {
+    if (!/\.(md|svx)$/.test(filename ?? '')) return;
+    return {
+      code: content.replace(/<script([^>]*?)\scontext=["']module["']/g, '<script$1 module')
+    };
+  }
+};
+
 /** @type {import('@sveltejs/vite-plugin-svelte').Options} */
 const config = {
   // Consult https://svelte.dev/docs/kit/integrations
@@ -107,6 +124,7 @@ const config = {
         }
       }
     }),
+    moduleScript,
     postImages
   ],
   extensions: ['.svelte', '.md', '.svx']

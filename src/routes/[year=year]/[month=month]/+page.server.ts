@@ -14,6 +14,6 @@ export const entries: EntryGenerator = async () =>
 export const load: PageServerLoad = async ({ params }) => {
   const { year, month } = params;
   const entries = await getMonthEntries(`/${year}/${month}`);
-  if (!entries.length) throw error(404, 'Nothing posted that month');
+  if (!entries.length) error(404, 'Nothing posted that month');
   return { posts: entries.map((entry) => entry.metadata) };
 };

@@ -5,7 +5,9 @@
   import { initiateOAuthLogin } from '#lib/auth/openrouter.ts';
   import { Lock, Shield, Clock, DollarSign, ExternalLink, Sparkles, TestTube } from 'lucide-svelte';
 
-  const { state, isLoggedIn } = authStore;
+  // `isLoggedIn` is read through `authStore` in the markup: destructuring it here
+  // would copy its value once and miss the login restored from storage on mount.
+  const { state } = authStore;
 
   onMount(() => {
     authStore.loadFromStorage();
@@ -40,7 +42,7 @@
     <p class="text-lg text-surface-700-300">Play with AI models safely and transparently</p>
   </div>
 
-  {#if isLoggedIn}
+  {#if authStore.isLoggedIn}
     <!-- Authenticated State -->
     <section class="variant-filled-success space-y-6 card p-8">
       <div class="flex items-center gap-3">
@@ -72,7 +74,7 @@
           >
             <div class="flex items-start justify-between">
               <div class="rounded-lg bg-primary-500/10 p-3">
-                <svelte:component this={toy.icon} class="size-6 text-primary-500" />
+                <toy.icon class="size-6 text-primary-500" />
               </div>
               <ExternalLink
                 class="size-4 text-surface-700-300 opacity-0 transition-opacity group-hover:opacity-100"

@@ -200,7 +200,7 @@ describe('publisher files through the stream and feed', () => {
       expect(streamTime.getAttribute('datetime')).toBe(datetime);
       const page = render(Permalink, {
         params: postRouteParams(metadata),
-        data: { metadata, content: entry.content },
+        data: { metadata, content: entry.content, newer: undefined, older: undefined },
         form: undefined
       });
       const pageTime = page.container.querySelector('time.dt-published')!;

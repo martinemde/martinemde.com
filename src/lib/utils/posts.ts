@@ -172,3 +172,11 @@ export function getPublishedPermalinks(): string[] {
     .filter((entry) => entry.metadata.published)
     .map((entry) => entry.metadata.permalink);
 }
+
+/** The published entries on either side of a post in stream order, for post navigation. */
+export async function getAdjacentPosts(permalink: string): Promise<{ newer?: Post; older?: Post }> {
+  const posts = await getAllPosts();
+  const index = posts.findIndex((post) => post.permalink === permalink);
+  if (index < 0) return {};
+  return { newer: posts[index - 1], older: posts[index + 1] };
+}

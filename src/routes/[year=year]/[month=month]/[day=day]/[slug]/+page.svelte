@@ -3,7 +3,7 @@
   import ShareButtons from '#lib/components/ShareButtons.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
   import { postDisplayTitle } from '#lib/utils/post-model.ts';
-  import { formatPostDateShort, postDateTime } from '#lib/utils/post-format.ts';
+  import { formatPostDateShort, formatPostDay, postDateTime } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
   import { optimizedImage } from '#lib/utils/images.ts';
@@ -65,6 +65,45 @@
       description={data.metadata.description || data.metadata.excerpt}
     />
   </footer>
+
+  <nav class="post-nav" aria-label="More posts">
+    {#if data.newer || data.older}
+      <ul class="adjacent">
+        {#if data.newer}
+          <li>
+            <span class="nav-label">Newer</span>
+            <a
+              rel="next"
+              href={resolve(
+                '/[year=year]/[month=month]/[day=day]/[slug]',
+                postRouteParams(data.newer)
+              )}>{data.newer.label}</a
+            >
+          </li>
+        {/if}
+        {#if data.older}
+          <li>
+            <span class="nav-label">Older</span>
+            <a
+              rel="prev"
+              href={resolve(
+                '/[year=year]/[month=month]/[day=day]/[slug]',
+                postRouteParams(data.older)
+              )}>{data.older.label}</a
+            >
+          </li>
+        {/if}
+      </ul>
+    {/if}
+    <p class="site-links">
+      <a href={resolve('/[year=year]/[month=month]/[day=day]', postRouteParams(data.metadata))}
+        >{formatPostDay(data.metadata.date, data.metadata.dateOnly)}</a
+      >
+      <a href={resolve('/stream')}>Stream</a>
+      <a href={resolve('/blog')}>Blog</a>
+      <a href={resolve('/rss.xml')} rel="alternate" type="application/rss+xml">RSS</a>
+    </p>
+  </nav>
 </article>
 
 <style>
@@ -137,6 +176,45 @@
     margin-top: 44px;
     padding-top: 24px;
     border-top: 1px solid var(--border);
+  }
+  .post-nav {
+    margin-top: 32px;
+    font-family: var(--font-mono);
+    font-weight: 460;
+    font-size: 12.5px;
+  }
+  .adjacent {
+    display: grid;
+    gap: 12px;
+    margin: 0 0 24px;
+    padding: 0;
+    list-style: none;
+  }
+  .adjacent li {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .nav-label {
+    flex: none;
+    width: 3.5rem;
+    color: var(--faint);
+  }
+  .post-nav a {
+    color: var(--muted);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+  }
+  .post-nav a:hover,
+  .post-nav a:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+  .site-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    margin: 0;
   }
   .share-label {
     font-family: var(--font-mono);

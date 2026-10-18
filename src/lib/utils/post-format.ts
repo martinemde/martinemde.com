@@ -69,3 +69,10 @@ export function calculateReadingTime(rawContent: string): string {
 
   return `${minutes} min read`;
 }
+
+/** A short link label: the title, or the publication time for untitled entries. */
+export function postNavLabel(post: { title: string; date: Date; dateOnly?: boolean }): string {
+  if (post.title) return post.title;
+  const day = formatPostDateShort(post.date, post.dateOnly);
+  return post.dateOnly ? day : `${day}, ${formatPostTime(post.date)}`;
+}

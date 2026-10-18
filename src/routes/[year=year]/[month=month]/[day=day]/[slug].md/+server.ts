@@ -1,5 +1,5 @@
 import type { RequestHandler } from './$types';
-import { rawPostResponse } from '#lib/server/post-endpoints.ts';
+import { postMarkdown } from '#lib/server/markdown-pages.ts';
 
-/** Serves the post's raw markdown as text/plain, not an HTML page. */
-export const GET: RequestHandler = async ({ params }) => rawPostResponse(params);
+/** The post's markdown source with a navigation footer, as text/plain. */
+export const GET: RequestHandler = async ({ params }) => postMarkdown(params);

@@ -1,6 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { getPost, getPublishedPermalinks } from '#lib/utils/posts.ts';
+import { getAdjacentPosts, getPost, getPublishedPermalinks } from '#lib/utils/posts.ts';
+import { postNavLabel } from '#lib/utils/post-format.ts';
 
 // 'auto' keeps a server fallback for legacy .html URLs that aren't prerendered.
 export const prerender = 'auto';
@@ -20,5 +21,13 @@ export const load: PageServerLoad = async ({ params }) => {
   const post = await getPost(permalink);
   if (!post) error(404, `Post not found: ${permalink}`);
 
-  return { metadata: post.metadata, path: post.path };
+  const { newer, older } = await getAdjacentPosts(permalink);
+  const navLink = (entry: typeof newer) =>
+    entry && { permalink: entry.permalink, label: postNavLabel(entry) };
+  return {
+    metadata: post.metadata,
+    path: post.path,
+    newer: navLink(newer),
+    older: navLink(older)
+  };
 };

@@ -13,7 +13,7 @@
     "@tailwindcss/typography": "^0.5.20",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/svelte": "^5.4.2",
-    "@testing-library/user-event": "^14.6.7",
+    "@testing-library/user-event": "^14.6.8",
     "@types/node": "^26.6.4",
     "@typescript/native": "npm:typescript@7",
     "@vitest/ui": "^5.0.3",

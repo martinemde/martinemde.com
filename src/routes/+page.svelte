@@ -7,7 +7,6 @@
   let { data }: PageProps = $props();
 
   const featured = projects.slice(0, 4);
-  const linkLabel = (p: (typeof projects)[number]) => p.linktext ?? p.name;
 </script>
 
 <svelte:head>
@@ -16,247 +15,171 @@
 </svelte:head>
 
 <section class="hero">
-  <div class="eyebrow">// software engineer</div>
   <h1 class="hero-name">Martin Emde</h1>
   <p class="hero-lede">
     AI Developer Tools Engineer at
     <a href="https://gusto.com" rel="external">Gusto</a>.
   </p>
-  <div class="chips">
-    <a href="https://gusto.com" rel="external">
-      <span class="chip"><span class="dot dot-a"></span>Gusto</span>
-    </a>
-    <a href="https://github.com/martinemde" rel="external">
-      <span class="chip"><span class="dot dot-a"></span>open source</span>
-    </a>
-  </div>
 </section>
 
 {#if data.recentEntries.length}
-  <section class="recent block">
-    <div class="section-head">
-      <h2 class="sec-title">Recently</h2>
-      <span class="rule"></span><a class="sec-link" href={resolve('/stream')}>full stream →</a>
-    </div>
-    <Stream entries={data.recentEntries} />
+  <section class="block" aria-labelledby="recently">
+    <h2 class="sec-title" id="recently">Recently</h2>
+    <Stream entries={data.recentEntries} level={3} />
+    <a class="more" href={resolve('/stream')}>Full stream <span aria-hidden="true">→</span></a>
   </section>
 {/if}
 
-<section class="block">
-  <div class="section-head">
-    <h2 class="sec-title">Selected projects</h2>
-    <span class="rule"></span>
-    <a class="sec-link" href={resolve('/projects')}>all projects →</a>
-  </div>
-  <div class="proj-grid">
+<section class="block" aria-labelledby="projects">
+  <h2 class="sec-title" id="projects">Selected projects</h2>
+  <ul class="proj-list">
     <!-- project.url values are pre-resolved in projects.ts; the rule is a false positive here -->
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
     {#each featured as project (project.name)}
       {@const Icon = project.icon}
-      <a
-        class="proj-card"
-        href={project.url}
-        rel={project.url.startsWith('/') ? undefined : 'external'}
-      >
-        <div class="proj-card-head">
-          <span class="proj-name">
-            <Icon size={17} />
-            {project.name}
-          </span>
-        </div>
-        <div class="proj-card-desc">{project.description}</div>
-        <div class="proj-card-link">{linkLabel(project)} ↗</div>
-      </a>
+      {@const external = !project.url.startsWith('/')}
+      <li>
+        <a class="proj-name" href={project.url} rel={external ? 'external' : undefined}>
+          <Icon size={16} aria-hidden="true" />{project.name}{#if external}<span
+              class="ext"
+              aria-hidden="true">↗</span
+            >{/if}
+        </a>
+        <p class="proj-desc">{project.description}</p>
+      </li>
     {/each}
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
-  </div>
+  </ul>
+  <a class="more" href={resolve('/projects')}>All projects <span aria-hidden="true">→</span></a>
 </section>
 
-<section class="elsewhere block">
-  <span class="else-label">elsewhere:</span>
-  <a href="https://github.com/martinemde" rel="external">github/@martinemde ↗</a>
-  <a href="https://bsky.app/profile/martinemde.com" rel="external">bsky/@martinemde.com ↗</a>
-  <a href={resolve('/deadhtml')}>dead html webring ↝</a>
+<section class="elsewhere block" aria-labelledby="elsewhere">
+  <h2 class="sec-title" id="elsewhere">Elsewhere</h2>
+  <ul>
+    <li><a href="https://github.com/martinemde" rel="external">GitHub: @martinemde</a></li>
+    <li>
+      <a href="https://bsky.app/profile/martinemde.com" rel="external">Bluesky: @martinemde.com</a>
+    </li>
+    <li><a href={resolve('/deadhtml')}>Dead HTML webring</a></li>
+  </ul>
 </section>
 
 <style>
-  .recent {
-    max-width: 680px;
-  }
   a {
     color: inherit;
-    text-decoration: none;
   }
 
   .hero {
     max-width: 680px;
-    padding: 88px 0 12px;
-  }
-  .hero .eyebrow {
-    margin-bottom: 26px;
-    font-size: 12.5px;
+    padding: 72px 0 8px;
   }
   .hero-name {
-    margin: 0 0 26px;
+    margin: 0 0 10px;
     font-family: var(--font-body);
     font-weight: 600;
-    font-size: 58px;
-    line-height: 1.02;
-    letter-spacing: -0.025em;
+    font-size: 2rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--text);
   }
   .hero-lede {
-    margin: 0 0 34px;
-    max-width: 600px;
-    font-size: 19px;
+    margin: 0;
+    font-size: 1.05rem;
     line-height: 1.7;
     color: var(--muted);
-    text-wrap: pretty;
   }
-  .hero-lede a {
+  .hero-lede a,
+  .elsewhere a,
+  .more {
     color: var(--accent);
-    border-bottom: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--accent) 40%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
   }
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px 8px;
-  }
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    background: var(--surface);
-    padding: 6px 11px;
-    font-family: var(--font-mono);
-    font-weight: 460;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .dot {
-    height: 6px;
-    width: 6px;
-    border-radius: 50%;
-  }
-  .dot-a {
-    background: var(--accent);
+  .hero-lede a:hover,
+  .elsewhere a:hover,
+  .more:hover {
+    text-decoration-color: currentColor;
   }
 
   .block {
-    padding: 56px 0 8px;
-  }
-  .section-head {
-    display: flex;
-    align-items: baseline;
-    gap: 14px;
-    margin-bottom: 30px;
+    max-width: 680px;
+    padding: 56px 0 0;
   }
   .sec-title {
-    margin: 0;
+    margin: 0 0 20px;
     font-family: var(--font-body);
-    font-weight: 580;
-    font-size: 15px;
-    letter-spacing: 0.01em;
+    font-weight: 600;
+    font-size: 1.3rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
     color: var(--text);
   }
-  .rule {
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-  .sec-link {
-    font-family: var(--font-mono);
-    font-weight: 460;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .sec-link:hover {
-    color: var(--accent);
+  .more {
+    display: inline-block;
+    margin-top: 4px;
   }
 
-  .proj-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
+  .proj-list,
+  .elsewhere ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
-  .proj-card {
-    display: block;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: var(--surface);
-    padding: 20px 22px;
-    color: var(--text);
-  }
-  .proj-card:hover {
-    border-color: var(--accent);
-  }
-  .proj-card-head {
-    margin-bottom: 11px;
+  .proj-list li {
+    margin-bottom: 20px;
   }
   .proj-name {
     display: inline-flex;
     align-items: center;
-    gap: 9px;
-    font-family: var(--font-body);
-    font-weight: 580;
-    font-size: 17px;
-    letter-spacing: -0.01em;
+    gap: 8px;
+    font-weight: 560;
+    font-size: 1.05rem;
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--text) 25%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+  .proj-name:hover,
+  .proj-name:focus-visible {
+    color: var(--accent);
+    text-decoration-color: currentColor;
   }
   .proj-name :global(svg) {
+    flex: none;
     color: var(--accent);
   }
-  .proj-card-desc {
-    margin-bottom: 14px;
-    min-height: 44px;
-    font-size: 14px;
+  .ext {
+    display: inline-block;
+    font-size: 0.8em;
+    color: var(--faint);
+  }
+  .proj-desc {
+    margin: 4px 0 0;
+    font-size: 0.95rem;
     line-height: 1.6;
     color: var(--muted);
     text-wrap: pretty;
   }
-  .proj-card-link {
-    font-family: var(--font-mono);
-    font-weight: 460;
-    font-size: 11.5px;
-    color: var(--accent);
-  }
 
   .elsewhere {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 28px;
-    margin-top: 8px;
-    border-top: 1px solid var(--border);
-    padding: 26px 0 88px;
-    font-family: var(--font-mono);
-    font-weight: 480;
-    font-size: 12.5px;
+    padding-bottom: 88px;
   }
-  .else-label {
-    font-size: 11.5px;
-    letter-spacing: 0.04em;
-    color: var(--faint);
-  }
-  .elsewhere a {
-    color: var(--muted);
-  }
-  .elsewhere a:hover {
-    color: var(--accent);
+  .elsewhere li {
+    margin-bottom: 6px;
   }
 
   @media (max-width: 640px) {
     .hero {
-      padding-top: 56px;
+      padding-top: 48px;
     }
     .hero-name {
-      font-size: 42px;
+      font-size: 1.75rem;
     }
-    .hero-lede {
-      font-size: 17px;
-    }
-    .proj-grid {
-      grid-template-columns: 1fr;
+    .block {
+      padding-top: 44px;
     }
   }
 </style>

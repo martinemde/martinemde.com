@@ -28,16 +28,17 @@
 <style>
   .archive-page {
     max-width: 680px;
-    margin: 0 auto;
-    padding: 64px 0;
+    padding: 48px 0 64px;
   }
   header {
     margin-bottom: 36px;
   }
   h1 {
-    font-size: 2.5rem;
+    margin: 0;
+    font-size: 2rem;
     line-height: 1.15;
-    font-weight: 580;
-    margin: 0 0 16px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
   }
 </style>

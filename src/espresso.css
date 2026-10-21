@@ -10,10 +10,10 @@
   --typo-base--font-weight: normal;
   --typo-base--font-style: normal;
   --typo-base--letter-spacing: 0em;
-  /* tertiary-500 was 2.9:1 on --bg — below AA even for large text.
-     tertiary-700 is 5.1:1, clearing AA at every heading size. */
-  --typo-heading--color-light: var(--color-tertiary-700);
-  --typo-heading--color-dark: var(--color-secondary-200);
+  /* Headings share body text color; size, weight and order carry the hierarchy.
+     --text already resolves light/dark through light-dark() in theme.css. */
+  --typo-heading--color-light: var(--text);
+  --typo-heading--color-dark: var(--text);
   --typo-heading--font-family:
     'MonoLisaText', Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro,
     sans-serif;

@@ -9,8 +9,15 @@
 
   let {
     entries,
-    showDays = true
-  }: { entries: { metadata: PostMetadata; content: Component }[]; showDays?: boolean } = $props();
+    showDays = true,
+    level = 2
+  }: {
+    entries: { metadata: PostMetadata & { readingTime?: string }; content: Component }[];
+    showDays?: boolean;
+    /** Heading level of the day headings; entry titles sit one level below them. */
+    level?: 2 | 3;
+  } = $props();
+  const entryLevel = $derived(showDays ? (level === 2 ? 3 : 4) : level);
   let container: HTMLElement;
   const groups = $derived.by(() => {
     const result = new SvelteMap<string, typeof entries>();
@@ -82,38 +89,41 @@
   {#each groups as [day, posts] (day)}
     <section class="day" aria-label={day}>
       {#if showDays}
-        <h2>
+        <svelte:element this={`h${level}`} class="day-heading">
           <a
             href={resolve(
               '/[year=year]/[month=month]/[day=day]',
               postRouteParams(posts[0].metadata)
             )}>{day}</a
           >
-        </h2>
+        </svelte:element>
       {/if}
       {#each posts as entry (entry.metadata.permalink)}
-        <StreamEntry {...entry} />
+        <StreamEntry {...entry} level={entryLevel} />
       {/each}
     </section>
   {/each}
 </div>
 
 <style>
-  .day {
-    margin-bottom: 40px;
+  .day + .day {
+    margin-top: 28px;
   }
-  h2 {
+  .day-heading {
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
     font-family: var(--font-mono);
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--muted);
-    padding-bottom: 12px;
   }
-  h2 a {
+  .day-heading a {
     color: inherit;
     text-decoration: none;
   }
-  h2 a:hover {
+  .day-heading a:hover,
+  .day-heading a:focus-visible {
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 3px;

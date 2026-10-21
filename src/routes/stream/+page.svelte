@@ -16,10 +16,10 @@
 <div class="stream-page">
   <header>
     <h1>Stream</h1>
-    <p>Notes, links, and things worth sharing.</p>
     <p>
-      <a href={resolve('/blog')}>Longer writing</a> ·
-      <a href={resolve('/rss.xml')}>Subscribe via RSS</a>
+      Notes, links, and things worth sharing. Longer writing collects on the
+      <a href={resolve('/blog')}>blog</a>, and everything is in the
+      <a href={resolve('/rss.xml')}>RSS feed</a>.
     </p>
   </header>
   <Stream entries={data.entries} />
@@ -28,24 +28,32 @@
 <style>
   .stream-page {
     max-width: 680px;
-    margin: 0 auto;
-    padding: 64px 0;
+    padding: 72px 0 64px;
   }
   header {
-    margin-bottom: 36px;
+    margin-bottom: 40px;
   }
   h1 {
-    font-size: 2.5rem;
+    margin: 0 0 10px;
+    font-size: 2rem;
     line-height: 1.15;
-    font-weight: 580;
-    margin: 0 0 16px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
   }
   header p {
+    margin: 0;
+    line-height: 1.7;
     color: var(--muted);
-    margin: 12px 0;
   }
   a {
     color: var(--accent);
-    text-underline-offset: 3px;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--accent) 40%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+  a:hover {
+    text-decoration-color: currentColor;
   }
 </style>

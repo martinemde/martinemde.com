@@ -13,7 +13,6 @@
 </svelte:head>
 
 <section class="head">
-  <div class="eyebrow">// {data.posts.length} posts</div>
   <h1 class="page-title">Blog</h1>
   <p class="page-lede">
     Notes on the intersection between developer tooling, AI, and a life spent telling computers what
@@ -38,11 +37,7 @@
             <div class="post-desc">{post.description}</div>
           {/if}
           {#if post.tags && post.tags.length}
-            <div class="tags">
-              {#each post.tags as tag (tag)}
-                <span class="tag">{tag}</span>
-              {/each}
-            </div>
+            <div class="tags">{post.tags.join(' · ')}</div>
           {/if}
         </div>
       </a>
@@ -57,24 +52,21 @@
   }
 
   .head {
-    padding: 80px 0 40px;
+    padding: 72px 0 40px;
   }
   .page-title {
-    margin: 0 0 16px;
+    margin: 0 0 10px;
     font-family: var(--font-body);
     font-weight: 600;
-    font-size: 46px;
-    line-height: 1.05;
-    letter-spacing: -0.025em;
-  }
-  .eyebrow {
-    margin-bottom: 18px;
-    font-size: 12px;
+    font-size: 2rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: var(--text);
   }
   .page-lede {
     margin: 0;
     max-width: 560px;
-    font-size: 17px;
+    font-size: 1rem;
     line-height: 1.7;
     color: var(--muted);
     text-wrap: pretty;
@@ -93,10 +85,11 @@
     gap: 24px;
     align-items: start;
     border-top: 1px solid var(--border);
-    padding: 26px 6px;
+    padding: 22px 0;
   }
-  .post-row:hover {
-    background: color-mix(in oklch, var(--surface) 50%, transparent);
+  .post-row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
   }
   .post-meta {
     display: flex;
@@ -116,43 +109,43 @@
     color: var(--faint);
   }
   .post-title {
-    margin-bottom: 9px;
+    margin-bottom: 6px;
     font-family: var(--font-body);
     font-weight: 560;
-    font-size: 22px;
-    line-height: 1.25;
-    letter-spacing: -0.015em;
+    font-size: 1.15rem;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
     color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--text) 25%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+  .post-row:hover .post-title,
+  .post-row:focus-visible .post-title {
+    color: var(--accent);
+    text-decoration-color: currentColor;
   }
   .post-desc {
     max-width: 600px;
-    margin-bottom: 13px;
-    font-size: 15px;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
     line-height: 1.65;
     color: var(--muted);
     text-wrap: pretty;
   }
   .tags {
-    display: flex;
-    gap: 7px;
-  }
-  .tag {
     font-family: var(--font-mono);
-    font-weight: 460;
-    font-size: 10.5px;
-    letter-spacing: 0.03em;
+    font-size: 0.7rem;
     color: var(--faint);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    padding: 3px 8px;
   }
 
   @media (max-width: 640px) {
     .head {
-      padding-top: 56px;
+      padding-top: 48px;
     }
     .page-title {
-      font-size: 38px;
+      font-size: 1.75rem;
     }
     .post-row {
       grid-template-columns: 1fr;

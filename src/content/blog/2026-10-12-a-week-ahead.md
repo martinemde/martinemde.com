@@ -13,29 +13,24 @@ micropub:
       - A week ahead
     content:
       - >-
-        In AI developer tools, we now count any advantage in “weeks ahead”. If
-        we get a feature out a week ahead of the zeitgeist discovering it,
-        that’s a win. The week is where all the capital comes from. The week
-        where you broke out the new flow, pushed the new approach no one had
-        seen yet, that’s all you can do now.
+        I remember when sitting on an idea would inexplicably cause that idea to
+        show up somewhere else in the world after a short time. I'd come up with
+        some idea to solve some problem, but I was too busy to do the work. I'd
+        forget about it, and then within a few months, there it was. If
+        something you wanted didn't exist yet, one option was to wait and see if
+        it happened anyway.
 
 
-        We’re all at the cutting edge because keeping up is almost free. So when
-        you get something a week before the others, it just means you had the
-        flexibility built into your system to ship faster than the other people
-        with the same idea.
+        Now that the cost of implementing an idea is near zero, it seems like we
+        only have about a week. If I get a feature out before I hear about it
+        somewhere else, I call that a win. 
 
 
-        Don’t be upset that everything you think of immediately gets cloned by
-        everyone else. Instead, ship your idea fast, then sometimes you’ll get
-        your idea out first.
-
-
-        That’s the best you can do right now. All optionality, all nearby
-        potential that has seen the light of day, is realized within about a
-        week. Only unexpectedly hard or very secret ideas from original research
-        can buck this reality. For most things, you can only just barely ship
-        something first, by about a week, and that’s good.
+        With agents making implementation cheap, nearby potential and open
+        problems quickly get multiple solutions. Only unexpectedly hard or very
+        secret ideas seem to break away (Jev is the most prominent recent
+        example). For most things, if I can just barely ship something first, by
+        about a week if I'm luck, then I'm satisfied.
     slug:
       - a-week-ahead
     updated:
@@ -50,10 +45,8 @@ micropub:
     description: []
     category: []
 ---
-In AI developer tools, we now count any advantage in “weeks ahead”. If we get a feature out a week ahead of the zeitgeist discovering it, that’s a win. The week is where all the capital comes from. The week where you broke out the new flow, pushed the new approach no one had seen yet, that’s all you can do now.
+I remember when sitting on an idea would inexplicably cause that idea to show up somewhere else in the world after a short time. I'd come up with some idea to solve some problem, but I was too busy to do the work. I'd forget about it, and then within a few months, there it was. If something you wanted didn't exist yet, one option was to wait and see if it happened anyway.
 
-We’re all at the cutting edge because keeping up is almost free. So when you get something a week before the others, it just means you had the flexibility built into your system to ship faster than the other people with the same idea.
+Now that the cost of implementing an idea is near zero, it seems like we only have about a week. If I get a feature out before I hear about it somewhere else, I call that a win. 
 
-Don’t be upset that everything you think of immediately gets cloned by everyone else. Instead, ship your idea fast, then sometimes you’ll get your idea out first.
-
-That’s the best you can do right now. All optionality, all nearby potential that has seen the light of day, is realized within about a week. Only unexpectedly hard or very secret ideas from original research can buck this reality. For most things, you can only just barely ship something first, by about a week, and that’s good.
+With agents making implementation cheap, nearby potential and open problems quickly get multiple solutions. Only unexpectedly hard or very secret ideas seem to break away (Jev is the most prominent recent example). For most things, if I can just barely ship something first, by about a week if I'm luck, then I'm satisfied.

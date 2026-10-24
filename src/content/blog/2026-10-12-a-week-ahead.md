@@ -30,11 +30,11 @@ micropub:
         problems quickly get multiple solutions. Only unexpectedly hard or very
         secret ideas seem to break away (Jev is the most prominent recent
         example). For most things, if I can just barely ship something first, by
-        about a week if I'm luck, then I'm satisfied.
+        about a week if I'm lucky, then I'm satisfied.
     slug:
       - a-week-ahead
     updated:
-      - '2026-10-13T06:35:25.587Z'
+      - '2026-10-24T04:56:29.902Z'
     published:
       - '2026-10-13T06:35:14.216Z'
     post-status:
@@ -49,4 +49,4 @@ I remember when sitting on an idea would inexplicably cause that idea to show up
 
 Now that the cost of implementing an idea is near zero, it seems like we only have about a week. If I get a feature out before I hear about it somewhere else, I call that a win. 
 
-With agents making implementation cheap, nearby potential and open problems quickly get multiple solutions. Only unexpectedly hard or very secret ideas seem to break away (Jev is the most prominent recent example). For most things, if I can just barely ship something first, by about a week if I'm luck, then I'm satisfied.
+With agents making implementation cheap, nearby potential and open problems quickly get multiple solutions. Only unexpectedly hard or very secret ideas seem to break away (Jev is the most prominent recent example). For most things, if I can just barely ship something first, by about a week if I'm lucky, then I'm satisfied.

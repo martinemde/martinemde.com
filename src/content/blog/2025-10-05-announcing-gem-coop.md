@@ -1,12 +1,12 @@
 ---
-title: 'Announcing The Gem Cooperative'
-date: 2025-10-05
+name: Announcing The Gem Cooperative
+published: '2025-10-05'
 author: Martin Emde
-description: "don't put all your gems in one basket - The former team from rubygems.org is excited to announce a new gem server for the Ruby community"
-published: true
+summary: >-
+  don't put all your gems in one basket - The former team from rubygems.org is
+  excited to announce a new gem server for the Ruby community
 slug: announcing-gem-coop
 ---
-
 ##### _don't put all your gems in one basket_
 
 The former team from rubygems.org is excited to announce a new gem server for the Ruby community:

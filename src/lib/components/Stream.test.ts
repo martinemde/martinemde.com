@@ -68,6 +68,11 @@ describe('publisher files through the stream and feed', () => {
     );
     expect(screen.getAllByAltText('Morning light')).toHaveLength(1);
     expect(screen.getAllByAltText('Evening light')).toHaveLength(1);
+    // Photos and the bookmark are front matter properties, rendered with microformats.
+    expect(container.querySelectorAll('img.u-photo')).toHaveLength(2);
+    expect(
+      [...container.querySelectorAll<HTMLAnchorElement>('a.u-bookmark-of')].map((a) => a.href)
+    ).toEqual(['https://example.org/reference']);
     expect(screen.queryByText('Untitled Post')).toBeNull();
     expect(screen.queryByText('Not ready to share')).toBeNull();
     expect(container.querySelector('details')?.open).toBe(false);

@@ -1,6 +1,9 @@
 import { getSitemapEntries, type SitemapEntry } from '#lib/utils/sitemap.ts';
 import { PUBLIC_APP_URL } from '$app/env/public';
 
+// Prerendered so the CDN serves a static file instead of running the Worker.
+export const prerender = true;
+
 const siteUrl = PUBLIC_APP_URL.replace(/\/$/, '');
 
 /**

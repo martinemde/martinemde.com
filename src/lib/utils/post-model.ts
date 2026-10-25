@@ -20,6 +20,10 @@ export interface PostMetadata {
   type: PostType;
   photo: { value: string; alt: string }[];
   bookmarkOf?: string;
+  /** Photos the body doesn't already show, rendered above it. */
+  leadPhotos: { value: string; alt: string }[];
+  /** The bookmark-of URL when the body doesn't already link it, rendered below it. */
+  bookmarkLink?: string;
   excerpt: string;
 }
 
@@ -80,6 +84,46 @@ function httpUrl(value: unknown): string | undefined {
   }
 }
 
+/** Keys posts used before their front matter took Micropub names. */
+const legacyNames: Record<string, string> = {
+  title: 'name',
+  date: 'published',
+  description: 'summary',
+  image: 'featured',
+  categories: 'category',
+  tags: 'category'
+};
+
+/**
+ * A post's Micropub properties. Front matter keys are Micropub property names
+ * (name, published, summary, featured, category, photo, bookmark-of, …). Older
+ * files used title/date/description/image/categories with a boolean `published`
+ * draft flag, sometimes with the properties in a `micropub:` block.
+ */
+function entryProperties(meta: Record<string, unknown>): Record<string, unknown> {
+  const block = record(record(meta.micropub).properties);
+  const legacy =
+    !!meta.micropub || typeof meta.published === 'boolean' || 'title' in meta || 'date' in meta;
+  if (!legacy) return meta;
+  const wrapper: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(meta)) {
+    // An absent Micropub name means untitled, even if the wrapper says "Untitled Post".
+    if (key === 'micropub' || key === 'published' || (meta.micropub && key === 'title')) continue;
+    wrapper[legacyNames[key] ?? key] ??= value;
+  }
+  if (meta.published === false) wrapper['post-status'] = 'draft';
+  const filled = Object.entries(block).filter(([, value]) => values(value).length);
+  return { ...wrapper, ...Object.fromEntries(filled) };
+}
+
+/** Whether a body already links (or shows) a URL, in Markdown or HTML. */
+function referencesUrl(body: string, url: string, attribute: 'href' | 'src'): boolean {
+  const escaped = url.replace(/&/g, '&amp;');
+  return [`](${url})`, `<${url}>`, `${attribute}="${url}"`, `${attribute}="${escaped}"`].some(
+    (form) => body.includes(form)
+  );
+}
+
 function siteDay(date: Date): string[] {
   return date.toLocaleDateString('en-CA', { timeZone: SITE_TIME_ZONE }).split('-');
 }
@@ -90,12 +134,9 @@ export function normalizePostMetadata(
   source: string
 ): PostMetadata {
   const meta = record(metadata);
-  const micropub = record(meta.micropub);
-  const hasMicropub = !!micropub.properties && typeof micropub.properties === 'object';
-  const props = hasMicropub ? record(micropub.properties) : meta;
-  // An absent Micropub name means untitled, even if the legacy wrapper says "Untitled Post".
-  const title = text(props.name) ?? (hasMicropub ? '' : (text(meta.title) ?? ''));
-  const publicationValue = date(props.published) ? props.published : meta.date;
+  const props = entryProperties(meta);
+  const title = text(props.name) ?? '';
+  const publicationValue = props.published;
   const publishedAt = date(publicationValue);
   const status = text(props['post-status']);
   const photo = values(props.photo).flatMap((item) => {
@@ -105,7 +146,7 @@ export function normalizePostMetadata(
   });
   const bookmarkOf = httpUrl(props['bookmark-of']);
   const filename = path.split('/').pop()!;
-  const slug = text(meta.slug) ?? filename.replace(/\.(md|svx)$/, '');
+  const slug = text(props.slug) ?? filename.replace(/\.(md|svx)$/, '');
   const day =
     filename.match(/^(\d{4})-(\d{2})-(\d{2})-/)?.slice(1) ?? siteDay(publishedAt ?? new Date(0));
   const body = markdownBody(source);
@@ -126,7 +167,7 @@ export function normalizePostMetadata(
         : 'note';
   const tags = [
     ...new Set(
-      values(props.category ?? meta.tags ?? meta.categories)
+      values(props.category)
         .filter((item): item is string => typeof item === 'string')
         .map((item) => item.trim())
         .filter(Boolean)
@@ -136,23 +177,44 @@ export function normalizePostMetadata(
     title,
     date: publishedAt ?? new Date(0),
     dateOnly: /^\d{4}-\d{2}-\d{2}$/.test(String(values(publicationValue)[0])),
-    updated: date(props.updated ?? meta.updated),
+    updated: date(props.updated),
     slug,
     permalink: `/${day[0]}/${day[1]}/${day[2]}/${slug}`,
-    author: text(meta.author) ?? 'Martin Emde',
-    description: text(props.summary) ?? text(meta.description),
+    author: text(props.author) ?? 'Martin Emde',
+    description: text(props.summary),
     published:
       !!publishedAt &&
-      (status ? status === 'published' : meta.published !== false) &&
+      (status ?? 'published') === 'published' &&
       text(props.visibility) !== 'private' &&
       text(props.visibility) !== 'unlisted',
-    image: text(props.featured) ?? text(meta.image),
+    image: text(props.featured),
     tags,
     type,
     photo,
     bookmarkOf,
+    leadPhotos: photo.filter((item) => !referencesUrl(body, item.value, 'src')),
+    bookmarkLink: bookmarkOf && !referencesUrl(body, bookmarkOf, 'href') ? bookmarkOf : undefined,
     excerpt: content.length > 240 ? `${content.slice(0, 240)}…` : content
   };
+}
+
+const markdownText = (value: string) => value.replace(/[\\[\]]/g, '\\$&').replace(/\s+/g, ' ');
+
+/**
+ * The published Markdown of a post: its body with the photos and bookmark it
+ * keeps as properties written around it, photos first. The HTML pages render
+ * the same `leadPhotos` and `bookmarkLink` around the compiled body.
+ */
+export function publishedMarkdown(
+  post: Pick<PostMetadata, 'leadPhotos' | 'bookmarkLink'>,
+  body: string
+): string {
+  const photos = post.leadPhotos.map(
+    (photo) =>
+      `![${markdownText(photo.alt)}](${photo.value.replaceAll('(', '%28').replaceAll(')', '%29')})`
+  );
+  const bookmark = post.bookmarkLink && `<${post.bookmarkLink}>`;
+  return [...photos, body, bookmark].filter(Boolean).join('\n\n');
 }
 
 /** The day page containing a post, e.g. /2026/07/21 */

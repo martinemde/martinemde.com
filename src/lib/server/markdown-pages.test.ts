@@ -7,6 +7,7 @@ import {
   dayMarkdown,
   demoteHeadings,
   homeMarkdown,
+  markdownLinks,
   monthMarkdown,
   simpleHtmlToMarkdown,
   streamMarkdown,
@@ -115,5 +116,23 @@ describe('simpleHtmlToMarkdown', () => {
     expect(simpleHtmlToMarkdown(source)).toBe(
       '<figure><a href="/x">![](/x.png)</a></figure>\n```\n<a href="y">y</a>\n```'
     );
+  });
+});
+
+describe('markdownLinks', () => {
+  it('points links to published entries at their .md views', async () => {
+    const [post] = await getAllPosts();
+    expect(
+      markdownLinks(
+        `[a](${post.permalink}) [b](https://martinemde.com${post.permalink}/) <https://example.com${post.permalink}> [c](/blog/${post.slug})`
+      )
+    ).toBe(
+      `[a](https://example.com${post.permalink}.md) [b](https://example.com${post.permalink}.md) <https://example.com${post.permalink}.md> [c](https://example.com${post.permalink}.md)`
+    );
+  });
+
+  it('leaves other links, unknown paths, and code alone', () => {
+    const source = '[x](https://example.org/2026/01/01/x) [y](/projects)\n```\n[z](/blog/z)\n```';
+    expect(markdownLinks(source)).toBe(source);
   });
 });

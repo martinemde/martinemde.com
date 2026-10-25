@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { parse } from 'yaml';
 import * as posts from '#lib/utils/posts.ts';
 import { postRouteParams } from '#lib/utils/post-routing.ts';
 import { GET as txt } from './[year=year]/[month=month]/[day=day]/[slug].txt/+server.ts';
@@ -42,7 +43,7 @@ describe('dated .txt endpoint', () => {
 });
 
 describe('dated .md endpoint', () => {
-  it('serves the exact source followed by a navigation footer', async () => {
+  it('serves the stored front matter plus the site keys, the body, then a footer', async () => {
     const [newest, post, oldest] = await posts.getAllPosts();
     const source = await readFile(
       new URL(post.path.replace('../../', '../'), import.meta.url),
@@ -51,21 +52,44 @@ describe('dated .md endpoint', () => {
     const response = await md(event(postRouteParams(post)));
     expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8');
     const text = await response.text();
-    expect(text.startsWith(source.trimEnd())).toBe(true);
-    const footer = text.slice(source.trimEnd().length);
+    const stored = /^---\n([\s\S]*?)\n---\n/.exec(source)![1];
+    // The stored keys come first, byte for byte; the site adds feed and neighbors.
+    expect(text.startsWith(`---\n${stored}\n`)).toBe(true);
+    const [, frontMatter, rest] = /^---\n([\s\S]*?)\n---\n\n([\s\S]*)$/.exec(text)!;
+    expect(parse(frontMatter)).toEqual({
+      ...parse(stored),
+      source: { url: 'https://example.com/rss.xml', title: 'Martin Emde' },
+      urlPrev: `https://example.com${oldest.permalink}.md`,
+      urlNext: `https://example.com${newest.permalink}.md`
+    });
+    const footer = rest.slice(rest.lastIndexOf('\n\n---\n\n'));
     expect(footer).toMatch(/^\n\n---\n\n\[~\]\(https:\/\/example\.com\/index\.md\)/);
     expect(footer).toContain(`(https://example.com${newest.permalink}.md)`);
     expect(footer).toContain(`(https://example.com${oldest.permalink}.md)`);
     expect(footer).toContain(`[HTML version](https://example.com${post.permalink})`);
   });
 
-  it('gives drafts the breadcrumb and site nav but no newer/older links', async () => {
-    const source = await readFile(
-      new URL(draft.path.replace('../../', '../'), import.meta.url),
-      'utf8'
+  it('writes photos and bookmarks into the body as Markdown', async () => {
+    const photo = (await posts.getAllPosts()).find((post) => post.leadPhotos.length)!;
+    const text = await (await md(event(postRouteParams(photo)))).text();
+    expect(text).toContain(`](${photo.leadPhotos[0].value})`);
+    const bookmark = (await posts.getAllPosts()).find((post) => post.bookmarkLink)!;
+    expect(await (await md(event(postRouteParams(bookmark)))).text()).toContain(
+      `<${bookmark.bookmarkLink}>`
     );
+  });
+
+  it('leaves no HTML links or images in photo and bookmark entries', async () => {
+    for (const post of await posts.getAllPosts()) {
+      if (post.type !== 'photo' && post.type !== 'bookmark') continue;
+      const text = await (await md(event(postRouteParams(post)))).text();
+      expect(text, post.permalink).not.toMatch(/<a\s|<img\s/i);
+    }
+  });
+
+  it('gives drafts the breadcrumb and site nav but no newer/older links', async () => {
     const text = await (await md(event(postRouteParams(draft)))).text();
-    expect(text.startsWith(source.trimEnd())).toBe(true);
+    expect(parse(text.split('\n---\n')[0].slice(4))).not.toHaveProperty('urlPrev');
     expect(text).not.toMatch(/^(Newer|Older): /m);
     expect(text).toContain('[Stream](https://example.com/stream.md)');
   });

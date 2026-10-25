@@ -77,12 +77,13 @@ export function createBlogPost(
   const date = formatPublishDate((options.now ?? (() => new Date()))());
   const filename = `${date.slice(0, 10)}-${postSlug}.md`;
   const path = join(options.directory, filename);
+  // Micropub property names, as the publisher writes them.
   const frontmatter = stringify({
-    title,
-    date,
+    name: title,
+    published: date,
     author: 'Martin Emde',
-    description: '',
-    published: false,
+    summary: '',
+    'post-status': 'draft',
     slug: postSlug
   });
   writeFileSync(path, `---\n${frontmatter}---\n\nWrite your post content here...\n`, {
@@ -119,7 +120,7 @@ export function publishPost(identity: string, options: PublishingOptions) {
       'Use the Micropub publisher to publish this entry; its properties must stay synchronized.'
     );
   }
-  if (post.doc.get('published') !== false) {
+  if (post.doc.get('post-status') !== 'draft') {
     throw new Error(
       `Already published (or not explicitly a draft): ${post.filename}. Edit it directly; publication dates and permalinks will not be reset.`
     );
@@ -129,8 +130,8 @@ export function publishPost(identity: string, options: PublishingOptions) {
   const date = formatPublishDate((options.now ?? (() => new Date()))());
   const filename = `${date.slice(0, 10)}-${slug}.md`;
   const path = join(options.directory, filename);
-  post.doc.set('date', date);
-  post.doc.set('published', true);
+  post.doc.set('published', date);
+  post.doc.delete('post-status');
   const yaml = post.doc.toString().replace(/\n/g, post.opening.includes('\r') ? '\r\n' : '\n');
   const content = `${post.opening}${yaml}${post.closing}${post.body}`;
   if (path !== post.path) {

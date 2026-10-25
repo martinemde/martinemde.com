@@ -1,12 +1,10 @@
 ---
-title: 'How to: Rails params.expect'
-date: 2024-10-22
+name: 'How to: Rails params.expect'
+published: '2024-10-22'
 author: Martin Emde
-description: 'A guide to the new params.expect feature in Rails 8'
-published: true
+summary: A guide to the new params.expect feature in Rails 8
 slug: how-to-rails-params-expect
 ---
-
 In this post I will describe [the new `params.expect` feature](https://github.com/rails/rails/pull/51674) that I recently added to Rails 8 and go over how it works and how to use it.
 
 Update: For an implementation guide, see [my second post on `params.expect`](/blog/how-to-convert-to-rails-params-expect).

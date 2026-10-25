@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { parse } from 'yaml';
 import {
   dayPath,
   getAllPosts,
@@ -173,6 +174,25 @@ describe('Blog Post Utilities', () => {
       expect(error.message).toContain('/2026/07/21/test-slug');
       expect(error.message).toContain('/path/one.md');
       expect(error.message).toContain('/path/two.md');
+    });
+  });
+
+  describe('stored front matter', () => {
+    const sources = import.meta.glob('../../content/blog/*.md', {
+      query: '?raw',
+      import: 'default',
+      eager: true
+    }) as Record<string, string>;
+
+    it('uses Micropub property names at the top level', () => {
+      for (const [path, source] of Object.entries(sources)) {
+        const meta = parse(source.split(/^---$/m)[1]);
+        for (const key of ['micropub', 'title', 'date', 'description', 'image', 'categories'])
+          expect(meta, path).not.toHaveProperty(key);
+        expect(typeof meta.published, path).toBe('string');
+        expect(Number.isFinite(Date.parse(meta.published)), path).toBe(true);
+        expect(meta.author, path).toBe('Martin Emde');
+      }
     });
   });
 });

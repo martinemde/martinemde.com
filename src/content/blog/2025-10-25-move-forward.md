@@ -1,12 +1,12 @@
 ---
-title: 'We want Ruby to move forward'
-date: 2025-10-25
+name: We want Ruby to move forward
+published: '2025-10-25'
 author: Martin Emde
-description: 'The former maintainers are prepared to transfer RubyGems and Bundler to Matz to move Ruby forward'
-published: true
+summary: >-
+  The former maintainers are prepared to transfer RubyGems and Bundler to Matz
+  to move Ruby forward
 slug: move-forward
 ---
-
 On September 9, without warning, Ruby Central [kicked out the maintainers](https://pup-e.com/blog/goodbye-rubygems/) who have cared for Bundler and RubyGems for over a decade. Ruby Central made these changes against the [established project policies](https://github.com/ruby/rubygems/blob/master/doc/rubygems/POLICIES.md#committer-access), while ignoring all [objections from the maintainers' team](https://gist.github.com/simi/349d881d16d3d86947945615a47c60ca). At the time, [Ruby Central claimed](https://rubycentral.org/news/strengthening-the-stewardship-of-rubygems-and-bundler/) these changes were "temporary". However,
 
 - None of the "temporary" changes made by Ruby Central have been undone, more than six weeks later.

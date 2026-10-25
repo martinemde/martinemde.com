@@ -1,12 +1,12 @@
 ---
-title: 'How to convert to params.expect in Rails 8.0'
-date: 2024-12-21
+name: How to convert to params.expect in Rails 8.0
+published: '2024-12-21'
 author: Martin Emde
-description: 'A practical guide to converting existing Rails controllers to use params.expect'
-published: true
+summary: >-
+  A practical guide to converting existing Rails controllers to use
+  params.expect
 slug: how-to-convert-to-rails-params-expect
 ---
-
 After updating RubyGems.org to use [the new `params.expect` feature](/blog/how-to-rails-params-expect)
 in Rails 8, I thought it might be helpful to go over a few of the challenges I ran into.
 

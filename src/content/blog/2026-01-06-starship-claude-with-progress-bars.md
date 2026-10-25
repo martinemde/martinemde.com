@@ -1,12 +1,14 @@
 ---
-title: 'starship-claude: Claude Code statusline with progress bars'
-date: 2026-01-02T06:46:04.079Z
-author: martinemde
-description: 'starship-claude is a custom statusline script for claude code that renders using Starship and shows context usage as a Ghostty (or other modern terminal) progress bar.'
-published: false
+name: 'starship-claude: Claude Code statusline with progress bars'
+published: '2026-01-02T06:46:04.079Z'
+author: Martin Emde
+summary: >-
+  starship-claude is a custom statusline script for claude code that renders
+  using Starship and shows context usage as a Ghostty (or other modern terminal)
+  progress bar.
+post-status: draft
 slug: starship-claude-with-progress-bars
 ---
-
 I released a little script over the weekend that uses [Starship][starship] to render [Claude Code][claude-code] to provide a custom statusline that includes progress bars for context usage. You can find the project on GitHub: [martinemde/starship-claude][martinemde/starship-claude].
 
 I've been using this to render my statusline for a few months and [recently][progress-bars] discovered how to use Ghostty's blue progress bars (the lines at the top of the ghostty surface/pane). I was already calculating the context percentage in my script, so I just had it add in the invisible codes to the percentage printout.

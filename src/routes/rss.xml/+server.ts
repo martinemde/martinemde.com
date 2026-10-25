@@ -2,6 +2,9 @@ import { getRecentPosts, getRawPost, type Post } from '#lib/utils/posts.ts';
 import { renderFeedItem } from '#lib/utils/feed.ts';
 import { PUBLIC_APP_URL } from '$app/env/public';
 
+// Prerendered so the CDN serves a static file instead of running the Worker.
+export const prerender = true;
+
 const siteUrl = PUBLIC_APP_URL;
 const siteTitle = 'Martin Emde';
 const siteDescription = 'Blog posts by Martin Emde';

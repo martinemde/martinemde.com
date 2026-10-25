@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { stringify } from 'yaml';
 import { PUBLIC_APP_URL } from '$app/env/public';
 import { projects } from '#lib/data/projects.ts';
 import {
@@ -7,12 +8,20 @@ import {
   getArticles,
   getDayEntries,
   getMonthEntries,
+  getPost,
+  getPostBySlug,
+  getPublishedPermalinks,
   getRawPost,
   getRecentPosts,
   getYearEntries,
   type Post
 } from '#lib/utils/posts.ts';
-import { dayPath, markdownBody, type PostMetadata } from '#lib/utils/post-model.ts';
+import {
+  dayPath,
+  markdownBody,
+  publishedMarkdown,
+  type PostMetadata
+} from '#lib/utils/post-model.ts';
 import {
   formatPostDateShort,
   formatPostDay,
@@ -100,6 +109,37 @@ export function simpleHtmlToMarkdown(markdown: string): string {
   );
 }
 
+/** A site path for an internal link, whether written relative or with the site's origin. */
+function sitePath(href: string): string | undefined {
+  for (const origin of new Set([PUBLIC_APP_URL, 'https://martinemde.com'])) {
+    if (origin && href.startsWith(`${origin}/`)) return href.slice(origin.length);
+  }
+  return href.startsWith('/') && !href.startsWith('//') ? href : undefined;
+}
+
+/**
+ * Point links to other entries (by permalink or legacy /blog/slug) at their .md
+ * views, so a Markdown reader following them stays on the Markdown web.
+ */
+export function markdownLinks(markdown: string): string {
+  const permalinks = new Set(getPublishedPermalinks());
+  return eachProseLine(markdown, (line) =>
+    line.replace(/(\]\(|<)([^()<>\s]+)(?=[)>\s])/g, (match, open: string, href: string) => {
+      const path = sitePath(href)?.replace(/\/$/, '');
+      const legacy = path?.match(/^\/blog\/([\w-]+)$/)?.[1];
+      const target = legacy ? getPostBySlug(legacy)?.permalink : path;
+      return target && permalinks.has(target) ? `${open}${mdUrl(target)}` : match;
+    })
+  );
+}
+
+/**
+ * A post body as the Markdown web expects it: its photos and bookmark written
+ * around it, Markdown links and images rather than HTML.
+ */
+const bodyMarkdown = (post: PostMetadata, source: string) =>
+  markdownLinks(publishedMarkdown(post, simpleHtmlToMarkdown(markdownBody(source))));
+
 function pageMarkdown(blocks: (string | false | undefined)[]): Response {
   const body = `${blocks.filter(Boolean).join('\n\n').trim()}\n`;
   return new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
@@ -137,10 +177,7 @@ function entryMarkdown(post: Entry, level: Level): string {
   }
 
   // Untitled entries are named by their time, so every entry has a heading to navigate by.
-  const body = demoteHeadings(
-    simpleHtmlToMarkdown(markdownBody(getRawPost(post.permalink) ?? '')),
-    level
-  );
+  const body = demoteHeadings(bodyMarkdown(post, getRawPost(post.permalink) ?? ''), level);
   return [heading(level, link(post.title || time, post.permalink)), post.title && `*${time}*`, body]
     .filter(Boolean)
     .join('\n\n');
@@ -270,8 +307,25 @@ export async function dayMarkdown(year: string, month: string, day: string): Pro
 }
 
 /**
- * A post's exact source with a footer appended: breadcrumb up to its day,
- * newer and older entries, and the site nav. Drafts get no newer/older links.
+ * The stored front matter, then what only the site knows, in the Markdown web's
+ * vocabulary: the feed it belongs to and the older (urlPrev) and newer
+ * (urlNext) entries.
+ */
+function frontMatter(source: string, newer?: Post, older?: Post): string {
+  const stored = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source)?.[1];
+  const site = stringify({
+    source: { url: url('/rss.xml'), title: 'Martin Emde' },
+    ...(older && { urlPrev: mdUrl(older.permalink) }),
+    ...(newer && { urlNext: mdUrl(newer.permalink) })
+  });
+  return ['---', stored, site.trimEnd(), '---'].filter(Boolean).join('\n');
+}
+
+/**
+ * A post as a Markdown web document: the stored file with the site's keys added
+ * to its front matter and its photos and bookmark written into the body, then a
+ * footer with a breadcrumb up to its day, newer and older entries, and the site
+ * nav. Drafts get no newer/older links. The .txt URL serves the stored file.
  */
 export async function postMarkdown(params: {
   year: string;
@@ -281,8 +335,9 @@ export async function postMarkdown(params: {
 }): Promise<Response> {
   const { year, month, day, slug } = params;
   const permalink = `/${year}/${month}/${day}/${slug}`;
+  const post = await getPost(permalink);
   const source = getRawPost(permalink);
-  if (!source) throw error(404, `Post not found: ${slug}`);
+  if (!post || !source) throw error(404, `Post not found: ${slug}`);
   const { newer, older } = await getAdjacentPosts(permalink);
   const footer = [
     '---',
@@ -296,7 +351,12 @@ export async function postMarkdown(params: {
     nav(permalink)
   ];
   // The blank line keeps the rule from turning the body's last line into a heading.
-  return new Response(`${source.trimEnd()}\n\n${footer.filter(Boolean).join('\n\n')}\n`, {
+  const document = [
+    frontMatter(source, newer, older),
+    bodyMarkdown(post.metadata, source),
+    ...footer
+  ];
+  return new Response(`${document.filter(Boolean).join('\n\n')}\n`, {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' }
   });
 }

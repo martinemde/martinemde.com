@@ -1,12 +1,13 @@
 ---
-title: 'Show Your Work: How to write reviewable code'
-date: 2025-12-19
+name: 'Show Your Work: How to write reviewable code'
+published: '2025-12-19'
 author: Martin Emde
-description: "As authors of code, we're responsible for writing reviewable code. When agents write the code, you still need to show your work, even if that work looks different now."
-published: true
+summary: >-
+  As authors of code, we're responsible for writing reviewable code. When agents
+  write the code, you still need to show your work, even if that work looks
+  different now.
 slug: show-your-work
 ---
-
 I still remember a code review I received early in my career. I had just started a new job and my new coworker taught me something in a code review I haven't forgotten. I think the lesson applies more than ever now that agents are writing more (most?) of our code.
 
 Having freshly joined, I made an commit to address excess white space and improper indentation that were bugging me (painstakingly, by hand, it was the 2000s) and along the way I made a few refactors that seemed obvious to me. I committed this all with the message "White space fixes" and submitted for review.

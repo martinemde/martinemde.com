@@ -2,6 +2,7 @@
   import type { PageProps } from './$types';
   import ShareButtons from '#lib/components/ShareButtons.svelte';
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
+  import PostBody from '#lib/components/PostBody.svelte';
   import { postDisplayTitle } from '#lib/utils/post-model.ts';
   import { formatPostDateShort, formatPostDay, postDateTime } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
@@ -54,7 +55,7 @@
   {/if}
 
   <div class="e-content prose prose-lg max-w-none">
-    <data.content />
+    <PostBody metadata={data.metadata} content={data.content} />
   </div>
 
   <footer class="post-footer">

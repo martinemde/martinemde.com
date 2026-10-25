@@ -1,12 +1,12 @@
 ---
-title: 'Hire Junior Engineers Now'
-date: 2025-10-28
+name: Hire Junior Engineers Now
+published: '2025-10-28'
 author: Martin Emde
-description: 'AI coding tools are creating a larger gap between the most junior and senior engineers: we need early career programmers to fill the gap'
-published: true
+summary: >-
+  AI coding tools are creating a larger gap between the most junior and senior
+  engineers: we need early career programmers to fill the gap
 slug: hire-junior-engineers-now
 ---
-
 Vibe coding is allowing a new category of junior programmers to emerge from unlikely places.
 
 When a vibe coder joins an engineering channel and asks a simple question: "How do I get a domain name so I can share this with my team?" it's all too easy to assume a level of engineering know-how that isn't yet developed.

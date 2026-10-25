@@ -186,10 +186,9 @@ reads it back for edits and `?q=source`, so there is no separate `micropub:` blo
 and nothing to keep synchronized. Where Micropub and the Markdown web
 (https://github.com/scripting/markdownWeb) name the same thing, the Micropub name
 wins. What the site adds to the `.md` views uses the Markdown web's `source` and,
-for navigation, IANA link relation names (`prev`, `next`, `up`, `start`) rather
-than its `urlPrev`/`urlNext`. `post-model.ts`
-still reads the older `title`/`date`/`description` wrapper keys and `micropub:`
-blocks, in case an older publisher writes one.
+for navigation, IANA-style link relation names (`prev`, `next`, `up`, `home`) rather
+than its `urlPrev`/`urlNext`. Only this format is read; there is no fallback for
+the older `title`/`date`/`description` keys or `micropub:` blocks.
 
 The Markdown body is the written content, exactly. `photo` and `bookmark-of` stay
 properties: `PostBody.svelte` renders photos (`u-photo`) above the body and the
@@ -420,14 +419,14 @@ The site provides special endpoints for LLM consumption:
 - **`/YYYY/MM/DD/[slug].txt`**: Individual posts as plain text markdown
 - **`/YYYY/MM/DD/[slug].md`**: The stored file as a Markdown web document: its front matter byte for byte
   plus `source` (the feed) and navigation keyed by IANA link relation, as HTML `link rel` names it: `prev`/`next`
-  (older/newer in stream order), `up` (its day) and `start` (`/index.md`); the body
+  (older/newer in stream order), `up` (its day) and `home` (`/index.md`); the body
   with photos and bookmark written in as Markdown; then a footer (breadcrumb, site nav). `.txt` stays byte-for-byte source. HTML post pages end with the same newer/older and day/site links
   (`getAdjacentPosts()`)
 - **`/llms.txt`**: Index of all posts with links to `.txt` versions
 - **`/index.md`, `/stream.md`, `/blog.md`, `/YYYY.md`, `/YYYY/MM.md`, `/YYYY/MM/DD.md`**: The index pages as plain
   Markdown (`src/lib/server/markdown-pages.ts`), served as `text/plain` like the post `.md` endpoints. Headings
   carry the hierarchy (page, month, day, entry; untitled entries are headed by their time), every internal
-  link points at another `.md` view, and the publisher's simple `<a>`/`<img>` HTML is rewritten as Markdown
+  link points at another `.md` view
 - **ShareButtons**: Include "LLM" button to copy `.txt` URL
 
 ### 2. RSS Feed (`/rss.xml`)

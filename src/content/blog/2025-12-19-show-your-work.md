@@ -33,5 +33,5 @@ Reviewing the plan, and including it with your code for review, also give the re
 Prove that you did what you set out to do, show it clearly in your code, tests, and commits. Separate refactors from features and cleanup. If something you find out you need to do after can be done before, reorder the commits. Break code into smaller chunks to make them easier to review, build them in layers of abstraction and keep changes focused.
 
 [senior]: https://obie.medium.com/what-happens-when-the-coding-becomes-the-least-interesting-part-of-the-work-ab10c213c660 'Teams rarely standardize or document senior thinking'
-[review]: /blog/its-just-their-tokens 'Reviewing AI agent produced code should change how we code review'
+[review]: /2025/12/18/its-just-their-tokens 'Reviewing AI agent produced code should change how we code review'
 [prove]: https://simonwillison.net/2025/Dec/18/code-proven-to-work/

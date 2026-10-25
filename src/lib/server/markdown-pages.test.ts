@@ -9,7 +9,6 @@ import {
   homeMarkdown,
   markdownLinks,
   monthMarkdown,
-  simpleHtmlToMarkdown,
   streamMarkdown,
   yearMarkdown
 } from './markdown-pages.ts';
@@ -91,43 +90,15 @@ describe('demoteHeadings', () => {
   });
 });
 
-describe('simpleHtmlToMarkdown', () => {
-  it('rewrites the publisher bookmark link and photo as Markdown', () => {
-    expect(
-      simpleHtmlToMarkdown(
-        '<a class="u-bookmark-of" href="https://example.org/a?b=1&amp;c=2">A &amp; B</a> — note\n' +
-          '<img src="https://example.com/p.png" alt="A &quot;quoted&quot; [thing]" />'
-      )
-    ).toBe(
-      '[A & B](https://example.org/a?b=1&c=2) — note\n' +
-        '![A "quoted" \\[thing\\]](https://example.com/p.png)'
-    );
-  });
-
-  it('uses an autolink when the link text is the URL', () => {
-    expect(simpleHtmlToMarkdown('<a href="https://example.org">https://example.org</a>')).toBe(
-      '<https://example.org>'
-    );
-  });
-
-  it('leaves other HTML and code untouched', () => {
-    const source =
-      '<figure><a href="/x"><img src="/x.png"></a></figure>\n```\n<a href="y">y</a>\n```';
-    expect(simpleHtmlToMarkdown(source)).toBe(
-      '<figure><a href="/x">![](/x.png)</a></figure>\n```\n<a href="y">y</a>\n```'
-    );
-  });
-});
-
 describe('markdownLinks', () => {
   it('points links to published entries at their .md views', async () => {
     const [post] = await getAllPosts();
     expect(
       markdownLinks(
-        `[a](${post.permalink}) [b](https://martinemde.com${post.permalink}/) <https://example.com${post.permalink}> [c](/blog/${post.slug})`
+        `[a](${post.permalink}) [b](https://martinemde.com${post.permalink}/) <https://example.com${post.permalink}>`
       )
     ).toBe(
-      `[a](https://example.com${post.permalink}.md) [b](https://example.com${post.permalink}.md) <https://example.com${post.permalink}.md> [c](https://example.com${post.permalink}.md)`
+      `[a](https://example.com${post.permalink}.md) [b](https://example.com${post.permalink}.md) <https://example.com${post.permalink}.md>`
     );
   });
 

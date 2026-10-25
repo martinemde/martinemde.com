@@ -126,13 +126,3 @@ test('a unique canonical slug takes priority over a longer suffix match', () => 
   expect(publishPost('my-post', options()).slug).toBe('my-post');
   expect(readFileSync(join(directory, '2026-06-01-long-my-post.md'), 'utf8')).toBe(other);
 });
-
-test('Micropub entries stay unchanged for the authoritative publisher', () => {
-  const original = draft(
-    undefined,
-    'micropub:\n  type: [h-entry]\n  properties:\n    published: [2026-06-01T12:00:00-07:00]\n    post-status: [draft]\n    visibility: [private]\n'
-  );
-  expect(() => publishPost('my-post', options())).toThrow('Use the Micropub publisher');
-  expect(readFileSync(join(directory, '2026-06-01-my-post.md'), 'utf8')).toBe(original);
-  expect(readdirSync(directory)).toEqual(['2026-06-01-my-post.md']);
-});

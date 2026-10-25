@@ -84,38 +84,6 @@ function httpUrl(value: unknown): string | undefined {
   }
 }
 
-/** Keys posts used before their front matter took Micropub names. */
-const legacyNames: Record<string, string> = {
-  title: 'name',
-  date: 'published',
-  description: 'summary',
-  image: 'featured',
-  categories: 'category',
-  tags: 'category'
-};
-
-/**
- * A post's Micropub properties. Front matter keys are Micropub property names
- * (name, published, summary, featured, category, photo, bookmark-of, …). Older
- * files used title/date/description/image/categories with a boolean `published`
- * draft flag, sometimes with the properties in a `micropub:` block.
- */
-function entryProperties(meta: Record<string, unknown>): Record<string, unknown> {
-  const block = record(record(meta.micropub).properties);
-  const legacy =
-    !!meta.micropub || typeof meta.published === 'boolean' || 'title' in meta || 'date' in meta;
-  if (!legacy) return meta;
-  const wrapper: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(meta)) {
-    // An absent Micropub name means untitled, even if the wrapper says "Untitled Post".
-    if (key === 'micropub' || key === 'published' || (meta.micropub && key === 'title')) continue;
-    wrapper[legacyNames[key] ?? key] ??= value;
-  }
-  if (meta.published === false) wrapper['post-status'] = 'draft';
-  const filled = Object.entries(block).filter(([, value]) => values(value).length);
-  return { ...wrapper, ...Object.fromEntries(filled) };
-}
-
 /** Whether a body already links (or shows) a URL, in Markdown or HTML. */
 function referencesUrl(body: string, url: string, attribute: 'href' | 'src'): boolean {
   const escaped = url.replace(/&/g, '&amp;');
@@ -133,8 +101,8 @@ export function normalizePostMetadata(
   path: string,
   source: string
 ): PostMetadata {
-  const meta = record(metadata);
-  const props = entryProperties(meta);
+  // Front matter keys are Micropub property names (name, published, summary, …).
+  const props = record(metadata);
   const title = text(props.name) ?? '';
   const publicationValue = props.published;
   const publishedAt = date(publicationValue);
@@ -150,19 +118,13 @@ export function normalizePostMetadata(
   const day =
     filename.match(/^(\d{4})-(\d{2})-(\d{2})-/)?.slice(1) ?? siteDay(publishedAt ?? new Date(0));
   const body = markdownBody(source);
-  const originalContent = values(props.content)[0];
-  const originalText =
-    typeof originalContent === 'string'
-      ? originalContent
-      : (text(record(originalContent).html) ?? text(record(originalContent).text));
   const content = plainText(body);
-  const discoveryContent = plainText(originalText ?? body);
   const normalizedName = plainText(title);
   const type: PostType = bookmarkOf
     ? 'bookmark'
     : photo.length
       ? 'photo'
-      : normalizedName && discoveryContent && !discoveryContent.startsWith(normalizedName)
+      : normalizedName && content && !content.startsWith(normalizedName)
         ? 'article'
         : 'note';
   const tags = [

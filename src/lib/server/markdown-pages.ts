@@ -9,7 +9,6 @@ import {
   getDayEntries,
   getMonthEntries,
   getPost,
-  getPostBySlug,
   getPublishedPermalinks,
   getRawPost,
   getRecentPosts,
@@ -70,40 +69,6 @@ export function demoteHeadings(markdown: string, by: number): string {
   );
 }
 
-function decodeEntities(text: string): string {
-  return text
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
-}
-
-function attribute(tag: string, name: string): string | undefined {
-  const value = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(tag);
-  return value ? decodeEntities(value[1] ?? value[2]) : undefined;
-}
-
-/**
- * The publisher writes simple links and photos as HTML. Rewrite those two
- * shapes as Markdown so the text view stays plain; anything else is left as is.
- */
-export function simpleHtmlToMarkdown(markdown: string): string {
-  return eachProseLine(markdown, (line) =>
-    line
-      .replace(/<a\b([^>]*)>([^<]*)<\/a>/gi, (tag, attrs: string, text: string) => {
-        const href = attribute(attrs, 'href');
-        if (!href) return tag;
-        const label = decodeEntities(text).trim();
-        return label === href || !label ? `<${href}>` : `[${escapeText(label)}](${href})`;
-      })
-      .replace(/<img\b[^>]*>/gi, (tag) => {
-        const src = attribute(tag, 'src');
-        return src ? `![${escapeText(attribute(tag, 'alt') ?? '')}](${src})` : tag;
-      })
-  );
-}
-
 /** A site path for an internal link, whether written relative or with the site's origin. */
 function sitePath(href: string): string | undefined {
   for (const origin of new Set([PUBLIC_APP_URL, 'https://martinemde.com'])) {
@@ -113,17 +78,15 @@ function sitePath(href: string): string | undefined {
 }
 
 /**
- * Point links to other entries (by permalink or legacy /blog/slug) at their .md
- * views, so a Markdown reader following them stays on the Markdown web.
+ * Point links to other entries at their .md views, so a Markdown reader
+ * following them stays on the Markdown web.
  */
 export function markdownLinks(markdown: string): string {
   const permalinks = new Set(getPublishedPermalinks());
   return eachProseLine(markdown, (line) =>
     line.replace(/(\]\(|<)([^()<>\s]+)(?=[)>\s])/g, (match, open: string, href: string) => {
       const path = sitePath(href)?.replace(/\/$/, '');
-      const legacy = path?.match(/^\/blog\/([\w-]+)$/)?.[1];
-      const target = legacy ? getPostBySlug(legacy)?.permalink : path;
-      return target && permalinks.has(target) ? `${open}${mdUrl(target)}` : match;
+      return path && permalinks.has(path) ? `${open}${mdUrl(path)}` : match;
     })
   );
 }
@@ -133,7 +96,7 @@ export function markdownLinks(markdown: string): string {
  * around it, Markdown links and images rather than HTML.
  */
 const bodyMarkdown = (post: PostMetadata, source: string) =>
-  markdownLinks(publishedMarkdown(post, simpleHtmlToMarkdown(markdownBody(source))));
+  markdownLinks(publishedMarkdown(post, markdownBody(source)));
 
 function pageMarkdown(blocks: (string | false | undefined)[]): Response {
   const body = `${blocks.filter(Boolean).join('\n\n').trim()}\n`;
@@ -305,7 +268,7 @@ export async function dayMarkdown(year: string, month: string, day: string): Pro
  * The stored front matter, then what only the site knows: the feed it belongs
  * to (the Markdown web's `source`) and its neighbors, keyed by IANA link
  * relation as HTML's link rel names them: prev (older), next (newer), up (its
- * day) and start (the home page).
+ * day) and home (the home page).
  */
 function frontMatter(permalink: string, source: string, newer?: Post, older?: Post): string {
   const stored = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source)?.[1];
@@ -314,7 +277,7 @@ function frontMatter(permalink: string, source: string, newer?: Post, older?: Po
     ...(older && { prev: mdUrl(older.permalink) }),
     ...(newer && { next: mdUrl(newer.permalink) }),
     up: mdUrl(permalink.slice(0, permalink.lastIndexOf('/'))),
-    start: mdUrl('/')
+    home: mdUrl('/')
   });
   return ['---', stored, site.trimEnd(), '---'].filter(Boolean).join('\n');
 }

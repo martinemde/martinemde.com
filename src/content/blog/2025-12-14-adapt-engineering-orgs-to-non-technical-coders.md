@@ -11,7 +11,7 @@ Vibe coding is allowing a new category of junior programmers to emerge from unli
 Here's the `TODO` items that I think will help address the shift that I see happening.
 
 As I addressed in my previous article,
-[in the era of Opus vibe coding, junior engineers aren't useless](/blog/hire-junior-engineers-now).
+[in the era of Opus vibe coding, junior engineers aren't useless](/2025/10/28/hire-junior-engineers-now).
 We need them to fill in the gap between domain experts and senior engineers so that we can realize
 the efficiency gains that we want to see from coding agents.
 

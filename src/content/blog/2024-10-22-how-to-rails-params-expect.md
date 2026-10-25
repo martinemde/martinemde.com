@@ -7,7 +7,7 @@ slug: how-to-rails-params-expect
 ---
 In this post I will describe [the new `params.expect` feature](https://github.com/rails/rails/pull/51674) that I recently added to Rails 8 and go over how it works and how to use it.
 
-Update: For an implementation guide, see [my second post on `params.expect`](/blog/how-to-convert-to-rails-params-expect).
+Update: For an implementation guide, see [my second post on `params.expect`](/2024/12/21/how-to-convert-to-rails-params-expect).
 
 ## params: An Attack Vector
 

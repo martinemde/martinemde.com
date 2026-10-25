@@ -4,4 +4,4 @@ author: Martin Emde
 slug: note
 ---
 
-Small thoughts deserve their own address. See [my longer explanation](/blog/article).
+Small thoughts deserve their own address. See [my longer explanation](/2026/09/20/article).

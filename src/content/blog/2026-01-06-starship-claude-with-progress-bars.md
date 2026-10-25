@@ -26,4 +26,4 @@ I've been using this to render my statusline for a few months and [recently][pro
 [starship]: <https://starship.rs/> "Starship - The cross-shell prompt with easier configuration")
 [claude-code]: <https://claude.ai/products/code> "Claude Code: You're using this already right?"
 [martinemde/starship-claude]: <https://github.com/martinemde/starship-claude> "martinemde/starship-claude on GitHub"
-[progress-bars]: /blog/ghostty-progress-bars "Ghostty Progress Bars blog post"
+[progress-bars]: /2025/12/31/ghostty-progress-bars "Ghostty Progress Bars blog post"

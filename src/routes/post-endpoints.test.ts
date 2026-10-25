@@ -63,7 +63,7 @@ describe('dated .md endpoint', () => {
       prev: `https://example.com${oldest.permalink}.md`,
       next: `https://example.com${newest.permalink}.md`,
       up: `https://example.com${dayPath(post)}.md`,
-      start: 'https://example.com/index.md'
+      home: 'https://example.com/index.md'
     });
     const footer = rest.slice(rest.lastIndexOf('\n\n---\n\n'));
     expect(footer).toMatch(/^\n\n---\n\n\[~\]\(https:\/\/example\.com\/index\.md\)/);

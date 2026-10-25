@@ -70,7 +70,7 @@ describe('post display helpers', () => {
     it('does not count frontmatter words', () => {
       expect(
         calculateReadingTime(`---
-title: ${'metadata '.repeat(500)}
+name: ${'metadata '.repeat(500)}
 ---
 A short body.`)
       ).toBe('1 min read');
@@ -79,8 +79,8 @@ A short body.`)
     it.each(['\n', '\r\n'])('only strips complete frontmatter lines (%j)', (newline) => {
       const source = [
         '---',
-        'title: "A --- separator"',
-        `description: ${'metadata '.repeat(500)}`,
+        'name: "A --- separator"',
+        `summary: ${'metadata '.repeat(500)}`,
         '---',
         'A short body.'
       ].join(newline);
@@ -99,7 +99,7 @@ A short body.`)
     it('preserves empty-body and whitespace behavior', () => {
       expect(
         calculateReadingTime(`---
-title: Empty
+name: Empty
 ---
 `)
       ).toBe('0 min read');

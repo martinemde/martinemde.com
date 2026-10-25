@@ -60,11 +60,9 @@ describe('publisher files through the stream and feed', () => {
   it('renders linked thoughts, attributed quotes, and photos once with alt text', () => {
     const { container } = render(Stream, { entries: published });
     expect(screen.getByText('A quoted passage.')).toBeTruthy();
-    expect(container.querySelector('blockquote')?.getAttribute('cite')).toBe(
-      'https://example.org/reference'
-    );
+    expect(container.querySelector('blockquote')?.textContent).toContain('— Example Author');
     expect(screen.getByRole('link', { name: 'a related thought' }).getAttribute('href')).toBe(
-      '/blog/note'
+      '/2026/09/20/note'
     );
     expect(screen.getAllByAltText('Morning light')).toHaveLength(1);
     expect(screen.getAllByAltText('Evening light')).toHaveLength(1);
@@ -141,12 +139,12 @@ describe('publisher files through the stream and feed', () => {
   it('shows precise publication times and does not present date-only posts as noon', () => {
     const note = published.find((entry) => entry.metadata.slug === 'note')!;
     const dated = normalizePostMetadata(
-      { date: '2025-12-14', published: true, slug: 'dated' },
+      { published: '2025-12-14', slug: 'dated' },
       'dated.md',
       'An older note.'
     );
     const precise = normalizePostMetadata(
-      { date: '2026-07-30T20:48:31-07:00', published: true, slug: 'precise' },
+      { published: '2026-07-30T20:48:31-07:00', slug: 'precise' },
       'precise.md',
       'A new note.'
     );
@@ -246,12 +244,13 @@ describe('publisher files through the stream and feed', () => {
       }
       if (item.querySelector('link')!.textContent!.endsWith('/note')) {
         expect(item.querySelector('title')).toBeNull();
-        expect(html.querySelector('a')?.href).toBe('https://martinemde.com/blog/article');
+        expect(html.querySelector('a')?.href).toBe('https://martinemde.com/2026/09/20/article');
       }
       if (item.querySelector('link')!.textContent!.endsWith('/bookmark')) {
-        expect(html.querySelector('blockquote')?.getAttribute('cite')).toBe(
-          'https://example.org/reference'
-        );
+        expect(html.querySelector('blockquote')?.textContent).toContain('A quoted passage.');
+        expect(
+          html.querySelector('a.u-bookmark-of, a[href="https://example.org/reference"]')
+        ).toBeTruthy();
       }
     }
   });

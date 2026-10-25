@@ -7,7 +7,7 @@ summary: >-
   params.expect
 slug: how-to-convert-to-rails-params-expect
 ---
-After updating RubyGems.org to use [the new `params.expect` feature](/blog/how-to-rails-params-expect)
+After updating RubyGems.org to use [the new `params.expect` feature](/2024/10/22/how-to-rails-params-expect)
 in Rails 8, I thought it might be helpful to go over a few of the challenges I ran into.
 
 ## Why Should I Convert?

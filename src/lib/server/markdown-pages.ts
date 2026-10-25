@@ -22,12 +22,7 @@ import {
   publishedMarkdown,
   type PostMetadata
 } from '#lib/utils/post-model.ts';
-import {
-  formatPostDateShort,
-  formatPostDay,
-  formatPostTime,
-  postNavLabel
-} from '#lib/utils/post-format.ts';
+import { formatPostDateShort, formatPostDay, formatPostTime } from '#lib/utils/post-format.ts';
 
 /**
  * Plain Markdown twins of the index pages (/index.md, /stream.md, /blog.md and
@@ -307,16 +302,19 @@ export async function dayMarkdown(year: string, month: string, day: string): Pro
 }
 
 /**
- * The stored front matter, then what only the site knows, in the Markdown web's
- * vocabulary: the feed it belongs to and the older (urlPrev) and newer
- * (urlNext) entries.
+ * The stored front matter, then what only the site knows: the feed it belongs
+ * to (the Markdown web's `source`) and its neighbors, keyed by IANA link
+ * relation as HTML's link rel names them: prev (older), next (newer), up (its
+ * day) and start (the home page).
  */
-function frontMatter(source: string, newer?: Post, older?: Post): string {
+function frontMatter(permalink: string, source: string, newer?: Post, older?: Post): string {
   const stored = /^---\r?\n([\s\S]*?)\r?\n---/.exec(source)?.[1];
   const site = stringify({
     source: { url: url('/rss.xml'), title: 'Martin Emde' },
-    ...(older && { urlPrev: mdUrl(older.permalink) }),
-    ...(newer && { urlNext: mdUrl(newer.permalink) })
+    ...(older && { prev: mdUrl(older.permalink) }),
+    ...(newer && { next: mdUrl(newer.permalink) }),
+    up: mdUrl(permalink.slice(0, permalink.lastIndexOf('/'))),
+    start: mdUrl('/')
   });
   return ['---', stored, site.trimEnd(), '---'].filter(Boolean).join('\n');
 }
@@ -324,8 +322,8 @@ function frontMatter(source: string, newer?: Post, older?: Post): string {
 /**
  * A post as a Markdown web document: the stored file with the site's keys added
  * to its front matter and its photos and bookmark written into the body, then a
- * footer with a breadcrumb up to its day, newer and older entries, and the site
- * nav. Drafts get no newer/older links. The .txt URL serves the stored file.
+ * footer with a breadcrumb up to its day and the site nav. Drafts get no
+ * prev/next. The .txt URL serves the stored file.
  */
 export async function postMarkdown(params: {
   year: string;
@@ -339,20 +337,11 @@ export async function postMarkdown(params: {
   const source = getRawPost(permalink);
   if (!post || !source) throw error(404, `Post not found: ${slug}`);
   const { newer, older } = await getAdjacentPosts(permalink);
-  const footer = [
-    '---',
-    breadcrumb(permalink),
-    [
-      newer && `Newer: ${link(postNavLabel(newer), newer.permalink)}`,
-      older && `Older: ${link(postNavLabel(older), older.permalink)}`
-    ]
-      .filter(Boolean)
-      .join('\n\n'),
-    nav(permalink)
-  ];
+  // Newer and older entries are next and prev in the front matter.
+  const footer = ['---', breadcrumb(permalink), nav(permalink)];
   // The blank line keeps the rule from turning the body's last line into a heading.
   const document = [
-    frontMatter(source, newer, older),
+    frontMatter(permalink, source, newer, older),
     bodyMarkdown(post.metadata, source),
     ...footer
   ];

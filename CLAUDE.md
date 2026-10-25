@@ -185,7 +185,9 @@ The front matter is the Micropub source (see Required Frontmatter): the publishe
 reads it back for edits and `?q=source`, so there is no separate `micropub:` block
 and nothing to keep synchronized. Where Micropub and the Markdown web
 (https://github.com/scripting/markdownWeb) name the same thing, the Micropub name
-wins; Markdown web names are used only for what the site adds. `post-model.ts`
+wins. What the site adds to the `.md` views uses the Markdown web's `source` and,
+for navigation, IANA link relation names (`prev`, `next`, `up`, `start`) rather
+than its `urlPrev`/`urlNext`. `post-model.ts`
 still reads the older `title`/`date`/`description` wrapper keys and `micropub:`
 blocks, in case an older publisher writes one.
 
@@ -417,9 +419,9 @@ The site provides special endpoints for LLM consumption:
 
 - **`/YYYY/MM/DD/[slug].txt`**: Individual posts as plain text markdown
 - **`/YYYY/MM/DD/[slug].md`**: The stored file as a Markdown web document: its front matter byte for byte
-  plus `source` (the feed), `urlPrev` (older) and `urlNext` (newer); the body with photos and bookmark
-  written in as Markdown; then a navigation footer (breadcrumb, newer/older entries in stream order, site
-  nav). `.txt` stays byte-for-byte source. HTML post pages end with the same newer/older and day/site links
+  plus `source` (the feed) and navigation keyed by IANA link relation, as HTML `link rel` names it: `prev`/`next`
+  (older/newer in stream order), `up` (its day) and `start` (`/index.md`); the body
+  with photos and bookmark written in as Markdown; then a footer (breadcrumb, site nav). `.txt` stays byte-for-byte source. HTML post pages end with the same newer/older and day/site links
   (`getAdjacentPosts()`)
 - **`/llms.txt`**: Index of all posts with links to `.txt` versions
 - **`/index.md`, `/stream.md`, `/blog.md`, `/YYYY.md`, `/YYYY/MM.md`, `/YYYY/MM/DD.md`**: The index pages as plain

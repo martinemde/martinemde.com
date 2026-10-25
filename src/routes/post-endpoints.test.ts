@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
 import * as posts from '#lib/utils/posts.ts';
 import { postRouteParams } from '#lib/utils/post-routing.ts';
+import { dayPath } from '#lib/utils/post-model.ts';
 import { GET as txt } from './[year=year]/[month=month]/[day=day]/[slug].txt/+server.ts';
 import { GET as md } from './[year=year]/[month=month]/[day=day]/[slug].md/+server.ts';
 import { GET as legacyHtml } from './blog/[slug]/+server.ts';
@@ -59,13 +60,15 @@ describe('dated .md endpoint', () => {
     expect(parse(frontMatter)).toEqual({
       ...parse(stored),
       source: { url: 'https://example.com/rss.xml', title: 'Martin Emde' },
-      urlPrev: `https://example.com${oldest.permalink}.md`,
-      urlNext: `https://example.com${newest.permalink}.md`
+      prev: `https://example.com${oldest.permalink}.md`,
+      next: `https://example.com${newest.permalink}.md`,
+      up: `https://example.com${dayPath(post)}.md`,
+      start: 'https://example.com/index.md'
     });
     const footer = rest.slice(rest.lastIndexOf('\n\n---\n\n'));
     expect(footer).toMatch(/^\n\n---\n\n\[~\]\(https:\/\/example\.com\/index\.md\)/);
-    expect(footer).toContain(`(https://example.com${newest.permalink}.md)`);
-    expect(footer).toContain(`(https://example.com${oldest.permalink}.md)`);
+    // Newer and older entries live in the front matter, not the footer.
+    expect(footer).not.toMatch(/^(Newer|Older): /m);
     expect(footer).toContain(`[HTML version](https://example.com${post.permalink})`);
   });
 
@@ -89,7 +92,7 @@ describe('dated .md endpoint', () => {
 
   it('gives drafts the breadcrumb and site nav but no newer/older links', async () => {
     const text = await (await md(event(postRouteParams(draft)))).text();
-    expect(parse(text.split('\n---\n')[0].slice(4))).not.toHaveProperty('urlPrev');
+    expect(parse(text.split('\n---\n')[0].slice(4))).not.toHaveProperty('prev');
     expect(text).not.toMatch(/^(Newer|Older): /m);
     expect(text).toContain('[Stream](https://example.com/stream.md)');
   });

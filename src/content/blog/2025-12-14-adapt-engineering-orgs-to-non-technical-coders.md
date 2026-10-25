@@ -1,12 +1,12 @@
 ---
-title: 'Adapting Engineering Orgs for Non-Technical Coders'
-date: 2025-12-14
+name: Adapting Engineering Orgs for Non-Technical Coders
+published: '2025-12-14'
 author: Martin Emde
-description: 'These are the action items for engineering organizations that want to empower the new vibe coding juniors'
-published: true
+summary: >-
+  These are the action items for engineering organizations that want to empower
+  the new vibe coding juniors
 slug: adapt-engineering-orgs-to-non-technical-coders
 ---
-
 Vibe coding is allowing a new category of junior programmers to emerge from unlikely places. Engineering is going to change.
 Here's the `TODO` items that I think will help address the shift that I see happening.
 

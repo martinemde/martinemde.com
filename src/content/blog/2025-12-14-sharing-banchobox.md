@@ -1,13 +1,7 @@
 ---
-date: '2025-12-14T15:36:53-08:00'
-published: true
+published: '2025-12-14T15:36:53-08:00'
+author: Martin Emde
+bookmark-of: 'https://banchobox.com'
 slug: sharing-banchobox
-micropub:
-  type:
-    - h-entry
-  properties:
-    bookmark-of:
-      - "https://banchobox.com"
 ---
-
-<a class="u-bookmark-of" href="https://banchobox.com">BanchoBox</a> — A companion app for Dave the Diver. Lists all the dishes and fishes in the game so you can sort, filter, and min-max every tiny detail.
+[BanchoBox](https://banchobox.com) — A companion app for Dave the Diver. Lists all the dishes and fishes in the game so you can sort, filter, and min-max every tiny detail.

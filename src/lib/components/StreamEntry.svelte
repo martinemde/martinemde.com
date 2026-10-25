@@ -5,6 +5,7 @@
   import { formatPostTime, postDateTime } from '#lib/utils/post-format.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
   import { optimizedImage } from '#lib/utils/images.ts';
+  import PostBody from './PostBody.svelte';
 
   let {
     metadata,
@@ -64,11 +65,13 @@
             loading="lazy"
             decoding="async"
           />{/if}
-        <Content />
+        <PostBody {metadata} content={Content} />
       </div>
     </details>
   {:else}
-    <div class="entry-body e-content prose max-w-none"><Content /></div>
+    <div class="entry-body e-content prose max-w-none">
+      <PostBody {metadata} content={Content} />
+    </div>
   {/if}
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
 </article>

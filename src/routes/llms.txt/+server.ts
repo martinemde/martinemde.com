@@ -3,6 +3,9 @@ import { getAllPosts } from '#lib/utils/posts.ts';
 import { postDisplayTitle } from '#lib/utils/post-model.ts';
 import { PUBLIC_APP_URL } from '$app/env/public';
 
+// Prerendered so the CDN serves a static file instead of running the Worker.
+export const prerender = true;
+
 /**
  * GET /llms.txt
  * Returns a plain text markdown list of all blog posts in most recent first order

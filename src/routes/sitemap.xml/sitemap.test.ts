@@ -192,6 +192,7 @@ describe('Sitemap', () => {
       tags: [],
       type: 'article',
       photo: [],
+      leadPhotos: [],
       excerpt: '',
       slug: 'test',
       permalink: '/2025/01/15/test',

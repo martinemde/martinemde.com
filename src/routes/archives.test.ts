@@ -27,6 +27,7 @@ const posts = [
   tags: [],
   type: 'note',
   photo: [],
+  leadPhotos: [],
   excerpt: '',
   path: 'test.md',
   readingTime: '1 min read',

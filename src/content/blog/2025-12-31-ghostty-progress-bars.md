@@ -1,12 +1,12 @@
 ---
-title: 'Progress Bars in Ghostty Terminals'
-date: 2025-12-31T22:00:09Z
+name: Progress Bars in Ghostty Terminals
+published: '2025-12-31T22:00:09.000Z'
 author: Martin Emde
-description: 'The blue bar at the top of the Ghostty terminal can display more information than I realized.'
-published: true
+summary: >-
+  The blue bar at the top of the Ghostty terminal can display more information
+  than I realized.
 slug: ghostty-progress-bars
 ---
-
 I notice that the blue bar at the top of the Ghostty terminal can do more than just bounce back and forth (like it does in Claude Code). I was tinkering with Ghostty (to add additional shader uniforms for focus change events) and when Zig builds, it updates the Ghostty progress bar as it builds, turning red if it fails.
 
 I [found this "one-liner"](https://github.com/ghostty-org/ghostty/pull/8477#issuecomment-3302958474) (it's a _long_ line) by [@jcollie](https://github.com/jcollie) that outputs the OSC9;4 progress bar sequences:

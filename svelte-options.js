@@ -82,6 +82,23 @@ const postImages = {
 };
 
 /**
+ * mdsvex writes Markdown image alt text and link titles into attributes without
+ * escaping, so a quote in `![a "quoted" word](…)` ends the attribute and breaks
+ * the compile. Publisher photos are Markdown images with the writer's alt text.
+ *
+ * @param {any} node
+ */
+function escapeAttributeQuotes(node) {
+  if (node.type === 'element') {
+    for (const key of ['alt', 'title']) {
+      const value = node.properties?.[key];
+      if (typeof value === 'string') node.properties[key] = value.replaceAll('"', '&quot;');
+    }
+  }
+  node.children?.forEach(escapeAttributeQuotes);
+}
+
+/**
  * mdsvex still emits its frontmatter as `<script context="module">`, which
  * Svelte 5 deprecates (and warns about in runes-mode posts). Rewrite it to the
  * `module` attribute.
@@ -107,6 +124,7 @@ const config = {
     mdsvex({
       extensions: ['.md', '.svx'],
       smartypants: true,
+      rehypePlugins: [() => escapeAttributeQuotes],
       highlight: {
         highlighter: async (code, lang = 'text') => {
           const html = highlighter.codeToHtml(code, {

@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(directory, { recursive: true, force: true }));
 function draft(filename = '2026-06-01-my-post.md', extra = '', body = '\nBody\n') {
-  const content = `---\ntitle: My post\nslug: my-post\ndate: 2026-06-01\npublished: false\n${extra}---\n${body}`;
+  const content = `---\nname: My post\nslug: my-post\npublished: 2026-06-01\npost-status: draft\n${extra}---\n${body}`;
   writeFileSync(join(directory, filename), content);
   return content;
 }
@@ -35,7 +35,11 @@ test('Pacific timestamp and filename agree across UTC midnight and DST', () => {
   expect(formatPublishDate(new Date('2026-03-08T10:00:00Z'))).toBe('2026-03-08T03:00:00-07:00');
   const post = createBlogPost("A title: 'quoted'\nnext line", 'my-post', options());
   expect(post.filename).toBe('2026-07-01-my-post.md');
-  expect(metadata(readFileSync(post.path, 'utf8')).title).toBe("A title: 'quoted'\nnext line");
+  expect(metadata(readFileSync(post.path, 'utf8'))).toMatchObject({
+    name: "A title: 'quoted'\nnext line",
+    published: '2026-07-01T19:03:04-07:00',
+    'post-status': 'draft'
+  });
   expect(() => createBlogPost('Duplicate', 'my-post', options())).toThrow();
 });
 
@@ -51,7 +55,8 @@ test('publishing renames drafts, preserves nested metadata and body, and never r
   expect(readdirSync(directory)).toEqual(['2026-07-01-my-post.md']);
   expect(updated.endsWith(body)).toBe(true);
   expect(metadata(updated).custom).toEqual(metadata(original).custom);
-  expect(metadata(updated)).toMatchObject({ slug: 'my-post', published: true, date: post.date });
+  expect(metadata(updated)).toMatchObject({ slug: 'my-post', published: post.date });
+  expect(metadata(updated)).not.toHaveProperty('post-status');
   expect(() =>
     publishPost('my-post', { directory, now: () => new Date('2026-08-02T00:00:00Z') })
   ).toThrow('Already published');
@@ -60,13 +65,13 @@ test('publishing renames drafts, preserves nested metadata and body, and never r
 
 test('same-day publication works with CRLF, YAML comments, and no final newline', () => {
   const source = draft('2026-07-01-my-post.md', '', 'Body with no newline')
-    .replace('published: false', 'published: false # draft')
+    .replace('slug: my-post', 'slug: my-post # canonical')
     .replaceAll('\n', '\r\n');
   writeFileSync(join(directory, '2026-07-01-my-post.md'), source);
   const post = publishPost('my-post', options());
   const content = readFileSync(post.path, 'utf8');
   expect(content.endsWith('Body with no newline')).toBe(true);
-  expect(content).toContain('published: true # draft\r\n');
+  expect(content).toContain('slug: my-post # canonical\r\n');
 });
 
 test('exact canonical slug beats suffix matches; duplicate canonical slugs require filename', () => {
@@ -107,8 +112,8 @@ test('refuses traversal, empty slugs, collisions, symlinks, and invalid frontmat
   expect(() => publishPost('2026-06-01-my-post.md', options())).toThrow('frontmatter');
 });
 
-test('omitted published defaults to published and does not reset a permalink', () => {
-  const original = draft().replace('published: false\n', '');
+test('omitted post-status means published and does not reset a permalink', () => {
+  const original = draft().replace('post-status: draft\n', '');
   writeFileSync(join(directory, '2026-06-01-my-post.md'), original);
   expect(() => publishPost('my-post', options())).toThrow('not explicitly a draft');
   expect(readFileSync(join(directory, '2026-06-01-my-post.md'), 'utf8')).toBe(original);

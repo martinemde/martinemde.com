@@ -368,7 +368,7 @@
   />
 
   <header class="hero">
-    <div class="eyebrow">// a spending experiment</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> a spending experiment</div>
     <h1>Give Away Elon's Money</h1>
     <p class="lede">
       In June 2026 Elon Musk became the first person on Earth to be worth a trillion dollars. So
@@ -379,7 +379,10 @@
       <a
         href="https://www.forbes.com/sites/tylerroush/2026/06/29/musk-is-a-trillionaire-again-spacex-and-tesla-boost-net-worth-by-50-billion/"
         rel="external noopener"
-        target="_blank">Forbes, June 2026 ↗</a
+        target="_blank"
+        >Forbes, June 2026 <span aria-hidden="true">↗</span><span class="sr-only">
+          (opens in a new tab)</span
+        ></a
       >
     </p>
     <p class="sub">
@@ -491,7 +494,11 @@
             <!-- eslint-disable svelte/no-navigation-without-resolve -->
             <div class="sources">
               {#each item.sources as source (source.url)}
-                <a href={source.url} rel="external noopener" target="_blank">{source.label} ↗</a>
+                <a href={source.url} rel="external noopener" target="_blank"
+                  >{source.label} <span aria-hidden="true">↗</span><span class="sr-only">
+                    (opens in a new tab)</span
+                  ></a
+                >
               {/each}
             </div>
             <!-- eslint-enable svelte/no-navigation-without-resolve -->
@@ -664,7 +671,11 @@
       <!-- eslint-disable svelte/no-navigation-without-resolve -->
       <div class="ask-sources">
         {#each upgrade.sources as source (source.url)}
-          <a href={source.url} rel="external noopener" target="_blank">{source.label} ↗</a>
+          <a href={source.url} rel="external noopener" target="_blank"
+            >{source.label} <span aria-hidden="true">↗</span><span class="sr-only">
+              (opens in a new tab)</span
+            ></a
+          >
         {/each}
       </div>
       <!-- eslint-enable svelte/no-navigation-without-resolve -->

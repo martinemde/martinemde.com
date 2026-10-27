@@ -23,7 +23,8 @@
     cursorColor = $bindable([1.0, 1.0, 1.0, 1.0]),
     prevCursorColor = $bindable([1.0, 1.0, 1.0, 1.0]),
     swapColorsOnClick = false,
-    className = ''
+    className = '',
+    label = 'Simulated Ghostty terminal running the selected shaders. Focus it to see focus effects.'
   }: {
     shaders?: ShaderInfo[];
     imageUrl?: string | null;
@@ -33,6 +34,7 @@
     prevCursorColor?: [number, number, number, number];
     swapColorsOnClick?: boolean;
     className?: string;
+    label?: string;
   } = $props();
 
   // Filter to only enabled shaders for rendering
@@ -526,7 +528,8 @@
 
 <svelte:document onclick={handleGlobalClick} />
 
-<div class="relative inline-block">
+<!-- The canvas is focusable on purpose (focus drives iFocus); the group names it. -->
+<div class="relative inline-block" role="group" aria-label={label}>
   <canvas
     bind:this={canvas}
     {width}

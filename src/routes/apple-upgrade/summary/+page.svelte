@@ -71,7 +71,7 @@
 
 <article>
   <header class="hero">
-    <div class="eyebrow">// the short version</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> the short version</div>
     <h1>Which one should I pick?</h1>
     <p class="lede">
       <a href={resolve('/apple-upgrade')}>The full comparison</a> runs {HORIZON} months of cash flow across
@@ -89,7 +89,7 @@
   </header>
 
   <section class="answer">
-    <div class="eyebrow">// if you read nothing else</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> if you read nothing else</div>
     <h2>Four rules</h2>
     <ol class="rules">
       <li>
@@ -128,7 +128,7 @@
   </section>
 
   <section>
-    <div class="eyebrow">// rule one, priced</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> rule one, priced</div>
     <h2>The buyout is a fixed share of the sticker</h2>
     <p>
       This is the least obvious thing about Apple Upgrade and the thing that decides it. Apple
@@ -195,7 +195,7 @@
   </section>
 
   <section>
-    <div class="eyebrow">// rule two, priced</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> rule two, priced</div>
     <h2>AppleCare, as arithmetic</h2>
     <p>
       Nothing here bundles it. The lease covers the financing, not the phone, and the premiums sit
@@ -243,7 +243,7 @@
   </section>
 
   <section>
-    <div class="eyebrow">// the rest of the catches</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> the rest of the catches</div>
     <h2>What actually surprises people</h2>
     <p>
       Each of these is priced for the worked example, and each one is in the calculator response
@@ -266,7 +266,7 @@
   </section>
 
   <section>
-    <div class="eyebrow">// the worked example</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> the worked example</div>
     <h2>Five paths, one schedule, four years</h2>
     <p>
       Settled at month {HORIZON} with every path holding a paid-off phone of the same age, so the columns
@@ -314,7 +314,7 @@
   </section>
 
   <section id="calculator">
-    <div class="eyebrow">// for agents and scripts</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> for agents and scripts</div>
     <h2>The calculator endpoint</h2>
     <p>
       <code>GET {calculatorUrl}</code> returns this whole summary as JSON. Every parameter is optional.

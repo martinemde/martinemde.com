@@ -533,7 +533,7 @@
 
 <article>
   <header class="hero">
-    <div class="eyebrow">// an interactive cost comparison</div>
+    <div class="eyebrow"><span aria-hidden="true">//</span> an interactive cost comparison</div>
     <h1 bind:this={pageTitle} tabindex="-1">Apple Upgrade Broken Down</h1>
     <p class="lede">
       Pick the device, pick your trade in, and then scroll and make the choices you would make.
@@ -792,7 +792,9 @@
   {#if step >= 4}
     <section class="ledger-section">
       <div class="head">
-        <div class="eyebrow">// forty-eight months, five columns</div>
+        <div class="eyebrow">
+          <span aria-hidden="true">//</span> forty-eight months, five columns
+        </div>
         <h2>Scroll, and watch them fill up</h2>
       </div>
 
@@ -829,7 +831,9 @@
     {#snippet finalCard()}
       <section class="decide" aria-labelledby="closeout-title">
         <div class="decide-head">
-          <span class="eyebrow">// month {HORIZON} · the final closeout</span>
+          <span class="eyebrow"
+            ><span aria-hidden="true">//</span> month {HORIZON} · the final closeout</span
+          >
           <h3 id="closeout-title">Where did you end up?</h3>
           <p>
             A leased phone isn’t yours until you buy it out. Settle any remaining debt here and
@@ -934,7 +938,9 @@
     {#snippet annualDecision(index: number)}
       <section class="decide" aria-labelledby="year-{index + 1}-title">
         <div class="decide-head">
-          <span class="eyebrow">// year {index + 1} · every payment path</span>
+          <span class="eyebrow"
+            ><span aria-hidden="true">//</span> year {index + 1} · every payment path</span
+          >
           <h3 id="year-{index + 1}-title">
             {upgradeFrequency
               ? `Upgrade: Every ${upgradeFrequency === 1 ? 'year' : `${upgradeFrequency} years`}`
@@ -1009,7 +1015,7 @@
     {#if unansweredYear < 0}
       <section class="compare-section">
         <div class="head">
-          <div class="eyebrow">// break it down</div>
+          <div class="eyebrow"><span aria-hidden="true">//</span> break it down</div>
           <h2>The Totals</h2>
         </div>
 
@@ -1103,7 +1109,7 @@
 </dialog>
 
 {#snippet screenPrompt(id: string)}
-  <div class="eyebrow">// month 09</div>
+  <div class="eyebrow"><span aria-hidden="true">//</span> month 09</div>
   <h2 id="{id}-title">Oh no! You cracked your screen!</h2>
   <p id="{id}-description">
     One of the big risks with a leased phone is breaking it. You have to return it in good condition

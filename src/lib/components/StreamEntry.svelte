@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Component } from 'svelte';
   import { resolve } from '$app/paths';
-  import { postDisplayTitle, type PostMetadata } from '#lib/utils/post-model.ts';
-  import { formatPostTime, postDateTime } from '#lib/utils/post-format.ts';
+  import type { PostMetadata } from '#lib/utils/post-model.ts';
+  import { formatPostTime, postDateTime, postNavLabel } from '#lib/utils/post-format.ts';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
   import { optimizedImage } from '#lib/utils/images.ts';
   import PostBody from './PostBody.svelte';
@@ -27,7 +27,7 @@
   class="stream-entry h-entry"
   id={`entry-${metadata.permalink.slice(1).replaceAll('/', '-')}`}
   tabindex="-1"
-  aria-label={postDisplayTitle(metadata)}
+  aria-label={postNavLabel(metadata)}
 >
   {#if metadata.title}
     <svelte:element this={`h${level}`} class="p-name">
@@ -35,7 +35,7 @@
     </svelte:element>
   {/if}
   <p class="meta">
-    <a class="permalink u-url" href={url} aria-label={`Permalink: ${postDisplayTitle(metadata)}`}>
+    <a class="permalink u-url" href={url}>
       <time class="dt-published" datetime={postDateTime(metadata.date, metadata.dateOnly)}>
         {formatPostTime(metadata.date, metadata.dateOnly)}
       </time>
@@ -73,7 +73,8 @@
       <PostBody {metadata} content={Content} />
     </div>
   {/if}
-  <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
+  <!-- For microformats parsers only: a screen reader needn't hear the byline on every entry. -->
+  <a class="p-author h-card" href={resolve('/')} hidden>Martin Emde</a>
 </article>
 
 <style>

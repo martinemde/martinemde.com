@@ -182,7 +182,7 @@ describe('ShareButtons', () => {
     });
 
     const llmButton = screen.getByRole('button', {
-      name: 'Copy a link to the plain text of this post'
+      name: 'LLM: copy a link to the plain text of this post'
     });
     expect(llmButton).toBeTruthy();
   });

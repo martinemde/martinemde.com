@@ -346,7 +346,7 @@
   <div class="mb-2 text-sm sm:text-base">
     Current Mode: <strong class="badge preset-filled-primary-500">{currentMode}</strong>
   </div>
-  <div class="output">
+  <div class="output" aria-live="polite" aria-atomic="true">
     <strong class="text-sm sm:text-base">Toy says:</strong>
     <span class="text-base sm:text-lg">{toyOutput}</span>
   </div>
@@ -440,6 +440,8 @@
           class="btn {isListening ? 'preset-filled-primary-500' : 'preset-tonal-surface'}"
           onclick={isListening ? stopListening : startListening}
           title={isListening ? 'Click to stop listening' : 'Click to speak'}
+          aria-label="Speak"
+          aria-pressed={isListening}
         >
           {isListening ? '🔴' : '🎤'}
         </button>
@@ -450,6 +452,7 @@
         bind:value={userInput}
         onkeypress={handleKeypress}
         placeholder="Say something..."
+        aria-label="Message"
       />
       <button
         class="btn {userInput.trim() ? 'preset-filled-primary-500' : 'preset-tonal-surface'}"

@@ -10,32 +10,34 @@
 </svelte:head>
 
 <section class="head">
-  <div class="eyebrow">// open source &amp; experiments</div>
+  <div class="eyebrow"><span aria-hidden="true">//</span> open source &amp; experiments</div>
   <h1 class="page-title">Projects</h1>
   <p class="page-lede">A selection of open source projects and other things I've built.</p>
 </section>
 
 <section class="list-wrap">
-  <div class="proj-list">
+  <ul class="proj-list">
     <!-- project.url values are pre-resolved in projects.ts; the rule is a false positive here -->
     <!-- eslint-disable svelte/no-navigation-without-resolve -->
     {#each projects as project (project.name)}
       {@const Icon = project.icon}
-      <a
-        class="proj-row"
-        href={project.url}
-        rel={project.url.startsWith('/') ? undefined : 'external'}
-      >
-        <div class="proj-name">
-          <Icon size={17} />
-          <span>{project.name}</span>
-        </div>
-        <div class="proj-desc">{project.description}</div>
-        <div class="proj-link">{linkLabel(project)} ↗</div>
-      </a>
+      <li>
+        <a
+          class="proj-row"
+          href={project.url}
+          rel={project.url.startsWith('/') ? undefined : 'external'}
+        >
+          <h2 class="proj-name">
+            <Icon size={17} />
+            <span>{project.name}</span>
+          </h2>
+          <div class="proj-desc">{project.description}</div>
+          <div class="proj-link">{linkLabel(project)} <span aria-hidden="true">↗</span></div>
+        </a>
+      </li>
     {/each}
     <!-- eslint-enable svelte/no-navigation-without-resolve -->
-  </div>
+  </ul>
 </section>
 
 <style>
@@ -72,6 +74,9 @@
     padding-bottom: 88px;
   }
   .proj-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
     border-top: 1px solid var(--border);
   }
   .proj-row {
@@ -87,6 +92,7 @@
     background: color-mix(in oklch, var(--surface) 55%, transparent);
   }
   .proj-name {
+    margin: 0;
     display: flex;
     align-items: center;
     gap: 11px;

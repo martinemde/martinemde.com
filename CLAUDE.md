@@ -246,9 +246,11 @@ ignored `static/optimized/` plus a manifest in ignored `src/lib/generated/`. Pos
 header images (`optimizedImage()`) and `<img>` tags in post bodies (a preprocessor
 in `svelte-options.js`) use the copies with `srcset`; body images also get
 `loading="lazy"`. Originals stay in feeds and share metadata.
-Explicit photos/featured images take precedence over generated cards. Set
-`PUBLIC_APP_URL=https://martinemde.com` for a production build so canonical URLs,
-RSS URLs, and preview image URLs use the public origin. Verify the built HTML and
+Explicit photos/featured images take precedence over generated cards.
+`.env.production` sets `PUBLIC_APP_URL=https://martinemde.com` for `vite build`, so
+canonical URLs, RSS URLs, and preview image URLs use the public origin (`.env` keeps
+localhost for dev; a build-environment value overrides both). It is a static var,
+inlined at build time; Worker runtime vars do not affect it. Verify the built HTML and
 PNG files; do not claim a live unfurl is updated without verifying deployment.
 On Node 26, Vitest/jsdom can pick up Node's experimental `localStorage` instead
 of the document's storage; run `NODE_OPTIONS=--no-experimental-webstorage bun run test`

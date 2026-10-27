@@ -1,7 +1,7 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkHtml from 'remark-html';
-import { markdownBody, publishedMarkdown, type PostMetadata } from './post-model';
+import { markdownBody, portableMarkdown, publishedMarkdown, type PostMetadata } from './post-model';
 
 export const escapeXml = (value: string): string =>
   value.replace(
@@ -28,13 +28,10 @@ export async function renderFeedItem(
 ): Promise<string> {
   const url = new URL(post.permalink, siteUrl).href;
   const guid = post.date < DATED_GUIDS_SINCE ? new URL(`/blog/${post.slug}`, siteUrl).href : url;
-  const body = publishedMarkdown(
-    post,
-    markdownBody(source)
-      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-      .trim()
-  );
-  const markdown = post.image ? `![](${new URL(post.image, siteUrl).href})\n\n${body}` : body;
+  const body = publishedMarkdown(post, portableMarkdown(markdownBody(source), url));
+  // The header image is the article's illustration, so its title describes it.
+  const alt = post.title.replace(/[\\[\]]/g, '\\$&');
+  const markdown = post.image ? `![${alt}](${new URL(post.image, siteUrl).href})\n\n${body}` : body;
   // These are repository-authored Markdown/HTML files already compiled by MDsveX on
   // the site. Retain their HTML (including publisher photos and attributed quotes).
   const result = await unified()

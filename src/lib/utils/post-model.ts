@@ -64,14 +64,18 @@ export function markdownBody(source: string): string {
 }
 
 function plainText(source: string): string {
-  return source
-    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/[*_`#>]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    source
+      .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+      // An autolink is text, not a tag: <https://rss.chat> reads as its URL.
+      .replace(/<(https?:\/\/[^\s<>]+)>/gi, '$1')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/[*_`#>]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 function httpUrl(value: unknown): string | undefined {
@@ -177,6 +181,96 @@ export function publishedMarkdown(
   );
   const bookmark = post.bookmarkLink && `<${post.bookmarkLink}>`;
   return [...photos, body, bookmark].filter(Boolean).join('\n\n');
+}
+
+/** Apply a transform to each line outside fenced code blocks. */
+export function eachProseLine(markdown: string, transform: (line: string) => string): string {
+  let fence: string | null = null;
+  return markdown
+    .split('\n')
+    .map((line) => {
+      const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+      if (marker && (!fence || marker.startsWith(fence))) {
+        fence = fence ? null : marker;
+        return line;
+      }
+      return fence ? line : transform(line);
+    })
+    .join('\n');
+}
+
+/** Where a line of Svelte markup ends: its closing tag, block, or self-closing tag. */
+function svelteMarkupEnd(lines: string[], start: number): number | undefined {
+  const line = lines[start];
+  const element = /^\s*<(script|style)\b/i.exec(line)?.[1];
+  if (element) {
+    const close = new RegExp(`</${element}>`, 'i');
+    const end = lines.findIndex((text, index) => index >= start && close.test(text));
+    return end < 0 ? lines.length - 1 : end;
+  }
+  if (/^\s*\{#/.test(line)) {
+    let depth = 0;
+    for (let index = start; index < lines.length; index++) {
+      depth += (lines[index].match(/\{#/g) ?? []).length;
+      depth -= (lines[index].match(/\{\//g) ?? []).length;
+      if (depth <= 0) return index;
+    }
+    return lines.length - 1;
+  }
+  const component = /^\s*<([A-Z][\w.]*)/.exec(line)?.[1];
+  if (component) {
+    for (let index = start; index < lines.length; index++) {
+      if (/\/>\s*$/.test(lines[index]) || lines[index].includes(`</${component}>`)) return index;
+    }
+    return lines.length - 1;
+  }
+  return undefined;
+}
+
+/**
+ * A post body that reads well away from the site, in a feed or a Markdown view.
+ * A .svx post's script and style go, and each interactive component (or `{#if}`
+ * block around one) becomes a link to the page that runs it, named by the
+ * section it sits in. Site-relative links and images become absolute.
+ */
+export function portableMarkdown(body: string, pageUrl: string): string {
+  const lines = body.split('\n');
+  const output: string[] = [];
+  let fence: string | null = null;
+  let section = '';
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (marker && (!fence || marker.startsWith(fence))) fence = fence ? null : marker;
+    const end = fence || marker ? undefined : svelteMarkupEnd(lines, index);
+    if (end === undefined) {
+      if (!fence) section = /^ {0,3}#{1,6}\s+(.*?)\s*#*$/.exec(line)?.[1] ?? section;
+      output.push(line);
+      continue;
+    }
+    const markup = lines.slice(index, end + 1).join('\n');
+    if (!/^\s*<(script|style)\b/i.test(markup)) {
+      const label = section ? `Interactive demo: ${markdownText(section)}` : 'Interactive demo';
+      output.push(`[${label}](${pageUrl})`);
+    }
+    index = end;
+    // Drop the blank lines the markup leaves behind when nothing replaced it.
+    while (!output.at(-1)?.trim() && !lines[index + 1]?.trim() && index + 1 < lines.length) index++;
+  }
+  const absolute = (path: string) =>
+    path.startsWith('/') && !path.startsWith('//') ? new URL(path, pageUrl).href : path;
+  return eachProseLine(output.join('\n'), (line) =>
+    line
+      .replace(/(\]\(\s*<?)([^()<>\s]+)/g, (_, open: string, href: string) => open + absolute(href))
+      .replace(
+        /^( {0,3}\[[^\]]+\]:\s*<?)(\S+?)(?=>|\s|$)/,
+        (_, open: string, href: string) => open + absolute(href)
+      )
+      .replace(
+        /\b(href|src)="([^"]*)"/g,
+        (_, attribute: string, href: string) => `${attribute}="${absolute(href)}"`
+      )
+  ).trim();
 }
 
 /** The day page containing a post, e.g. /2026/07/21 */

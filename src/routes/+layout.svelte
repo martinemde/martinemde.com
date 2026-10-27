@@ -18,6 +18,21 @@
   const pageImage = $derived(social?.image);
   const pageUrl = $derived(social?.url ?? new URL(page.url.pathname, PUBLIC_APP_URL).href);
   const contentType = $derived(social ? 'article' : 'website');
+  // Pages with a Markdown twin (see src/lib/server/markdown-pages.ts) advertise it.
+  const markdownRoutes = new Set([
+    '/',
+    '/stream',
+    '/blog',
+    '/[year=year]',
+    '/[year=year]/[month=month]',
+    '/[year=year]/[month=month]/[day=day]',
+    '/[year=year]/[month=month]/[day=day]/[slug]'
+  ]);
+  const markdownUrl = $derived(
+    markdownRoutes.has(page.route.id ?? '')
+      ? `${PUBLIC_APP_URL}${page.url.pathname === '/' ? '/index' : page.url.pathname}.md`
+      : undefined
+  );
 
   // Active-section + status-line path for the redesigned chrome
   const path = $derived(page.url.pathname);
@@ -83,6 +98,9 @@
     type="application/rss+xml"
     title="Martin Emde"
   />
+  {#if markdownUrl}
+    <link rel="alternate" href={markdownUrl} type="text/markdown" title="Markdown" />
+  {/if}
   <link rel="canonical" href={pageUrl} />
   <meta property="og:site_name" content="Martin Emde" />
   <meta property="og:locale" content="en_US" />

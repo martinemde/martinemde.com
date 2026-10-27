@@ -178,7 +178,7 @@ describe('Blog Post Utilities', () => {
   });
 
   describe('stored front matter', () => {
-    const sources = import.meta.glob('../../content/blog/*.md', {
+    const sources = import.meta.glob('../../content/blog/*.{md,svx}', {
       query: '?raw',
       import: 'default',
       eager: true

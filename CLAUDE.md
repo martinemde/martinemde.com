@@ -420,19 +420,22 @@ The site provides special endpoints for LLM consumption:
 - **`/YYYY/MM/DD/[slug].md`**: The stored file as a Markdown web document: its front matter byte for byte
   plus `source` (the feed) and navigation keyed by IANA link relation, as HTML `link rel` names it: `prev`/`next`
   (older/newer in stream order), `up` (its day) and `home` (`/index.md`); the body
-  with photos and bookmark written in as Markdown; then a footer (breadcrumb, site nav). `.txt` stays byte-for-byte source. HTML post pages end with the same newer/older and day/site links
+  with photos and bookmark written in as Markdown, made portable by `portableMarkdown()` (a `.svx` post's
+  script/style dropped, each interactive component replaced by a link to the HTML page, site-relative URLs
+  made absolute; RSS uses the same body); then a footer (breadcrumb, site nav). `.txt` stays byte-for-byte source. HTML post pages end with the same newer/older and day/site links
   (`getAdjacentPosts()`)
-- **`/llms.txt`**: Index of all posts with links to `.txt` versions
+- **`/llms.txt`**: Site summary plus About, Writing (articles), Projects, and Notes and bookmarks sections, linking the `.md` views. Untitled entries are named by their time, never given an invented title
 - **`/index.md`, `/stream.md`, `/blog.md`, `/YYYY.md`, `/YYYY/MM.md`, `/YYYY/MM/DD.md`**: The index pages as plain
   Markdown (`src/lib/server/markdown-pages.ts`), served as `text/plain` like the post `.md` endpoints. Headings
   carry the hierarchy (page, month, day, entry; untitled entries are headed by their time), every internal
   link points at another `.md` view
+- **Alternates**: HTML pages with a `.md` twin advertise it with `<link rel="alternate" type="text/markdown">` (root layout)
 - **ShareButtons**: Include "LLM" button to copy `.txt` URL
 
 ### 2. RSS Feed (`/rss.xml`)
 
 - Last 20 posts included
-- Full HTML content in `<content:encoded>` using CDATA
+- Full HTML content in both `<description>` and `<content:encoded>`: feed readers, not agents, are the audience, and some read only `<description>`
 - Rendered via `marked` library because `MDsveX` can add JavaScript to output
 - Proper XML escaping
 - Cache control: 1 hour (`max-age=3600`)

@@ -17,7 +17,9 @@ import {
 } from '#lib/utils/posts.ts';
 import {
   dayPath,
+  eachProseLine,
   markdownBody,
+  portableMarkdown,
   publishedMarkdown,
   type PostMetadata
 } from '#lib/utils/post-model.ts';
@@ -41,22 +43,6 @@ const link = (text: string, path: string) => `[${escapeText(text)}](${mdUrl(path
 /** Keep titles from turning into accidental Markdown structure inside link text. */
 function escapeText(text: string): string {
   return text.replace(/[\\[\]]/g, '\\$&').replace(/\s+/g, ' ');
-}
-
-/** Apply a transform to each line outside fenced code blocks. */
-function eachProseLine(markdown: string, transform: (line: string) => string): string {
-  let fence: string | null = null;
-  return markdown
-    .split('\n')
-    .map((line) => {
-      const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-      if (marker && (!fence || marker.startsWith(fence))) {
-        fence = fence ? null : marker;
-        return line;
-      }
-      return fence ? line : transform(line);
-    })
-    .join('\n');
 }
 
 /** Push an embedded body's headings below the entry heading. */
@@ -84,19 +70,26 @@ function sitePath(href: string): string | undefined {
 export function markdownLinks(markdown: string): string {
   const permalinks = new Set(getPublishedPermalinks());
   return eachProseLine(markdown, (line) =>
-    line.replace(/(\]\(|<)([^()<>\s]+)(?=[)>\s])/g, (match, open: string, href: string) => {
-      const path = sitePath(href)?.replace(/\/$/, '');
-      return path && permalinks.has(path) ? `${open}${mdUrl(path)}` : match;
-    })
+    line.replace(
+      /(\]\(|<|^ {0,3}\[[^\]]+\]:\s*)([^()<>\s]+)(?=[)>\s]|$)/g,
+      (match, open: string, href: string) => {
+        const path = sitePath(href)?.replace(/\/$/, '');
+        return path && permalinks.has(path) ? `${open}${mdUrl(path)}` : match;
+      }
+    )
   );
 }
 
 /**
  * A post body as the Markdown web expects it: its photos and bookmark written
- * around it, Markdown links and images rather than HTML.
+ * around it, entry links pointing at .md views, and portable (no Svelte,
+ * absolute URLs). Links to interactive demos stay on the HTML page that runs them.
  */
 const bodyMarkdown = (post: PostMetadata, source: string) =>
-  markdownLinks(publishedMarkdown(post, markdownBody(source)));
+  publishedMarkdown(
+    post,
+    portableMarkdown(markdownLinks(markdownBody(source)), url(post.permalink))
+  );
 
 function pageMarkdown(blocks: (string | false | undefined)[]): Response {
   const body = `${blocks.filter(Boolean).join('\n\n').trim()}\n`;

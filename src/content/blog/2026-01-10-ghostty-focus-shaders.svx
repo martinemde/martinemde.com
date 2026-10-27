@@ -1,11 +1,10 @@
 ---
-title: 'Ghostty Focus and Blur Shaders'
-date: 2026-01-10T15:38:00-08:00
-author: martinemde
-description: 'How to create dynamic focus and unfocus state shaders in Ghostty with the new iFocus and iTimeFocus uniforms available in Ghostty prerelease.'
-published: true
+name: 'Ghostty Focus and Blur Shaders'
+published: '2026-01-10T15:38:00-08:00'
+author: Martin Emde
+summary: 'How to create dynamic focus and unfocus state shaders in Ghostty with the new iFocus and iTimeFocus uniforms available in Ghostty prerelease.'
+featured: /images/blog/ghostty-focus-shaders.png
 slug: ghostty-focus-shaders
-image: /images/blog/ghostty-focus-shaders.png
 ---
 
 <script lang="ts">

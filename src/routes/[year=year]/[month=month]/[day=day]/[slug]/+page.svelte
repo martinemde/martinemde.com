@@ -4,7 +4,12 @@
   import PostBreadcrumbs from '#lib/components/PostBreadcrumbs.svelte';
   import PostBody from '#lib/components/PostBody.svelte';
   import { postDisplayTitle } from '#lib/utils/post-model.ts';
-  import { formatPostDateShort, formatPostDay, postDateTime } from '#lib/utils/post-format.ts';
+  import {
+    formatPostDateShort,
+    formatPostDay,
+    postDateTime,
+    postNavLabel
+  } from '#lib/utils/post-format.ts';
   import { resolve } from '$app/paths';
   import { postRouteParams } from '#lib/utils/post-routing.ts';
   import { optimizedImage } from '#lib/utils/images.ts';
@@ -20,7 +25,11 @@
   <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
   <PostBreadcrumbs post={data.metadata} />
 
-  {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>{/if}
+  {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>
+  {:else}
+    <!-- Untitled entries stay untitled; the heading names them by their time for outlines. -->
+    <h1 class="sr-only">{postNavLabel(data.metadata)}</h1>
+  {/if}
 
   <div class="meta">
     <a

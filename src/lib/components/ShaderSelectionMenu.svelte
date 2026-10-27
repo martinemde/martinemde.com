@@ -44,11 +44,12 @@
 </script>
 
 <button
+  type="button"
   onclick={toggle}
+  aria-expanded={show}
   class="absolute top-2 left-2 rounded bg-surface-200-800 px-2 py-1 text-xs text-surface-950-50 opacity-50 hover:opacity-100"
-  aria-label="Toggle shader selection menu"
 >
-  ☰ shaders
+  <span aria-hidden="true">☰</span> shaders
 </button>
 
 {#if show}

@@ -140,6 +140,7 @@
 <svelte:window onscroll={onScroll} />
 
 <div class="site">
+  <a class="skip-link" href="#content">Skip to content</a>
   <header
     class={['site-header', { 'is-hidden': headerHidden }]}
     bind:this={headerEl}
@@ -152,22 +153,22 @@
       </a>
       <nav class="nav" aria-label="Main navigation">
         <a class={['nav-link', { active: isStream }]} href={resolve('/stream')}
-          ><span class="slash">/</span>stream</a
+          ><span class="slash" aria-hidden="true">/</span>stream</a
         >
         <a class={['nav-link', { active: isBlog }]} href={resolve('/blog')}>
-          <span class="slash">/</span>blog
+          <span class="slash" aria-hidden="true">/</span>blog
         </a>
         <a class={['nav-link', { active: isProjects }]} href={resolve('/projects')}>
-          <span class="slash">/</span>projects
+          <span class="slash" aria-hidden="true">/</span>projects
         </a>
         <a class={['nav-link', { active: isAbout }]} href={resolve('/about')}>
-          <span class="slash">/</span>about
+          <span class="slash" aria-hidden="true">/</span>about
         </a>
         <button
           type="button"
           class="theme-ind"
           data-theme-toggle
-          aria-label="Switch color theme"
+          aria-label="Dark theme"
           aria-pressed="false"
         >
           <span class="theme-blip" aria-hidden="true"></span>
@@ -181,25 +182,25 @@
     </div>
   </header>
 
-  <main class="site-main">
+  <main class="site-main" id="content" tabindex="-1">
     {@render children()}
   </main>
 
   <footer class="site-footer">
     <div class="statusline">
-      <span class="sl-path"><span class="sl-pulse"></span>{pathDisplay}</span>
+      <span class="sl-path" aria-hidden="true"><span class="sl-pulse"></span>{pathDisplay}</span>
       <span class="sl-spacer"></span>
       <span class="sl-dim">© 2025 Martin Emde</span>
       <button
         type="button"
         class="sl-dim sl-theme"
         data-theme-toggle
-        aria-label="Switch color theme"
+        aria-label="Dark theme"
         aria-pressed="false"
         >theme:<span class="theme-when-dark">dark</span><span class="theme-when-light">light</span
         ></button
       >
-      <span class="sl-ver">v2026.7<span class="sl-cursor">_</span></span>
+      <span class="sl-ver">v2026.7<span class="sl-cursor" aria-hidden="true">_</span></span>
     </div>
   </footer>
 </div>
@@ -209,6 +210,28 @@
     display: flex;
     min-height: 100vh;
     flex-direction: column;
+  }
+
+  /* Hidden until a keyboard user tabs to it, then pinned above the header. */
+  .skip-link {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 30;
+    border-radius: 6px;
+    background: var(--surface);
+    padding: 8px 12px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    transform: translateY(-200%);
+  }
+  .skip-link:focus-visible {
+    transform: none;
+    outline: 2px solid var(--accent);
+  }
+  .site-main:focus {
+    outline: none; /* focused only as the skip link's target, never by Tab */
   }
 
   /* Header */

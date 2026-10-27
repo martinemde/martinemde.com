@@ -285,12 +285,18 @@
               <input
                 type="text"
                 bind:value={players[pi].name}
+                aria-label={`Player ${pi + 1} name`}
                 class="player-name-input"
                 style="color: {contrastText(players[pi].color)};"
               />
               <label class="color-picker-label">
-                <input type="color" bind:value={players[pi].color} class="color-picker" />
-                <span class="color-picker-icon">🎨</span>
+                <input
+                  type="color"
+                  bind:value={players[pi].color}
+                  aria-label={`${players[pi].name || `Player ${pi + 1}`} color`}
+                  class="color-picker"
+                />
+                <span class="color-picker-icon" aria-hidden="true">🎨</span>
               </label>
             </th>
           {/each}

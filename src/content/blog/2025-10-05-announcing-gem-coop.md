@@ -7,7 +7,7 @@ summary: >-
   excited to announce a new gem server for the Ruby community
 slug: announcing-gem-coop
 ---
-##### _don't put all your gems in one basket_
+_don't put all your gems in one basket_
 
 The former team from rubygems.org is excited to announce a new gem server for the Ruby community:
 

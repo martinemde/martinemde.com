@@ -15,7 +15,9 @@
 
 <nav class="post-breadcrumbs" aria-label="Breadcrumb">
   <ol>
-    <li><a href={resolve('/')}>~</a></li>
+    <li>
+      <a href={resolve('/')} aria-label="Home">~</a>
+    </li>
     <li>
       {#if depth === 'year'}<span aria-current="page">{routeParams.year}</span>
       {:else}<a href={resolve('/[year=year]', routeParams)}>{routeParams.year}</a>{/if}
@@ -62,7 +64,7 @@
     min-width: 0;
   }
   .post-breadcrumbs li + li::before {
-    content: '/';
+    content: '/' / ''; /* the list already says these are steps; don't read "slash" */
     color: var(--faint);
   }
   .post-breadcrumbs a {

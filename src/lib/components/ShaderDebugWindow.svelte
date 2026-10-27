@@ -25,11 +25,12 @@
 </script>
 
 <button
+  type="button"
   onclick={toggle}
+  aria-expanded={show}
   class="absolute right-2 bottom-2 rounded bg-surface-200-800 px-2 py-1 text-xs text-surface-950-50 opacity-50 hover:opacity-100"
-  aria-label="Toggle debug window"
 >
-  🐛 debug
+  <span aria-hidden="true">🐛</span> debug
 </button>
 
 {#if show}

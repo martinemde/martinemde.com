@@ -193,13 +193,16 @@
   <table class="w-full table-auto">
     <thead>
       <tr class="border-b border-surface-300-700">
-        <th class="min-w-40 px-4 py-3 text-left text-sm font-semibold text-surface-900-100"></th>
+        <th class="min-w-40 px-4 py-3 text-left text-sm font-semibold text-surface-900-100">
+          <span class="sr-only">Loan</span>
+        </th>
         {#each loans as loan, i (i)}
           <th class="min-w-48 px-4 py-3 text-center">
             <div class="flex items-center justify-center gap-2">
               <input
                 type="text"
                 bind:value={loan.name}
+                aria-label={`Loan ${i + 1} name`}
                 class="input w-full rounded-md border border-surface-300-700 bg-surface-50-950 px-2 py-1 text-center text-sm font-semibold text-surface-950-50"
               />
               {#if loans.length > 1}

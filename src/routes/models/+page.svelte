@@ -478,7 +478,7 @@ ${contextBeforeCursor}<cursorPosition>`;
             <button
               onclick={() => removeModel(model.id)}
               class="variant-ghost-error btn btn-sm"
-              aria-label="Remove model"
+              aria-label={`Remove ${model.name}`}
             >
               ×
             </button>

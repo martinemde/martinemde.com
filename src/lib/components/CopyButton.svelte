@@ -52,3 +52,5 @@
     <span>{name}</span>
   {/if}
 </button>
+<!-- Outside the button: a live region inside it would be folded into the button's name. -->
+<span class="sr-only" role="status">{copied ? 'Copied to clipboard' : ''}</span>

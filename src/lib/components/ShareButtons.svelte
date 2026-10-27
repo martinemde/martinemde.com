@@ -10,6 +10,8 @@
 
   let { permalink, title, description }: Props = $props();
 
+  let status = $state('');
+
   const getLlmUrl = () => `${window.location.origin}${permalink}.txt`;
 
   async function shareArticle() {
@@ -27,6 +29,8 @@
     } else {
       // Fallback to copying URL
       await navigator.clipboard.writeText(window.location.href);
+      status = 'Link copied to clipboard';
+      setTimeout(() => (status = ''), 2000);
     }
   }
 </script>
@@ -38,13 +42,14 @@
     copiedName="LLM"
     iconSize={16}
     class="share-btn"
-    ariaLabel="Copy a link to the plain text of this post"
+    ariaLabel="LLM: copy a link to the plain text of this post"
     title="Copy a link to the plain text of this post"
   />
   <button onclick={shareArticle} class="share-btn" aria-label="Share this post">
     <Share2 size={16} />
     <span>Share</span>
   </button>
+  <span class="sr-only" role="status">{status}</span>
 </div>
 
 <style>

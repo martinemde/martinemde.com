@@ -10,13 +10,13 @@
   let { children, checked, ontoggle }: Props = $props();
 </script>
 
-<button
-  onclick={ontoggle}
+<!-- A label, not a button: a checkbox can't be nested in another control. -->
+<label
   class={[
     'btn flex items-center justify-start gap-3',
     { 'preset-outlined-primary-500': checked, 'preset-outlined-surface-200-800': !checked }
   ]}
 >
-  <input class="checkbox" type="checkbox" {checked} onchange={ontoggle} onclick={ontoggle} />
+  <input class="checkbox" type="checkbox" {checked} onchange={ontoggle} />
   {@render children()}
-</button>
+</label>

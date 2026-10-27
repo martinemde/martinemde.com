@@ -4,7 +4,7 @@
 </svelte:head>
 
 <section class="about">
-  <div class="eyebrow">// who</div>
+  <div class="eyebrow"><span aria-hidden="true">//</span> who</div>
   <h1 class="page-title">About</h1>
 
   <div class="body">
@@ -18,10 +18,10 @@
   <div class="find">
     <div class="find-label">find me</div>
     <a href="https://github.com/martinemde" rel="external">
-      <span class="find-net">github</span> @martinemde ↗
+      <span class="find-net">github</span> @martinemde <span aria-hidden="true">↗</span>
     </a>
     <a href="https://bsky.app/profile/martinemde.com" rel="external">
-      <span class="find-net">bluesky</span> @martinemde.com ↗
+      <span class="find-net">bluesky</span> @martinemde.com <span aria-hidden="true">↗</span>
     </a>
   </div>
 </section>

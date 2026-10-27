@@ -21,14 +21,14 @@
 <svelte:head
   >{#if !data.metadata.published}<meta name="robots" content="noindex,nofollow" />{/if}</svelte:head
 >
-<article class="post h-entry">
-  <a class="p-author h-card sr-only" href={resolve('/')}>Martin Emde</a>
+<article class="post h-entry" aria-labelledby="post-title">
+  <a class="p-author h-card" href={resolve('/')} hidden>Martin Emde</a>
   <PostBreadcrumbs post={data.metadata} />
 
-  {#if data.metadata.title}<h1 class="post-title p-name">{data.metadata.title}</h1>
+  {#if data.metadata.title}<h1 class="post-title p-name" id="post-title">{data.metadata.title}</h1>
   {:else}
     <!-- Untitled entries stay untitled; the heading names them by their time for outlines. -->
-    <h1 class="sr-only">{postNavLabel(data.metadata)}</h1>
+    <h1 class="sr-only" id="post-title">{postNavLabel(data.metadata)}</h1>
   {/if}
 
   <div class="meta">
@@ -58,7 +58,7 @@
       sizes={image?.sizes}
       width={image?.width}
       height={image?.height}
-      alt={data.metadata.title}
+      alt=""
       fetchpriority="high"
     />
   {/if}

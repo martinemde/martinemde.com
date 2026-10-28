@@ -1,636 +1,112 @@
-# Instructions for LLMs Working on This Project
+# martinemde.com
 
-This is Martin Emde's personal technical blog and portfolio site built with SvelteKit and deployed to Cloudflare Workers.
+Martin Emde's blog and project site: SvelteKit 3 / Svelte 5 (runes), MDsveX posts,
+deployed to Cloudflare Workers. Scripts are in `package.json`.
 
-## Package Manager
+- Use **Bun** (`bun add`, `bun run …`); commit `bun.lock`, never `package-lock.json`.
+  Cloudflare builds with `bun install --frozen-lockfile`.
+- On Node 26, run tests with `NODE_OPTIONS=--no-experimental-webstorage bun run test` if they
+  fail at `localStorage.clear()`.
 
-**IMPORTANT**: This project uses **Bun** as its package manager, not npm or yarn.
+## Posts
 
-### Installation Commands
-
-- **Install dependencies**: `bun install`
-- **Add a package**: `bun add <package-name>`
-- **Add a dev dependency**: `bun add -d <package-name>`
-- **Remove a package**: `bun remove <package-name>`
-- **Run scripts**: `bun run <script-name>` or just `bun <script-name>`
-
-### Lockfile
-
-- The project uses `bun.lock` for dependency locking
-- **Never** commit `package-lock.json` or `yarn.lock` files
-- Always use `bun install` after adding or removing dependencies to update `bun.lock`
-- The build environment (Cloudflare Workers) uses `bun install --frozen-lockfile`
-
-### If Bun is Not Available Locally
-
-If you need to install packages and bun is not available in your environment:
-
-1. Install bun first: `curl -fsSL https://bun.sh/install | bash`
-2. Use the full path if needed: `~/.bun/bin/bun install`
-3. Ensure `bun.lock` is updated and committed
-
-## Development Commands
-
-- `bun run dev` - Start development server
-- `bun run build` - Build for production
-- `bun run preview` - Preview production build
-- `bun run check` - Type check (svelte-kit sync + svelte-check)
-- `bun run check:watch` - Type check in watch mode
-- `bun run lint` - Lint and format check
-- `bun run format` - Format code with Prettier
-- `bun run test` - Run tests with Vitest
-- `bun run test:watch` - Run tests in watch mode
-- `bun run test:ui` - Run tests with Vitest UI
-
-## Technology Stack
-
-- **Framework**: SvelteKit 3.x with Svelte 5.x (using runes syntax)
-- **Styling**: Tailwind CSS 4.x (via Vite plugin)
-- **UI Framework**: Skeleton 4.x
-- **Content**: MDsveX for markdown blog posts
-- **Syntax Highlighting**: Shiki with dual-themes
-- **Icons**: Lucide Svelte
-- **Testing**: Vitest with @testing-library/svelte and jsdom
-- **Deployment**: Cloudflare Workers with Static Assets
-- **Package Manager**: Bun
-- **TypeScript**: 6.x with strict mode (type checking runs on the TypeScript 7 native compiler via `--tsgo`)
-
-## Project Structure
-
-```
-martinemde.com/
-├── src/
-│   ├── routes/                    # SvelteKit file-based routes
-│   │   ├── +layout.svelte        # Root layout (header, nav, footer)
-│   │   ├── +layout.ts            # Root prerender config
-│   │   ├── +page.svelte          # Homepage (recent posts)
-│   │   ├── about/                # About page
-│   │   ├── blog/                 # Blog routes
-│   │   │   ├── +page.svelte      # Blog listing page
-│   │   │   ├── +page.ts          # Load all posts
-│   │   │   └── [slug]/, [slug].txt/, [slug].md/  # 301s from legacy /blog/slug URLs
-│   │   ├── [year=year]/[month=month]/[day=day]/  # Day page listing that day's entries
-│   │   │   ├── [slug]/           # Post permalink /YYYY/MM/DD/slug
-│   │   │   └── [slug].txt/, [slug].md/  # Raw markdown (.md adds a nav footer)
-│   │   ├── rss.xml/              # RSS feed endpoint
-│   │   │   └── +server.ts        # Generate RSS XML
-│   │   ├── sitemap.xml/          # XML sitemap endpoint
-│   │   │   └── +server.ts        # Generate sitemap XML
-│   │   └── llms.txt/             # LLM-friendly post index
-│   │       └── +server.ts        # Plain text post listing
-│   ├── content/
-│   │   └── blog/                 # Markdown blog posts (*.md)
-│   ├── lib/
-│   │   ├── components/           # Reusable Svelte components
-│   │   │   └── ShareButtons.svelte # Share/copy buttons
-│   │   ├── utils/
-│   │   │   └── posts.ts          # Blog post utilities
-│   │   └── images/               # SVG and image assets
-│   ├── app.html                  # HTML shell (theme setup)
-│   ├── app.css                   # Global styles
-│   └── app.d.ts                  # TypeScript declarations
-├── static/                       # Public assets
-│   ├── favicon.ico
-│   ├── robots.txt
-│   └── headshot.jpeg
-└── Configuration files (see below)
-```
-
-## Theme and Styling
-
-This project uses Skeleton's **Catppuccin** theme. The theme is set in `src/app.html` with `data-theme="catppuccin"`.
-
-### Color Class Patterns
-
-ALWAYS use Skeleton's adaptive color classes.
-
-```svelte
-<!-- ✅ Correct: Adaptive colors -->
-<div class="bg-surface-50-950">        <!-- Light: 50, Dark: 950 -->
-<div class="text-surface-950-50">      <!-- Inverted from bg -->
-<div class="text-surface-600-400">     <!-- Subtle text -->
-<div class="border-surface-200-800">   <!-- Adaptive borders -->
-<a class="anchor">                      <!-- Theme-aware links -->
-
-<!-- ❌ Incorrect: Hardcoded colors -->
-<div class="bg-white dark:bg-gray-950">
-<div class="text-black dark:text-white">
-```
-
-### Syntax Highlighting
-
-Code blocks use **dual-theme syntax highlighting** via Shiki:
-
-- Light theme: `catppuccin-latte`
-- Dark theme: `catppuccin-macchiato`
-- Automatic switching via CSS `light-dark()` function
-- No JavaScript required for theme switching
-- Code blocks in markdown are automatically highlighted via MDsveX
-
-### Typography
-
-- Prose styling: `@tailwindcss/typography` plugin
-
-## Content Management (Blog Posts)
-
-### Blog Post Location
-
-All blog posts are stored in `/src/content/blog/*.md` as markdown files.
-
-### Required Frontmatter
-
-Front matter keys are Micropub property names, at the top level, the same
-whether the publisher or a person wrote the file. The body is the `content`.
+Posts are `src/content/blog/YYYY-MM-DD-slug.md`. `bun run blog:new "Title"` writes a draft;
+`bun run blog:publish slug` publishes it. Front matter keys are Micropub property names at the
+top level, the same whether the publisher or a person wrote the file:
 
 ```yaml
 ---
-name: Post Title
-published: '2025-10-25T14:30:00-07:00'
+name: Post Title # optional; absent = untitled note, named by its Pacific time (HHMMSS)
+published: '2025-10-25T14:30:00-07:00' # keep the written offset; legacy YYYY-MM-DD has no time
 author: Martin Emde
-summary: Short preview description
-featured: /images/blog/header.jpg
-category:
-  - ruby
-slug: post-slug
+slug: post-slug # unique within its day
+summary: Short preview # optional
+featured: /images/blog/header.jpg # optional article illustration
+category: [ruby] # list
 ---
 ```
 
-**Field Descriptions:**
-
-- `name` (optional): Title. Absent means an untitled note, named by its time.
-- `published` (required): ISO 8601 publish time, keeping the offset it was written with. A legacy `YYYY-MM-DD` has no known time; the stream shows only its date.
-- `updated` (optional): Time of the last substantive revision. Set it when editing a published post so `/sitemap.xml` reports an accurate `lastmod`; leave it off and `published` is used.
-- `slug` (required): URL-friendly identifier, unique within its day. The permalink is `/YYYY/MM/DD/slug`, dated by the filename's `YYYY-MM-DD-` prefix (a test checks the prefix matches the Pacific publish date).
-- `post-status` (optional): `draft` hides the entry; absent or `published` shows it. `visibility: private|unlisted` also hides it.
-- `summary` (optional): Preview text shown on listing pages and in RSS
-- `author` (required): `Martin Emde`
-- `featured` (optional): Header image URL displayed at top of post and in social media unfurls. External URLs or local paths (e.g., `/images/blog/post.jpg`)
-- `category` (optional): List of tags
-- `photo`, `bookmark-of` (optional): A photo post's photos (`value` + `alt`) and a bookmark's URL. They are not copied into the body; the site renders them around it
-- `content-type: text/html` (optional): The body was submitted as Micropub `content.html`
-
-A single value is a scalar; `category` and `photo` stay lists. Any other property a
-Micropub client sends is kept as its own key.
-
-### Micropub files and the stream
-
-The publisher writes Markdown files into `src/content/blog/`; it does not call a
-blog API. The repository-root `publishing.json` lists the types the renderer
-supports. The publisher may use that agreed list in its standard authenticated
-`?q=config` response (`post-types`, the Supported Vocabulary extension):
-https://indieweb.org/Micropub-extensions#Query_for_Supported_Vocabulary.
-This file is a local integration contract, not a new discovery protocol.
-
-The front matter is the Micropub source (see Required Frontmatter): the publisher
-reads it back for edits and `?q=source`, so there is no separate `micropub:` block
-and nothing to keep synchronized. Where Micropub and the Markdown web
-(https://github.com/scripting/markdownWeb) name the same thing, the Micropub name
-wins. What the site adds to the `.md` views uses the Markdown web's `source` and,
-for navigation, IANA-style link relation names (`prev`, `next`, `up`, `home`) rather
-than its `urlPrev`/`urlNext`. Only this format is read; there is no fallback for
-the older `title`/`date`/`description` keys or `micropub:` blocks.
-
-The Markdown body is the written content, exactly. `photo` and `bookmark-of` stay
-properties: `PostBody.svelte` renders photos (`u-photo`) above the body and the
-bookmark (`u-bookmark-of`) below it, and `publishedMarkdown()` does the same for
-RSS and the `.md` views. A photo the body already shows, or a bookmark it already
-links, is not repeated (`leadPhotos`, `bookmarkLink`). Repository Markdown/HTML is
-trusted author content, as it already is for MDsveX; do not fetch and insert
-arbitrary remote page HTML.
-
-A bookmark with a quotation is `bookmark-of` plus content containing a blockquote
-with source attribution and optional commentary. It needs no invented quote type.
-Use ordinary links to `/YYYY/MM/DD/<slug>` to cross-link entries. Preserve canonical
-slugs across edits. Untitled publisher posts are named by Pacific publish time
-(`HHMMSS`), like scripting.com. An article illustration uses `featured`;
-`photo` identifies primary photographic content and retains supplied alt text.
-
-`/blog` lists articles. `/stream` includes all published entries, grouped by
-Los Angeles calendar day. `/YYYY` and `/YYYY/MM` archive the same entries for a
-year or month; `/YYYY/MM/DD` lists one day. Only periods with published entries
-are prerendered; empty periods return 404. The homepage leads with the latest 20 stream entries
-of every type, including expandable article previews.
-Projects enter the stream through ordinary bookmark posts that link to the project
-and provide an introduction. Project pages and the directory stay independent;
-there is no project stream type. Backfilled introductions reuse directory copy
-and use the full author timestamp of the commit that first added the local page file (`jj log` on
-`src/routes/NAME/+page.svelte`, following renames). External links use the first
-directory listing (`jj diff -r REV src/lib/data/projects.ts`), not the external
-project launch date. Read the full timestamp with
-`jj log -r REV --no-graph -T 'author.timestamp().format("%Y-%m-%dT%H:%M:%S%:z")'`.
-Keep the timezone offset and time in frontmatter; do not truncate to a calendar date.
-These are historical entries, not new announcements. Legacy date-only posts show
-a calendar date in the stream because their actual publication time is unknown.
-RSS carries the same published entries with full HTML, optional titles, stable
-permalink GUIDs, real publication timestamps, and matching `source:markdown`.
-Drafts stay out of lists and feeds. Draft direct pages retain existing preview
-behavior with `noindex`; do not use a draft URL as an access-control mechanism.
-
-Article expansion uses native details/summary, works without JS, and never closes
-another entry automatically. With focus inside the stream, j/k moves entries,
-l or Enter on an entry expands its article, and h or Escape collapses it and
-returns focus to the entry. No opt-in is required. Arrows, modified keys, editable
-fields, selected text, and native Enter/Space activation keep their behavior. No custom feed role or roving tab order: links and disclosure
-controls keep native keyboard and screen-reader behavior.
-
-`src/lib/fixtures/publisher/` contains files generated by the separate publisher's
-`parseMicropubRequest` + `generateMarkdownFile` serializer. Regenerate examples
-there when changing the contract, then run `bun run test src/lib/components/Stream.test.ts`. These tests exercise the compiled Markdown
-components, stream, feed HTML/XML, and share metadata together. Fixtures are not
-published blog content. Add an integration fixture before advertising a new type.
-
-Permalink unfurls use Open Graph and Twitter metadata. `bun run social:images`
-generates 1200×630 PNG cards into ignored `static/social/`; dev/build run it first.
-`bun run images:optimize` likewise writes WebP copies of `static/images/**` into
-ignored `static/optimized/` plus a manifest in ignored `src/lib/generated/`. Post
-header images (`optimizedImage()`) and `<img>` tags in post bodies (a preprocessor
-in `svelte-options.js`) use the copies with `srcset`; body images also get
-`loading="lazy"`. Originals stay in feeds and share metadata.
-Explicit photos/featured images take precedence over generated cards.
-`.env.production` sets `PUBLIC_APP_URL=https://martinemde.com` for `vite build`, so
-canonical URLs, RSS URLs, and preview image URLs use the public origin (`.env` keeps
-localhost for dev; a build-environment value overrides both). It is a static var,
-inlined at build time; Worker runtime vars do not affect it. Verify the built HTML and
-PNG files; do not claim a live unfurl is updated without verifying deployment.
-On Node 26, Vitest/jsdom can pick up Node's experimental `localStorage` instead
-of the document's storage; run `NODE_OPTIONS=--no-experimental-webstorage bun run test`
-when that causes existing tests to fail at `localStorage.clear()`.
-
-### Blog Post Processing Pipeline
-
-1. MDsveX preprocessor transforms `.md` files to Svelte components at build time
-2. Frontmatter becomes `metadata` export
-3. Content becomes `default` export (renderable Svelte component)
-4. Shiki applies dual-theme syntax highlighting to code blocks
-5. Posts are loaded via Vite glob imports in `src/lib/utils/posts.ts`
-
-### Blog Post Utilities
-
-Loading lives in `src/lib/utils/posts.ts`. Display components use the lightweight
-`post-format.ts` date helpers and `post-model.ts` metadata helpers/types instead.
-The loader caches `readingTime` on `LoadedPostMetadata` from the canonical raw body.
-`posts.ts` eagerly imports every post and its raw Markdown, so it is server-only:
-import it from `+page.server.ts`/`+server.ts`, never from `+page.ts` or components,
-or every post ships in the client bundle. Stream, archive, and permalink routes
-return serializable metadata (with `path`) from `+page.server.ts`, and their
-`+page.ts` attaches compiled components through `post-content.ts`, which loads
-each post as its own lazy chunk.
-
-Located in `src/lib/utils/posts.ts`:
-
-```typescript
-getAllPosts(); // Load all published posts, sorted newest first
-getRecentPosts(limit); // Get N most recent posts
-getPost(permalink); // Load single post with content + metadata
-getDayEntries(dayPath); // Published entries for one /YYYY/MM/DD day page
-getPostBySlug(slug); // Metadata for a legacy /blog/slug URL, null if ambiguous
-getRawPost(permalink); // Get raw markdown (for RSS/text endpoints)
-```
-
-## Routing and Pages
-
-### Prerendering Strategy
-
-- **Most pages are prerendered** to static HTML at build time
-- Root layout sets `prerender = true` in `+layout.ts`
-- Homepage, about page, and blog listing are all static
-- Legacy `/blog/[slug]` routes are `+server.ts` redirects so they return real 301s
-- `+server.ts` endpoints do not inherit `prerender` from the layout: the `.md`/`.txt` views, `rss.xml`,
-  `sitemap.xml` and `llms.txt` set it themselves (dynamic ones re-export their HTML page's `entries`), so
-  they deploy as static files. Root `_headers` keeps `.md`/`.txt` served as `text/plain; charset=utf-8`
-- Some pages use `csr = dev` to avoid JavaScript in production builds
-
-### URL Redirects
-
-Permalinks are `/YYYY/MM/DD/slug`. Legacy `/blog/slug` (and `.txt`/`.md`) URLs
-301 to the permalink when the slug is unique across all days. RSS GUIDs for
-posts published before 2026-09-23 stay `/blog/slug` so readers don't re-show
-them; newer GUIDs are the permalink.
-
-## SvelteKit Configuration
-
-SvelteKit 3 configuration is passed to `sveltekit(...)` in `vite.config.ts`.
-Shared preprocessors and extensions live in `svelte-options.js`, also used by ESLint.
-Use `#lib/*` imports with explicit file extensions, mapped in `package.json`.
-TypeScript extends `$app/tsconfig`. Environment variables are declared in
-`src/env.ts` and read through `$app/env` or `$app/env/public`. Route parameter
-matchers are declared together in `src/params.ts` with `defineParams`.
-
-## Component Patterns (Svelte 5)
-
-### Runes Syntax
-
-This project uses Svelte 5's **runes syntax**:
-
-```svelte
-<script lang="ts">
-  import type { Snippet } from 'svelte';
-
-  interface Props {
-    children: Snippet;
-    title?: string;
-  }
-
-  // Props destructuring (route components use `PageProps`/`LayoutProps` from './$types')
-  let { children, title = 'Default' }: Props = $props();
-
-  // Reactive state
-  let copied = $state(false);
-
-  // Derived state
-  let uppercaseTitle = $derived(title.toUpperCase());
-</script>
-```
-
-### Component Conventions
-
-1. **Always use TypeScript** in components: `<script lang="ts">`
-2. **Use theme-aware classes**: Follow Skeleton color patterns
-3. **Prefer composition**: Use snippets and the `children` prop, rendered with `{@render}`
-4. **Include accessibility**: Add ARIA labels where needed
-5. **Keep components focused**: Single responsibility principle
-6. **Conditional classes**: Use the `class={['base', { active: isActive }]}` form, not `class:` directives
-7. **Effects are a last resort**: Compute with `$derived`. Listen with `<svelte:window>`/`<svelte:document>`
-   handlers rather than `addEventListener` in an effect, and attach DOM observers with `{@attach}`
-   rather than `bind:this` plus an effect. `$effect` is for syncing to the outside world (e.g. localStorage)
-8. **Dynamic components**: Render them directly (`<item.icon />`); `<svelte:component>` is deprecated
-9. **Shared rune state**: Read reactive class fields through the object (`authStore.isLoggedIn`).
-   Destructuring a `$derived` or primitive field copies its current value and stops updating
-10. **Exports from components**: Types and values a `.svelte` file exports go in `<script module>`
-
-`svelte-check --tsgo` resolves `#lib/*.svelte` imports to the ambient `*.svelte` module, so props
-of components imported that way are not type-checked, and a named export (e.g. a type from
-`<script module>`) needs a relative import to be visible.
-
-### Key Components
-
-**ShareButtons.svelte** (`src/lib/components/ShareButtons.svelte`):
-
-- Two buttons: "LLM" (copy `.txt` link) and "Share" (native share API or clipboard)
-- Uses lucide-svelte icons: `Copy`, `CopyCheck`, `Share2`
-- Shows visual feedback with icon change on copy
-- Props: `url` (string)
-
-## Route Loader Patterns
-
-### Page Load Functions
-
-```typescript
-// +page.server.ts (posts.ts is server-only)
-import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
-import { getPost } from '#lib/utils/posts.ts';
-
-export const load: PageServerLoad = async ({ params }) => {
-  const post = await getPost(`/${params.year}/${params.month}/${params.day}/${params.slug}`);
-
-  // error() and redirect() throw on their own; no `throw` needed.
-  if (!post) error(404, 'Post not found');
-
-  return { metadata: post.metadata, path: post.path };
-};
-```
-
-`prerender = true` is inherited from the root `+layout.ts`; only set page options
-that differ from it.
-
-### Server Endpoints
-
-```typescript
-// +server.ts
-import type { RequestHandler } from './$types';
-
-export const GET: RequestHandler = async ({ setHeaders }) => {
-  setHeaders({
-    'Content-Type': 'application/xml',
-    'Cache-Control': 'max-age=3600'
-  });
-
-  const xml = generateRSS();
-
-  return new Response(xml);
-};
-```
-
-## Special Features
-
-### 1. LLM-Friendly Content Access
-
-The site provides special endpoints for LLM consumption:
-
-- **`/YYYY/MM/DD/[slug].txt`**: Individual posts as plain text markdown
-- **`/YYYY/MM/DD/[slug].md`**: The stored file as a Markdown web document: its front matter byte for byte
-  plus `source` (the feed) and navigation keyed by IANA link relation, as HTML `link rel` names it: `prev`/`next`
-  (older/newer in stream order), `up` (its day) and `home` (`/index.md`); the body
-  with photos and bookmark written in as Markdown, made portable by `portableMarkdown()` (a `.svx` post's
-  script/style dropped, each interactive component replaced by a link to the HTML page, site-relative URLs
-  made absolute; RSS uses the same body); then a footer (breadcrumb, site nav). `.txt` stays byte-for-byte source. HTML post pages end with the same newer/older and day/site links
-  (`getAdjacentPosts()`)
-- **`/llms.txt`**: Site summary plus About, Writing (articles), Projects, and Notes and bookmarks sections, linking the `.md` views. Untitled entries are named by their time, never given an invented title
-- **`/index.md`, `/stream.md`, `/blog.md`, `/YYYY.md`, `/YYYY/MM.md`, `/YYYY/MM/DD.md`**: The index pages as plain
-  Markdown (`src/lib/server/markdown-pages.ts`), served as `text/plain` like the post `.md` endpoints. Headings
-  carry the hierarchy (page, month, day, entry; untitled entries are headed by their time), every internal
-  link points at another `.md` view
-- **Alternates**: HTML pages with a `.md` twin advertise it with `<link rel="alternate" type="text/markdown">` (root layout)
-- **ShareButtons**: Include "LLM" button to copy `.txt` URL
-
-### 2. RSS Feed (`/rss.xml`)
-
-- Last 20 posts included
-- Full HTML content in both `<description>` and `<content:encoded>`: feed readers, not agents, are the audience, and some read only `<description>`
-- Rendered via `marked` library because `MDsveX` can add JavaScript to output
-- Proper XML escaping
-- Cache control: 1 hour (`max-age=3600`)
-
-### 3. Legacy URL Redirects
-
-- `/blog/slug` returns a 301 to `/YYYY/MM/DD/slug`
-
-### 4. XML Sitemap (`/sitemap.xml`)
-
-- Sitemap 0.9 document, referenced from `static/robots.txt`
-- Entries are built in `src/lib/utils/sitemap.ts`
-- Static pages are **discovered automatically** from the route tree, so a new
-  page is listed without touching the sitemap. A page that must stay out of the
-  index has to be added to `EXCLUDED_PREFIXES` (currently `/auth`)
-- `lastmod` is only emitted where a real date exists: posts use
-  `updated ?? date` from frontmatter, and `/` and `/blog` use the newest post
-  date. Hand-written pages omit `lastmod` rather than report the build time,
-  which would mark every page as modified on every deploy
-- Cache control: 1 hour (`max-age=0, s-maxage=3600`)
-
-### 5. Apple Upgrade summary and calculator (`/apple-upgrade/*`)
-
-The interactive comparison at `/apple-upgrade` runs on `src/lib/apple-upgrade/model.ts`.
-Three smaller modules sit on top of it so the same arithmetic serves more than one page:
-
-- `presets.ts` — the device list, Apple's published trade-in maximums, the default
-  cost assumptions, and `buildInputs()`, the only place answers become model `Inputs`.
-  The interactive page, the summary page and the endpoint all go through it.
-- `advice.ts` — reduces the 48-month model to an answer: ranked plans, the lease
-  buyout thresholds, the AppleCare break-even, cadence costs, and a list of priced
-  gotchas. Pure and JSON-serializable.
-- `query.ts` / `calculator.ts` — the endpoint's parameter table and response body.
-  `PARAMETERS` is the single source for both the parser and the documentation, so
-  they cannot drift; a query test asserts every documented parameter is read.
-
-`/apple-upgrade/summary` is a prerendered page that prints `advice.ts` output, so its
-prose numbers are computed rather than typed. `/apple-upgrade/calculator` is a
-`+server.ts` returning that structure as JSON; it sets `prerender = false` because the
-query string is the point, and it describes itself when called with no parameters.
-
-Cost facts worth not re-deriving: a lease collects 50% of list over 12 months or 70%
-over 24, so the buyout is always the remaining 50% or 30% — a trade-in credit lowers
-the payments and the buyout equally and never changes that share. Apple accepts no
-trade-in against a replacement lease. AppleCare is billed separately on every path.
-
-## Build and Deployment
-
-### Cloudflare Workers Configuration
-
-- **Adapter**: `@sveltejs/adapter-cloudflare` (for Workers)
-- **Build command**: `bun run build`
-- **Install command**: `bun install --frozen-lockfile`
-- **Output**: `.cloudflare/worker.js` and `.cloudflare/public/`
-- **Config file**: `wrangler.jsonc`
-
-### Build Process
-
-1. SvelteKit syncs generated types
-2. MDsveX preprocesses markdown files
-3. Vite bundles the application
-4. Tailwind processes CSS
-5. Adapter generates Cloudflare Worker and static assets
-6. Static pages are prerendered to HTML
-
-### Environment Requirements
-
-- Node.js 22.17+ (required by SvelteKit 3)
-- Bun for local development
-- TypeScript 6.x (plus `@typescript/native` 7.x, used by `bun run check`)
-
-## Code Quality
-
-### Formatting (Prettier)
-
-- **Plugins**: Svelte parser, Tailwind class sorting
-- **Command**: `bun run format` (write) or `bun run lint` (check)
-
-### Linting (ESLint)
-
-- ESLint (`eslint.config.js`)
-- TypeScript `typescript-eslint`
-- Svelte-specific rules via `eslint-plugin-svelte`
-- Prettier integration (no conflicting rules)
-- `no-undef` disabled (TypeScript handles this)
-- **Command**: `bun run lint`
-
-### Type Checking
-
-- Strict mode enabled
-- Run with: `bun run check` or `bun run check:watch`
-- Uses `svelte-check` for Svelte-specific type checking
-- Module resolution: `bundler`
-
-#### Why two TypeScript packages are installed
-
-`package.json` intentionally depends on **both** TypeScript versions:
-
-- `typescript` (6.x) — required by `typescript-eslint`, which peer-caps at `<6.1.0`, and by editors/`tsserver`
-- `@typescript/native` (`npm:typescript@7`) — the TypeScript 7 native compiler, used by `svelte-check --tsgo`
-
-This is the setup `svelte-check` itself prescribes for TypeScript 7; it refuses to run on TS 7 alone.
-`--tsgo` is roughly twice as fast. It does not type-check `#lib/*.svelte` imports (see Component Conventions); the classic compiler does.
-Do not remove either package, and do not bump `typescript` to 7.x until `typescript-eslint` supports it.
-
-## Important Conventions
-
-### Do's
-
-- ✅ Use Bun for all package management
-- ✅ Use Skeleton's adaptive color classes (`surface-*`, `anchor`)
-- ✅ Use theme-aware patterns
-- ✅ Use Svelte 5 runes syntax (`$props`, `$state`, `$derived`)
-- ✅ Prerender pages when possible (`export const prerender = true`)
-- ✅ Use TypeScript in all new files
-- ✅ Format code with Prettier before committing
-- ✅ Keep components small and focused
-
-### Don'ts
-
-- ❌ Don't use npm or yarn (use Bun)
-- ❌ Don't commit `package-lock.json` or `yarn.lock`
-- ❌ Don't create unnecessary files (prefer editing existing ones)
-
-## Common Tasks
-
-### Adding a New Blog Post
-
-1. Run `bun run blog:new "Title"` (writes `YYYY-MM-DD-slug.md` as a draft), or create the file by hand
-2. Add required frontmatter (published, author, slug; `name` for a titled post)
-3. Write in Markdown, then `bun run blog:publish slug`
-
-### Adding a New Component
-
-1. Create file in `src/lib/components/MyComponent.svelte`
-2. Use TypeScript: `<script lang="ts">`
-3. Use runes syntax for props and state
-4. Use theme-aware Skeleton classes
-5. Export props via `let { prop } = $props()`
-6. Import and use: `import MyComponent from '#lib/components/MyComponent.svelte'`
-
-### Modifying Styles
-
-1. Use Skeleton theme classes when possible
-2. Tailwind utilities are available everywhere
-3. Theme colors: `surface-*`, `primary-*`, `secondary-*`, `tertiary-*`
-4. Run `bun run format` to sort Tailwind classes
-
-### Adding a Route
-
-1. Create folder in `src/routes/`
-2. Add `+page.svelte` for the page component
-3. Add `+page.ts` for data loading (optional)
-4. Add `+server.ts` for API endpoints (optional)
-5. Set `export const prerender = true` if possible
-6. Use `+layout.svelte` for shared layout (optional)
-
-## Troubleshooting
-
-### Build Fails
-
-1. Check TypeScript errors: `bun run check`
-2. Check linting errors: `bun run lint`
-3. Verify all dependencies are installed: `bun install`
-4. Clear build cache: `rm -rf .svelte-kit`
-
-### Styling Issues
-
-1. Verify Skeleton classes are correct (check docs)
-2. Check that theme is set in `src/app.html`
-3. Ensure Tailwind classes are properly sorted
-4. Use browser dev tools to inspect computed styles
-
-### Blog Post Not Showing
-
-1. Check `post-status` isn't `draft` and `visibility` isn't private/unlisted
-2. Verify all required frontmatter fields present
-3. Check `published` is an ISO 8601 time (or a legacy YYYY-MM-DD)
-4. Ensure file is in `src/content/blog/`
-5. Rebuild: `bun run build`
-
-## References
-
-- [Svelte and SvelteKit Docs](https://svelte.dev/llms.txt)
-- [Skeleton UI Docs](https://www.skeleton.dev/llms-svelte.txt)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
-- [MDsveX Docs](https://mdsvex.pngwn.io/)
-- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/index.md)
-
-## Project Metadata
-
-- **Repository**: martinemde.github.io
-- **Owner**: Martin Emde
-- **Primary Language**: TypeScript, Svelte
-- **Deployment**: Cloudflare Workers
-- **License**: (check repository)
+- Permalink is `/YYYY/MM/DD/slug`, dated by the filename prefix; a test checks it matches the
+  Pacific publish date. Preserve slugs across edits. Legacy `/blog/slug` URLs 301 to it.
+- Set `updated` when substantively revising a published post (it drives sitemap `lastmod`).
+- `post-status: draft` or `visibility: private|unlisted` hides an entry from lists and feeds.
+  A draft's direct URL still renders with `noindex`; it is not access control.
+- `photo` (list of `value` + `alt`) and `bookmark-of` stay properties, never copied into the
+  body; the site renders them around it. `content-type: text/html` marks a Micropub
+  `content.html` body. Any other Micropub property is kept as its own key.
+- Only this format is read: no fallback for old `title`/`date`/`description` keys or
+  `micropub:` blocks. A single value is a scalar; `category` and `photo` stay lists.
+- Repository Markdown/HTML is trusted author content. Never fetch and insert remote page HTML.
+- A quotation is a `bookmark-of` post whose body has a blockquote; don't invent a quote type.
+  Projects enter the stream as ordinary bookmark posts; there is no project post type.
+- Backfilled project introductions use the full author timestamp (with offset) of the commit
+  that first added `src/routes/NAME/+page.svelte` (following renames), or for external links
+  the commit that first listed it in `src/lib/data/projects.ts`:
+  `jj log -r REV --no-graph -T 'author.timestamp().format("%Y-%m-%dT%H:%M:%S%:z")'`.
+
+### Publisher contract
+
+A separate Micropub publisher writes these files and reads the front matter back for edits
+and `?q=source`. `publishing.json` lists the post types the renderer supports (advertised as
+`post-types` in `?q=config`). `src/lib/fixtures/publisher/` holds files generated by the
+publisher's serializer: regenerate them when the contract changes, add one before advertising
+a new type, and run `bun run test src/lib/components/Stream.test.ts`. Where Micropub and the
+[Markdown web](https://github.com/scripting/markdownWeb) name the same thing, Micropub wins;
+`.md` views add `source` and IANA link relations (`prev`, `next`, `up`, `home`).
+
+## Code
+
+- `src/lib/utils/posts.ts` eagerly imports every post, so it is **server-only**: use it from
+  `+page.server.ts` / `+server.ts`, never from `+page.ts` or components. Routes return
+  serializable metadata from `+page.server.ts`; `+page.ts` attaches compiled components via
+  `post-content.ts` (one lazy chunk per post). Components use `post-format.ts` / `post-model.ts`.
+- `prerender = true` comes from the root `+layout.ts`, but `+server.ts` endpoints don't inherit
+  it: each static endpoint sets it (dynamic ones re-export their page's `entries`). `_headers`
+  serves `.md`/`.txt` as `text/plain`.
+- Imports use `#lib/*` with explicit file extensions. Env vars are declared in `src/env.ts`
+  and read from `$app/env` / `$app/env/public`; route matchers live in `src/params.ts`.
+  `PUBLIC_APP_URL` is static (inlined at build from `.env.production`); Worker runtime vars
+  don't change it.
+- The sitemap discovers pages from the route tree; keep a page out by adding it to
+  `EXCLUDED_PREFIXES` in `src/lib/utils/sitemap.ts`. Only emit `lastmod` from real dates.
+- RSS is rendered with `marked`, not MDsveX (which can add JS), with full HTML in both
+  `<description>` and `<content:encoded>`. GUIDs for posts before 2026-09-23 stay `/blog/slug`.
+- Generated, git-ignored outputs: `static/social/` (`bun run social:images`) and
+  `static/optimized/` + `src/lib/generated/` (`bun run images:optimize`); dev/build run both.
+  Verify built HTML/PNGs; don't claim a live unfurl changed without checking the deployment.
+
+### Styling
+
+Content pages style with scoped `<style>` blocks and the design tokens in `src/theme.css`
+(`--bg`, `--surface`, `--text`, `--muted`, `--faint`, `--accent`, …), which resolve light/dark
+with `light-dark()`. The standalone tool routes (`loans`, `shaders`, `toy`, …) still use
+Skeleton's adaptive classes (`bg-surface-50-950`); keep those consistent within a route. Never
+hardcode `dark:` color pairs.
+
+### Svelte conventions
+
+- Conditional classes use `class={['base', { active: isActive }]}`, not `class:` directives.
+- Effects are a last resort: compute with `$derived`, listen with `<svelte:window>` /
+  `<svelte:document>`, attach DOM observers with `{@attach}`. `$effect` is for syncing to the
+  outside world (e.g. localStorage).
+- A `.svelte` file's exported types/values go in `<script module>`.
+- Stream keyboard navigation (j/k/h/l) must keep native link, disclosure, and screen-reader
+  behavior: no custom feed role or roving tab order.
+
+### Type checking
+
+`bun run check` uses `svelte-check --tsgo` (TypeScript 7). It resolves `#lib/*.svelte` imports
+to the ambient `*.svelte` module, so their props are **not** type-checked, and a named export
+from `<script module>` needs a relative import. Both `typescript` (6.x, required by
+`typescript-eslint` and editors) and `@typescript/native` (7.x, for `--tsgo`) are intentional;
+don't remove either or bump `typescript` to 7 until `typescript-eslint` supports it.
+
+## Apple Upgrade (`/apple-upgrade/*`)
+
+`src/lib/apple-upgrade/model.ts` is the arithmetic; `presets.ts` (`buildInputs()`) is the only
+place answers become model `Inputs`; `advice.ts` reduces the model to the summary page's
+numbers; `query.ts`'s `PARAMETERS` is the single source for the `/calculator` endpoint's parser
+and docs. Facts not to re-derive: a lease collects 50% of list over 12 months or 70% over 24,
+so the buyout is always the remaining 50% or 30% — trade-in credit lowers payments and buyout
+equally and never changes that share. Apple accepts no trade-in against a replacement lease.
+AppleCare is billed separately on every path.

@@ -1,13 +1,13 @@
 ---
 name: Compressed Task Notation
 published: '2026-11-03T23:05:06.546Z'
-updated: '2026-11-03T23:05:07.387Z'
+updated: '2026-11-04T00:52:11.340Z'
 author: Martin Emde
 summary: Learning the language of clearly expressing a task.
 post-status: published
 slug: compressed-task-notation
 ---
-My article about [agents dropping spaces](https://martinemde.com/2026/10/10/agents-drop-spaces-when-talking-to-each-other) has come up a few times. I found it interesting and tried to dig into how to learn it. It's clearly very efficient, very clear. I aspire to be able to instruct the agent so clearly.
+My article about [agents dropping spaces](https://martinemde.com/2026/10/10/agents-drop-spaces-when-talking-to-each-other) has come up a few times. I decided I wanted to learn how to prompt like this. It's clearly efficient, but not just because it's compressed. It's very clear, to the point. I aspire to be able to instruct the agent so directly.
 
 The agent calls this **compressed task notation**. Sol says, "It saves space by packing instructions together. Some of it is useful; the missing spaces mostly make it harder to read".
 

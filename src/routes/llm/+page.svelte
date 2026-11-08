@@ -3,7 +3,15 @@
   import { resolve } from '$app/paths';
   import { authStore } from '#lib/auth/state.svelte.ts';
   import { initiateOAuthLogin } from '#lib/auth/openrouter.ts';
-  import { Lock, Shield, Clock, DollarSign, ExternalLink, Sparkles, TestTube } from 'lucide-svelte';
+  import {
+    Lock,
+    Shield,
+    Clock,
+    DollarSign,
+    ExternalLink,
+    Sparkles,
+    TestTube
+  } from '@lucide/svelte';
 
   // `isLoggedIn` is read through `authStore` in the markup: destructuring it here
   // would copy its value once and miss the login restored from storage on mount.

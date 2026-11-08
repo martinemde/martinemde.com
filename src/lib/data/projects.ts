@@ -16,14 +16,14 @@ import {
   Smartphone,
   UtensilsCrossed,
   Volleyball,
-  type Icon as IconType
-} from 'lucide-svelte';
+  type LucideIcon
+} from '@lucide/svelte';
 
 export interface Project {
   name: string;
   description: string;
   url: string;
-  icon: typeof IconType;
+  icon: LucideIcon;
   linktext?: string;
 }
 

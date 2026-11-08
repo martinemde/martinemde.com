@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PhoneOff, Smartphone } from 'lucide-svelte';
+  import { PhoneOff, Smartphone } from '@lucide/svelte';
   import { HORIZON, money0, type Scenario } from '#lib/apple-upgrade/model.ts';
   import { careAndRepairPaid } from '#lib/apple-upgrade/presentation.ts';
 

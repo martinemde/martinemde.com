@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Copy, CopyCheck } from 'lucide-svelte';
+  import { Copy, CopyCheck } from '@lucide/svelte';
 
   interface Props {
     getData: () => string | Promise<string>;

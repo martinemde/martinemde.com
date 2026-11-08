@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Share2 } from 'lucide-svelte';
+  import { Share2 } from '@lucide/svelte';
   import CopyButton from './CopyButton.svelte';
 
   interface Props {

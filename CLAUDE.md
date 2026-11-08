@@ -99,7 +99,8 @@ hardcode `dark:` color pairs.
 to the ambient `*.svelte` module, so their props are **not** type-checked, and a named export
 from `<script module>` needs a relative import. Both `typescript` (6.x, required by
 `typescript-eslint` and editors) and `@typescript/native` (7.x, for `--tsgo`) are intentional;
-don't remove either or bump `typescript` to 7 until `typescript-eslint` supports it.
+don't remove either or bump `typescript` to 7 until `typescript-eslint` supports it
+(a `renovate.json` rule holds it below 7).
 
 ## Apple Upgrade (`/apple-upgrade/*`)
 

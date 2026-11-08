@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { resolve } from '$app/paths';
   import { onMount } from 'svelte';
-  import { Sparkles, Home, ArrowLeft } from 'lucide-svelte';
+  import { Sparkles, Home, ArrowLeft } from '@lucide/svelte';
   import { authStore } from '#lib/auth/state.svelte.ts';
 
   // Kit passes the framework error both here and in page.error. A boundary

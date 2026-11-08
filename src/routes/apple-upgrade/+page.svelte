@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { resolve } from '$app/paths';
-  import { PhoneOff, Smartphone } from 'lucide-svelte';
+  import { PhoneOff, Smartphone } from '@lucide/svelte';
   import Step from '#lib/components/upgrade/Step.svelte';
   import Tiles from '#lib/components/upgrade/Tiles.svelte';
   import Field from '#lib/components/upgrade/Field.svelte';

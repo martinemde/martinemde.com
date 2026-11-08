@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronRight } from 'lucide-svelte';
+  import { ChevronRight } from '@lucide/svelte';
   import { resolve } from '$app/paths';
 
   interface Crumb {

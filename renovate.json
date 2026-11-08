@@ -1,17 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":semanticCommits"
-  ],
+  "extends": ["config:recommended", ":semanticCommits"],
   "dependencyDashboard": true,
-  "schedule": [
-    "before 9am"
-  ],
-  "labels": [
-    "deps",
-    "automated"
-  ],
+  "schedule": ["before 9am"],
+  "labels": ["deps", "automated"],
   "prHourlyLimit": 2,
   "prConcurrentLimit": 5,
   "automerge": false,
@@ -23,18 +15,14 @@
     "enabled": true,
     "minimumReleaseAge": null,
     "automerge": false,
-    "addLabels": [
-      "security"
-    ]
+    "addLabels": ["security"]
   },
   "github-actions": {
     "pinDigests": true
   },
   "packageRules": [
     {
-      "matchCategories": [
-        "docker"
-      ],
+      "matchCategories": ["docker"],
       "pinDigests": true
     }
   ]

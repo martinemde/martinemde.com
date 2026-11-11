@@ -294,7 +294,13 @@ export async function postMarkdown(params: {
   if (!post || !source) throw error(404, `Post not found: ${slug}`);
   const { newer, older } = await getAdjacentPosts(permalink);
   // Newer and older entries are next and prev in the front matter.
-  const footer = ['---', breadcrumb(permalink), nav(permalink)];
+  const copies = post.metadata.syndication.map(({ url, name }) => `[${name}](${url})`);
+  const footer = [
+    '---',
+    copies.length ? `Also on ${copies.join(', ')}` : '',
+    breadcrumb(permalink),
+    nav(permalink)
+  ];
   // The blank line keeps the rule from turning the body's last line into a heading.
   const document = [
     frontMatter(permalink, source, newer, older),

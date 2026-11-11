@@ -80,3 +80,26 @@ describe('normalizePostMetadata excerpt', () => {
     expect(post.excerpt).toBe('If you use https://rss.chat for the feed.');
   });
 });
+
+describe('syndication', () => {
+  it('names each copy by its service and skips anything but http URLs', () => {
+    const metadata = normalizePostMetadata(
+      {
+        published: '2026-11-11T09:00:00-08:00',
+        syndication: [
+          'https://bsky.app/profile/martinemde.com/post/1',
+          'https://twitter.com/martinemde/status/2',
+          'https://ruby.social/@martinemde/3',
+          'javascript:alert(1)'
+        ]
+      },
+      'src/content/blog/2026-11-11-copies.md',
+      'Body'
+    );
+    expect(metadata.syndication.map((copy) => copy.name)).toEqual(['Bluesky', 'X', 'ruby.social']);
+    expect(
+      normalizePostMetadata({ syndication: 'https://bsky.app/profile/a/post/1' }, 'x.md', '')
+        .syndication
+    ).toHaveLength(1);
+  });
+});

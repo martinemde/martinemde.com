@@ -24,6 +24,8 @@ export interface PostMetadata {
   leadPhotos: { value: string; alt: string }[];
   /** The bookmark-of URL when the body doesn't already link it, rendered below it. */
   bookmarkLink?: string;
+  /** Copies of this post on other sites (Micropub `syndication`), named by service. */
+  syndication: { url: string; name: string }[];
   excerpt: string;
 }
 
@@ -96,6 +98,18 @@ function referencesUrl(body: string, url: string, attribute: 'href' | 'src'): bo
   );
 }
 
+const SERVICE_NAMES: Record<string, string> = {
+  'bsky.app': 'Bluesky',
+  'x.com': 'X',
+  'twitter.com': 'X'
+};
+
+/** A syndicated copy, named by its service: Bluesky, X, or else its host. */
+function syndicatedCopy(url: string): { url: string; name: string } {
+  const host = new URL(url).hostname.replace(/^www\./, '');
+  return { url, name: SERVICE_NAMES[host] ?? host };
+}
+
 function siteDay(date: Date): string[] {
   return date.toLocaleDateString('en-CA', { timeZone: SITE_TIME_ZONE }).split('-');
 }
@@ -160,6 +174,10 @@ export function normalizePostMetadata(
     bookmarkOf,
     leadPhotos: photo.filter((item) => !referencesUrl(body, item.value, 'src')),
     bookmarkLink: bookmarkOf && !referencesUrl(body, bookmarkOf, 'href') ? bookmarkOf : undefined,
+    syndication: values(props.syndication).flatMap((item) => {
+      const url = httpUrl(item);
+      return url ? [syndicatedCopy(url)] : [];
+    }),
     excerpt: content.length > 240 ? `${content.slice(0, 240)}…` : content
   };
 }

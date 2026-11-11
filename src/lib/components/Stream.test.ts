@@ -52,6 +52,9 @@ describe('publisher files through the stream and feed', () => {
       new Set(publishing['post-types'].map((post) => post.type))
     );
     expect(entries.find((entry) => entry.metadata.slug === 'note')?.metadata.title).toBe('');
+    expect(entries.find((entry) => entry.metadata.slug === 'note')?.metadata.syndication).toEqual([
+      { url: 'https://bsky.app/profile/martinemde.com/post/3m5note', name: 'Bluesky' }
+    ]);
     expect(entries.find((entry) => entry.metadata.slug === 'draft')?.metadata.published).toBe(
       false
     );

@@ -2,6 +2,8 @@
 published: '2026-09-20T10:15:00-07:00'
 author: Martin Emde
 slug: note
+syndication:
+  - 'https://bsky.app/profile/martinemde.com/post/3m5note'
 ---
 
 Small thoughts deserve their own address. See [my longer explanation](/2026/09/20/article).

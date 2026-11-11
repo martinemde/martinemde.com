@@ -28,6 +28,7 @@ const posts = [
   type: 'note',
   photo: [],
   leadPhotos: [],
+  syndication: [],
   excerpt: '',
   path: 'test.md',
   readingTime: '1 min read',

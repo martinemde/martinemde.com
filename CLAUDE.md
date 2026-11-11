@@ -32,10 +32,11 @@ category: [ruby] # list
 - `post-status: draft` or `visibility: private|unlisted` hides an entry from lists and feeds.
   A draft's direct URL still renders with `noindex`; it is not access control.
 - `photo` (list of `value` + `alt`) and `bookmark-of` stay properties, never copied into the
-  body; the site renders them around it. `content-type: text/html` marks a Micropub
+  body; the site renders them around it. `syndication` lists copies elsewhere (the publisher writes
+  Bluesky URLs back after posting); posts show them as `u-syndication` "Also on" links. `content-type: text/html` marks a Micropub
   `content.html` body. Any other Micropub property is kept as its own key.
 - Only this format is read: no fallback for old `title`/`date`/`description` keys or
-  `micropub:` blocks. A single value is a scalar; `category` and `photo` stay lists.
+  `micropub:` blocks. A single value is a scalar; `category`, `photo`, and `syndication` stay lists.
 - Repository Markdown/HTML is trusted author content. Never fetch and insert remote page HTML.
 - A quotation is a `bookmark-of` post whose body has a blockquote; don't invent a quote type.
   Projects enter the stream as ordinary bookmark posts; there is no project post type.

@@ -67,6 +67,15 @@
     <PostBody metadata={data.metadata} content={data.content} />
   </div>
 
+  {#if data.metadata.syndication.length}
+    <p class="syndication">
+      Also on
+      {#each data.metadata.syndication as copy, index (copy.url)}{#if index},
+        {/if}<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- an external URL -->
+        <a class="u-syndication" href={copy.url}>{copy.name}</a>{/each}
+    </p>
+  {/if}
+
   <footer class="post-footer">
     <span class="share-label">Share this {data.metadata.type}</span>
     <ShareButtons
@@ -177,6 +186,23 @@
     border-radius: 0.75rem;
     margin-bottom: 2rem;
     background: var(--surface);
+  }
+  .syndication {
+    margin: 44px 0 0;
+    font-family: var(--font-mono);
+    font-weight: 460;
+    font-size: 12px;
+    color: var(--faint);
+  }
+  .syndication a {
+    color: var(--muted);
+  }
+  .syndication a:hover,
+  .syndication a:focus-visible {
+    color: var(--accent);
+  }
+  .syndication + .post-footer {
+    margin-top: 16px;
   }
   .post-footer {
     display: flex;

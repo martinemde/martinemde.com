@@ -1,34 +1,31 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommits"],
-  "dependencyDashboard": true,
-  "schedule": ["before 9am"],
-  "labels": ["deps", "automated"],
-  "prHourlyLimit": 2,
-  "prConcurrentLimit": 5,
-  "automerge": false,
-  "minimumReleaseAge": "7 days",
-  "minimumReleaseAgeBehaviour": "timestamp-required",
-  "internalChecksFilter": "strict",
-  "osvVulnerabilityAlerts": true,
-  "vulnerabilityAlerts": {
-    "enabled": true,
-    "minimumReleaseAge": null,
-    "automerge": false,
-    "addLabels": ["security"]
-  },
-  "github-actions": {
-    "pinDigests": true
-  },
+  "extends": [
+    "github>martinemde/renovate-config#v1.1.0"
+  ],
+  "schedule": [
+    "before 9am"
+  ],
   "packageRules": [
     {
-      "matchCategories": ["docker"],
-      "pinDigests": true
+      "description": "Keep the `typescript` package on 6.x: typescript-eslint and SvelteKit's sync need the TS 6 JS API, which TS 7 does not ship. TS 7 is installed side by side as @typescript/native for svelte-check --tsgo. Lift once typescript-eslint supports TS 7 (typescript-eslint/typescript-eslint#10940). Matches by dep name so the @typescript/native alias (package typescript@7) still updates.",
+      "matchDepNames": [
+        "typescript"
+      ],
+      "allowedVersions": "<7"
     },
     {
-      "description": "Keep the `typescript` package on 6.x: typescript-eslint and SvelteKit's sync need the TS 6 JS API, which TS 7 does not ship. TS 7 is installed side by side as @typescript/native for svelte-check --tsgo. Lift once typescript-eslint supports TS 7 (typescript-eslint/typescript-eslint#10940). Matches by dep name so the @typescript/native alias (package typescript@7) still updates.",
-      "matchDepNames": ["typescript"],
-      "allowedVersions": "<7"
+      "matchManagers": [
+        "renovate-config"
+      ],
+      "automerge": false
+    },
+    {
+      "matchUpdateTypes": [
+        "pin",
+        "pinDigest"
+      ],
+      "automerge": false
     }
   ]
 }

@@ -24,6 +24,11 @@
     {
       "matchCategories": ["docker"],
       "pinDigests": true
+    },
+    {
+      "description": "Keep the `typescript` package on 6.x: typescript-eslint and SvelteKit's sync need the TS 6 JS API, which TS 7 does not ship. TS 7 is installed side by side as @typescript/native for svelte-check --tsgo. Lift once typescript-eslint supports TS 7 (typescript-eslint/typescript-eslint#10940). Matches by dep name so the @typescript/native alias (package typescript@7) still updates.",
+      "matchDepNames": ["typescript"],
+      "allowedVersions": "<7"
     }
   ]
 }

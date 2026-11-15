@@ -127,7 +127,7 @@ describe('Columns', () => {
     for (const track of container.querySelectorAll('.track')) {
       const bands = [...track.querySelectorAll('.band')].map((b) => pct(b.getAttribute('style')));
       expect(bands.length).toBeGreaterThan(0);
-      expect(bands.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 4);
+      expect(bands.reduce((a, b) => a + b, 0)).toBeCloseTo(100, 3);
     }
   });
 

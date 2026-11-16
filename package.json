@@ -18,7 +18,7 @@
     "@typescript/native": "npm:typescript@7",
     "@vitest/ui": "^5.0.3",
     "eslint": "^10.13.0",
-    "eslint-plugin-svelte": "^3.24.0",
+    "eslint-plugin-svelte": "^3.24.1",
     "globals": "^17.14.0",
     "jsdom": "^31.0.0",
     "mdsvex": "^0.12.8",

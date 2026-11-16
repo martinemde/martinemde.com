@@ -11,6 +11,8 @@
   "build": {
     "command": "bun run build"
   },
+  // This Worker has no data bindings or runtime vars that need Preview-specific values.
+  "previews": {},
   "compatibility_date": "2025-11-05",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {

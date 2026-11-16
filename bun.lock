@@ -13,7 +13,7 @@
       "devDependencies": {
         "@eslint/compat": "^2.1.1",
         "@eslint/js": "^10.0.1",
-        "@skeletonlabs/skeleton": "5.0.1",
+        "@skeletonlabs/skeleton": "5.0.4",
         "@skeletonlabs/skeleton-svelte": "^5.0.1",
         "@sveltejs/adapter-cloudflare": "^8.0.1",
         "@sveltejs/kit": "^3.0.1",
@@ -294,7 +294,7 @@
 
     "@sindresorhus/is": ["@sindresorhus/is@7.1.1", "", {}, "sha512-rO92VvpgMc3kfiTjGT52LEtJ8Yc5kCWhZjLQ3LwlA4pSgPpQO7bVpYXParOD8Jwf+cVQECJo3yP/4I8aZtUQTQ=="],
 
-    "@skeletonlabs/skeleton": ["@skeletonlabs/skeleton@5.0.1", "", { "peerDependencies": { "tailwindcss": "^4.0.0" } }, "sha512-WozocxlhoeJdo60qnY+JvvpVqyfV5AsB4PrBisAcIcMIMXMbXfI8a5JJ7KbqfONVjBl1AtRTqdFW6g3dBOlsIg=="],
+    "@skeletonlabs/skeleton": ["@skeletonlabs/skeleton@5.0.4", "", { "peerDependencies": { "tailwindcss": "^4.0.0" } }, "sha512-QjFzwU/ElVbn6/jSN2nmDpnH+bX+2GM1t9KM/h9Su17M7UMf0IQ6LBwlFysrpJjyuWOc9AUGgVjd4edNAEMxBw=="],
 
     "@skeletonlabs/skeleton-common": ["@skeletonlabs/skeleton-common@5.0.1", "", {}, "sha512-iOZGjme/ZVG3uwdEB66l0HAEzqn+NQnCPJ73KXpf5SVhgKq4HGVigp1JILBvLK1o1Wn2wu+Wiaiy55YzX5Hu+w=="],
 

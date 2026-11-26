@@ -82,23 +82,6 @@ const postImages = {
 };
 
 /**
- * mdsvex writes Markdown image alt text and link titles into attributes without
- * escaping, so a quote in `![a "quoted" word](…)` ends the attribute and breaks
- * the compile. Publisher photos are Markdown images with the writer's alt text.
- *
- * @param {any} node
- */
-function escapeAttributeQuotes(node) {
-  if (node.type === 'element') {
-    for (const key of ['alt', 'title']) {
-      const value = node.properties?.[key];
-      if (typeof value === 'string') node.properties[key] = value.replaceAll('"', '&quot;');
-    }
-  }
-  node.children?.forEach(escapeAttributeQuotes);
-}
-
-/**
  * mdsvex still emits its frontmatter as `<script context="module">`, which
  * Svelte 5 deprecates (and warns about in runes-mode posts). Rewrite it to the
  * `module` attribute.
@@ -121,27 +104,6 @@ const config = {
   // for more information about preprocessors
   preprocess: [
     vitePreprocess(),
-    mdsvex({
-      extensions: ['.md', '.svx'],
-      smartypants: true,
-      rehypePlugins: [() => escapeAttributeQuotes],
-      highlight: {
-        highlighter: async (code, lang = 'text') => {
-          const html = highlighter.codeToHtml(code, {
-            lang: lang ?? 'text',
-            themes: {
-              light: 'catppuccin-latte',
-              dark: 'catppuccin-macchiato'
-            },
-            colorReplacements,
-            defaultColor: false
-          });
-          // Escape backticks and backslashes for Svelte template
-          const escaped = html.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
-          return `{@html \`${escaped}\` }`;
-        }
-      }
-    }),
     moduleScript,
     postImages
   ],
@@ -149,3 +111,25 @@ const config = {
 };
 
 export default config;
+
+/**
+ * mdsvex 1.x is a Vite plugin (it needs to run before the Svelte plugin), not a
+ * Svelte preprocessor.
+ */
+export const mdsvexPlugin = mdsvex({
+  extensions: ['.md', '.svx'],
+  smart_punctuation: true,
+  import_images: false,
+  highlight: (code, { lang, inline }) =>
+    inline
+      ? null
+      : highlighter.codeToHtml(code, {
+          lang: lang || 'text',
+          themes: {
+            light: 'catppuccin-latte',
+            dark: 'catppuccin-macchiato'
+          },
+          colorReplacements,
+          defaultColor: false
+        })
+});

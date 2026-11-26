@@ -23,7 +23,7 @@ I've been using this to render my statusline for a few months and [recently][pro
 - This won't render if you're running claude code in `tmux`. It seems to suppress the OSC codes.
   scale that 0-80% range to use the full 100% progress bar width.
 
-[starship]: <https://starship.rs/> "Starship - The cross-shell prompt with easier configuration")
+[starship]: <https://starship.rs/> "Starship - The cross-shell prompt with easier configuration"
 [claude-code]: <https://claude.ai/products/code> "Claude Code: You're using this already right?"
 [martinemde/starship-claude]: <https://github.com/martinemde/starship-claude> "martinemde/starship-claude on GitHub"
 [progress-bars]: /2025/12/31/ghostty-progress-bars "Ghostty Progress Bars blog post"

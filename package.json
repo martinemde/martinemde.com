@@ -21,7 +21,7 @@
     "eslint-plugin-svelte": "^3.24.1",
     "globals": "^17.14.0",
     "jsdom": "^31.0.0",
-    "mdsvex": "^0.12.8",
+    "mdsvex": "^1.0.0",
     "sharp": "0.35.5",
     "shiki": "^4.6.0",
     "svelte": "^5.58.0",
